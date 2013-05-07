@@ -430,18 +430,24 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     int iHeight = CDisplaySettings::Get().GetResolutionInfo(res).iHeight;
 
     g_graphicsContext.BeginPaint();
-
+    /* FIXME
     glScissor(m_destRect.x1, 
               iHeight - m_destRect.y2, 
               m_destRect.x2 - m_destRect.x1, 
-              m_destRect.y2 - m_destRect.y1);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClearColor(0, 0, 0, 0);
+              m_destRect.y2 - m_destRect.y1);*/
+    glScissor(0, 
+              0,
+              iWidth,
+              iHeight);
+/*    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);*/
+    glClearColor(GLfloat(1.0/255.0), GLfloat(2.0/255.0), GLfloat(3.0/255.0), 0);
     glClear(GL_COLOR_BUFFER_BIT);
-    glScissor(0, 0, iWidth, iHeight);
+    //glScissor(0, 0, iWidth, iHeight);
 
     g_graphicsContext.EndPaint();
+    // FIXME 
+    //CLog::Log(LOGDEBUG, "%s : %d %d %f %f %f %f",  __FUNCTION__, iWidth, iHeight, m_destRect.x1, m_destRect.y1, m_destRect.x2, m_destRect.y2);
     return;
   }
 
@@ -451,6 +457,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   int index = m_iYV12RenderBuffer;
   YUVBUFFER& buf =  m_buffers[index];
 
+  
   if (m_format != RENDER_FMT_OMXEGL)
   {
     if (!buf.fields[FIELD_FULL][0].id) return;

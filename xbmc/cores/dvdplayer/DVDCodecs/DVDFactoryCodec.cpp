@@ -35,6 +35,8 @@
 #include "Video/DVDVideoCodecFFmpeg.h"
 #include "Video/DVDVideoCodecOpenMax.h"
 #include "Video/DVDVideoCodecLibMpeg2.h"
+//FIXME proper define 
+#include "Video/DVDVideoCodecIMX.h"
 #if defined(HAVE_LIBCRYSTALHD)
 #include "Video/DVDVideoCodecCrystalHD.h"
 #endif
@@ -171,7 +173,9 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #elif defined(_LINUX) && !defined(TARGET_DARWIN)
   hwSupport += "VAAPI:no ";
 #endif
-
+/*FIXME TODO add string for iMX*/
+  hwSupport += "iMXVPU:yes ";
+ 
   CLog::Log(LOGDEBUG, "CDVDFactoryCodec: compiled in hardware support: %s", hwSupport.c_str());
 
   // dvd's have weird still-frames in it, which is not fully supported in ffmpeg
@@ -179,6 +183,10 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   {
     if( (pCodec = OpenCodec(new CDVDVideoCodecLibMpeg2(), hint, options)) ) return pCodec;
   }
+  
+  /* FIXME add proper define HAVE_IMXVPU */
+  if ( (pCodec = OpenCodec(new CDVDVideoCodecIMX(), hint, options)) ) return pCodec;
+  
 #if defined(HAVE_LIBVDADECODER)
   if (!hint.software && g_guiSettings.GetBool("videoplayer.usevda"))
   {
