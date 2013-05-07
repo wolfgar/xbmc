@@ -593,13 +593,18 @@ void CDVDVideoCodecIMX::Dispose(void)
   int i, type;
   
   if (m_vpuHandle)
-  {
+  {    
+    ret = VPU_DecFlushAll(m_vpuHandle);
+    if (ret != VPU_DEC_RET_SUCCESS)
+    {
+      CLog::Log(LOGERROR, "%s - VPU flush failed with error code %d.\n", __FUNCTION__, ret);
+    }   
     ret = VPU_DecClose(m_vpuHandle);
     if (ret != VPU_DEC_RET_SUCCESS)
     {
       CLog::Log(LOGERROR, "%s - VPU close failed with error code %d.\n", __FUNCTION__, ret);
     }   
-    
+    m_vpuHandle = 0;
   }
 
   VpuFreeBuffers();
