@@ -21,11 +21,16 @@
 
 #include <vector>
 
+#include "settings/ISettingCallback.h"
 #include "settings/ISettingsHandler.h"
 #include "utils/StdString.h"
 #include "utils/GlobalsHandling.h"
 
 class TiXmlElement;
+namespace ADDON
+{
+  class IAddon;
+}
 
 class DatabaseSettings
 {
@@ -82,7 +87,7 @@ struct RefreshVideoLatency
 
 typedef std::vector<TVShowRegexp> SETTINGS_TVSHOWLIST;
 
-class CAdvancedSettings : public ISettingsHandler
+class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 {
   public:
     CAdvancedSettings();
@@ -90,6 +95,10 @@ class CAdvancedSettings : public ISettingsHandler
     static CAdvancedSettings* getInstance();
 
     virtual void OnSettingsLoaded();
+
+    virtual void OnSettingChanged(const CSetting *setting);
+
+    virtual void OnSettingAction(const CSetting *setting);
 
     void Initialize();
     bool Initialized() { return m_initialized; };
@@ -181,6 +190,7 @@ class CAdvancedSettings : public ISettingsHandler
     int m_songInfoDuration;
     int m_logLevel;
     int m_logLevelHint;
+    int m_extraLogLevels;
     CStdString m_cddbAddress;
 
     //airtunes + airplay
@@ -363,8 +373,10 @@ class CAdvancedSettings : public ISettingsHandler
 
     float GetDisplayLatency(float refreshrate);
     bool m_initialized;
+    bool m_loaded;
 
     void SetDebugMode(bool debug);
+    void SetExtraLogsFromAddon(ADDON::IAddon* addon);
 
     // runtime settings which cannot be set from advancedsettings.xml
     CStdString m_pictureExtensions;

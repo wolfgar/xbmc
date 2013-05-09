@@ -28,19 +28,25 @@
 #include "utils/LangCodeExpander.h"
 #include "LangInfo.h"
 #include "profiles/ProfilesManager.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
 #include "utils/URIUtils.h"
 #include "utils/XMLUtils.h"
 #include "utils/log.h"
 #include "filesystem/SpecialProtocol.h"
+#include "addons/IAddon.h"
+#include "addons/AddonManager.h"
+#include "addons/GUIDialogAddonSettings.h"
 
+using namespace ADDON;
 using namespace XFILE;
+using namespace std;
 
 CAdvancedSettings::CAdvancedSettings()
 {
   m_initialized = false;
+  m_loaded = false;
 }
 
 void CAdvancedSettings::OnSettingsLoaded()
@@ -54,7 +60,7 @@ void CAdvancedSettings::OnSettingsLoaded()
   CLog::Log(LOGNOTICE, "Default Audio Player: %s", m_audioDefaultPlayer.c_str());
 
   // setup any logging...
-  if (g_guiSettings.GetBool("debug.showloginfo"))
+  if (CSettings::Get().GetBool("debug.showloginfo"))
   {
     m_logLevel = std::max(m_logLevelHint, LOG_LEVEL_DEBUG_FREEMEM);
     CLog::Log(LOGNOTICE, "Enabled debug logging due to GUI setting (%d)", m_logLevel);
@@ -65,6 +71,31 @@ void CAdvancedSettings::OnSettingsLoaded()
     CLog::Log(LOGNOTICE, "Disabled debug logging due to GUI setting. Level %d.", m_logLevel);
   }
   CLog::SetLogLevel(m_logLevel);
+}
+
+void CAdvancedSettings::OnSettingChanged(const CSetting *setting)
+{
+  if (setting == NULL)
+    return;
+
+  const std::string &settingId = setting->GetId();
+  if (settingId == "debug.showloginfo")
+    SetDebugMode(((CSettingBool*)setting)->GetValue());
+}
+
+void CAdvancedSettings::OnSettingAction(const CSetting *setting)
+{
+  if (setting == NULL)
+    return;
+
+  const std::string settingId = setting->GetId();
+  if (settingId == "debug.setextraloglevel")
+  {
+    AddonPtr addon;
+    CAddonMgr::Get().GetAddon("xbmc.debug", addon);
+    CGUIDialogAddonSettings::ShowAndGetInput(addon, true);
+    SetExtraLogsFromAddon(addon.get());
+  }
 }
 
 void CAdvancedSettings::Initialize()
@@ -351,6 +382,7 @@ void CAdvancedSettings::Initialize()
   m_videoExtensions += "|.pvr";
 
   m_logLevelHint = m_logLevel = LOG_LEVEL_NORMAL;
+  m_extraLogLevels = 0;
 
   #if defined(TARGET_DARWIN)
     CStdString logDir = getenv("HOME");
@@ -378,6 +410,9 @@ bool CAdvancedSettings::Load()
 
 void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
 {
+  if (m_loaded)
+    return;
+
   CXBMCTinyXML advancedXML;
   if (!CFile::Exists(file))
   {
@@ -756,12 +791,12 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
   { // read the loglevel setting, so set the setting advanced to hide it in GUI
     // as altering it will do nothing - we don't write to advancedsettings.xml
     XMLUtils::GetInt(pRootElement, "loglevel", m_logLevelHint, LOG_LEVEL_NONE, LOG_LEVEL_MAX);
-    CSettingBool *setting = (CSettingBool *)g_guiSettings.GetSetting("debug.showloginfo");
-    if (setting)
+    CSettingBool *setting = (CSettingBool *)CSettings::Get().GetSetting("debug.showloginfo");
+    if (setting != NULL)
     {
       const char* hide;
       if (!((hide = pElement->Attribute("hide")) && strnicmp("false", hide, 4) == 0))
-        setting->SetAdvanced();
+        setting->SetVisible(false);
     }
     g_advancedSettings.m_logLevel = std::max(g_advancedSettings.m_logLevel, g_advancedSettings.m_logLevelHint);
     CLog::SetLogLevel(g_advancedSettings.m_logLevel);
@@ -1089,8 +1124,11 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     XMLUtils::GetInt(pElement, "nofliptimeout",             m_guiDirtyRegionNoFlipTimeout);
   }
 
-  // load in the GUISettings overrides:
-  g_guiSettings.LoadXML(pRootElement, true);  // true to hide the settings we read in
+  // must be done before calling CSettings::Load() to avoid an infinite loop
+  m_loaded = true;
+
+  // load in the settings overrides
+  CSettings::Get().Load(pRootElement, true);  // true to hide the settings we read in
 }
 
 void CAdvancedSettings::Clear()
@@ -1112,6 +1150,8 @@ void CAdvancedSettings::Clear()
 
   m_logFolder.clear();
   m_userAgent.clear();
+
+  m_loaded = false;
 }
 
 void CAdvancedSettings::GetCustomTVRegexps(TiXmlElement *pRootElement, SETTINGS_TVSHOWLIST& settings)
@@ -1265,4 +1305,17 @@ void CAdvancedSettings::SetDebugMode(bool debug)
     m_logLevel = level;
     CLog::SetLogLevel(level);
   }
+}
+
+void CAdvancedSettings::SetExtraLogsFromAddon(ADDON::IAddon* addon)
+{
+  m_extraLogLevels = 0;
+  for (int i=LOGMASKBIT;i<31;++i)
+  {
+    CStdString str;
+    str.Format("bit%i", i-LOGMASKBIT+1);
+    if (addon->GetSetting(str) == "true")
+      m_extraLogLevels |= (1 << i);
+  }
+  CLog::SetExtraLogLevels(m_extraLogLevels);
 }

@@ -23,9 +23,10 @@
 #include "Util.h"
 #include "URL.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "File.h"
 
+#include <map>
 #include <vector>
 #include <climits>
 
@@ -42,9 +43,12 @@
 #include "SpecialProtocol.h"
 #include "utils/CharsetConverter.h"
 #include "utils/log.h"
+#include "utils/TimeUtils.h"
 
+using namespace std;
 using namespace XFILE;
 using namespace XCURL;
+using namespace XbmcThreads;
 
 #define XMIN(a,b) ((a)<(b)?(a):(b))
 #define FITS_INT(a) (((a) <= INT_MAX) && ((a) >= INT_MIN))
@@ -60,14 +64,16 @@ curl_proxytype proxyType2CUrlProxyType[] = {
   CURLPROXY_SOCKS5_HOSTNAME,
 };
 
+static CCriticalSection s_hostMapLock;
+static map<string, EndTime> s_hostLastAccessTime; // used to rate-limit queries by host/domain
+
 // curl calls this routine to debug
 extern "C" int debug_callback(CURL_HANDLE *handle, curl_infotype info, char *output, size_t size, void *data)
 {
   if (info == CURLINFO_DATA_IN || info == CURLINFO_DATA_OUT)
     return 0;
 
-  // Only shown cURL debug into with loglevel DEBUG_SAMBA or higher
-  if( g_advancedSettings.m_logLevel < LOG_LEVEL_DEBUG_SAMBA )
+  if ((g_advancedSettings.m_extraLogLevels & LOGCURL) == 0)
     return 0;
 
   CStdString strLine;
@@ -365,6 +371,7 @@ void CCurlFile::CReadState::Disconnect()
 
 CCurlFile::~CCurlFile()
 {
+  CSingleLock lock(s_hostMapLock);
   Close();
   delete m_state;
   g_curlInterface.Unload();
@@ -469,7 +476,7 @@ void CCurlFile::SetCommonOptions(CReadState* state)
   // Enable cookie engine for current handle to re-use them in future requests
   CStdString strCookieFile;
   CStdString strTempPath = CSpecialProtocol::TranslatePath(g_advancedSettings.m_cachePath);
-  URIUtils::AddFileToFolder(strTempPath, "cookies.dat", strCookieFile);
+  strCookieFile = URIUtils::AddFileToFolder(strTempPath, "cookies.dat");
 
   g_curlInterface.easy_setopt(h, CURLOPT_COOKIEFILE, strCookieFile.c_str());
   g_curlInterface.easy_setopt(h, CURLOPT_COOKIEJAR, strCookieFile.c_str());
@@ -718,19 +725,19 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
   else if( strProtocol.Equals("http")
        ||  strProtocol.Equals("https"))
   {
-    if (g_guiSettings.GetBool("network.usehttpproxy")
-        && !g_guiSettings.GetString("network.httpproxyserver").empty()
-        && !g_guiSettings.GetString("network.httpproxyport").empty()
+    if (CSettings::Get().GetBool("network.usehttpproxy")
+        && !CSettings::Get().GetString("network.httpproxyserver").empty()
+        && !CSettings::Get().GetString("network.httpproxyport").empty()
         && m_proxy.IsEmpty())
     {
-      m_proxy = g_guiSettings.GetString("network.httpproxyserver");
-      m_proxy += ":" + g_guiSettings.GetString("network.httpproxyport");
-      if (g_guiSettings.GetString("network.httpproxyusername").length() > 0 && m_proxyuserpass.IsEmpty())
+      m_proxy = CSettings::Get().GetString("network.httpproxyserver");
+      m_proxy += ":" + CSettings::Get().GetString("network.httpproxyport");
+      if (CSettings::Get().GetString("network.httpproxyusername").length() > 0 && m_proxyuserpass.IsEmpty())
       {
-        m_proxyuserpass = g_guiSettings.GetString("network.httpproxyusername");
-        m_proxyuserpass += ":" + g_guiSettings.GetString("network.httpproxypassword");
+        m_proxyuserpass = CSettings::Get().GetString("network.httpproxyusername");
+        m_proxyuserpass += ":" + CSettings::Get().GetString("network.httpproxypassword");
       }
-      m_proxytype = (ProxyType)g_guiSettings.GetInt("network.httpproxytype");
+      m_proxytype = (ProxyType)CSettings::Get().GetInt("network.httpproxytype");
       CLog::Log(LOGDEBUG, "Using proxy %s, type %d", m_proxy.c_str(), proxyType2CUrlProxyType[m_proxytype]);
     }
 
@@ -888,6 +895,27 @@ bool CCurlFile::Open(const CURL& url)
 
   CURL url2(url);
   ParseAndCorrectUrl(url2);
+
+  map<string, EndTime>::iterator it;
+
+  // Rate-limit queries per domain to 1 per 2s
+  CSingleLock lock(s_hostMapLock);
+  it = s_hostLastAccessTime.find(url2.GetHostName());
+  if (it != s_hostLastAccessTime.end())
+  {
+    EndTime endTime = it->second;
+    if (endTime.IsTimePast()) {
+      CLog::Log(LOGDEBUG, "CurlFile::Open(%p) rate limiting queries to '%s' to avoid saturating, waiting %dmsec", (void*)this, url2.GetHostName().c_str(), endTime.MillisLeft());
+      lock.Leave();
+      Sleep(endTime.MillisLeft());
+      lock.Enter();
+    }
+    it = s_hostLastAccessTime.find(url2.GetHostName());
+    if (it != s_hostLastAccessTime.end())
+      s_hostLastAccessTime.erase(it);
+  }
+  s_hostLastAccessTime.insert(make_pair(url2.GetHostName(), EndTime(2000)));
+  lock.Leave();
 
   CLog::Log(LOGDEBUG, "CurlFile::Open(%p) %s", (void*)this, m_url.c_str());
 

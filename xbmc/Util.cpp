@@ -59,7 +59,6 @@
 #endif
 #include "profiles/ProfilesManager.h"
 #include "utils/RegExp.h"
-#include "settings/GUISettings.h"
 #include "guilib/GraphicContext.h"
 #include "guilib/TextureManager.h"
 #include "utils/fstrcmp.h"
@@ -74,6 +73,7 @@
 #endif
 #include "GUIUserMessages.h"
 #include "filesystem/File.h"
+#include "settings/MediaSettings.h"
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "settings/AdvancedSettings.h"
@@ -220,7 +220,7 @@ CStdString CUtil::GetTitleFromPath(const CStdString& strFileNameAndPath, bool bI
     strFilename = URIUtils::GetFileName(url.GetHostName());
 
   // now remove the extension if needed
-  if (!g_guiSettings.GetBool("filelists.showextensions") && !bIsFolder)
+  if (!CSettings::Get().GetBool("filelists.showextensions") && !bIsFolder)
   {
     URIUtils::RemoveExtension(strFilename);
     return strFilename;
@@ -1029,7 +1029,7 @@ CStdString CUtil::ValidatePath(const CStdString &path, bool bFixDoubleSlashes /*
 
 bool CUtil::IsUsingTTFSubtitles()
 {
-  return URIUtils::GetExtension(g_guiSettings.GetString("subtitles.font")).Equals(".ttf");
+  return URIUtils::GetExtension(CSettings::Get().GetString("subtitles.font")).Equals(".ttf");
 }
 
 #ifdef UNIT_TESTING
@@ -1318,56 +1318,49 @@ int CUtil::GetMatchingSource(const CStdString& strPath1, VECSOURCES& VECSOURCES,
 
 CStdString CUtil::TranslateSpecialSource(const CStdString &strSpecial)
 {
-  CStdString strReturn=strSpecial;
   if (!strSpecial.IsEmpty() && strSpecial[0] == '$')
   {
     if (strSpecial.Left(5).Equals("$HOME"))
-      URIUtils::AddFileToFolder("special://home/", strSpecial.Mid(5), strReturn);
+      return URIUtils::AddFileToFolder("special://home/", strSpecial.Mid(5));
     else if (strSpecial.Left(10).Equals("$SUBTITLES"))
-      URIUtils::AddFileToFolder("special://subtitles/", strSpecial.Mid(10), strReturn);
+      return URIUtils::AddFileToFolder("special://subtitles/", strSpecial.Mid(10));
     else if (strSpecial.Left(9).Equals("$USERDATA"))
-      URIUtils::AddFileToFolder("special://userdata/", strSpecial.Mid(9), strReturn);
+      return URIUtils::AddFileToFolder("special://userdata/", strSpecial.Mid(9));
     else if (strSpecial.Left(9).Equals("$DATABASE"))
-      URIUtils::AddFileToFolder("special://database/", strSpecial.Mid(9), strReturn);
+      return URIUtils::AddFileToFolder("special://database/", strSpecial.Mid(9));
     else if (strSpecial.Left(11).Equals("$THUMBNAILS"))
-      URIUtils::AddFileToFolder("special://thumbnails/", strSpecial.Mid(11), strReturn);
+      return URIUtils::AddFileToFolder("special://thumbnails/", strSpecial.Mid(11));
     else if (strSpecial.Left(11).Equals("$RECORDINGS"))
-      URIUtils::AddFileToFolder("special://recordings/", strSpecial.Mid(11), strReturn);
+      return URIUtils::AddFileToFolder("special://recordings/", strSpecial.Mid(11));
     else if (strSpecial.Left(12).Equals("$SCREENSHOTS"))
-      URIUtils::AddFileToFolder("special://screenshots/", strSpecial.Mid(12), strReturn);
+      return URIUtils::AddFileToFolder("special://screenshots/", strSpecial.Mid(12));
     else if (strSpecial.Left(15).Equals("$MUSICPLAYLISTS"))
-      URIUtils::AddFileToFolder("special://musicplaylists/", strSpecial.Mid(15), strReturn);
+      return URIUtils::AddFileToFolder("special://musicplaylists/", strSpecial.Mid(15));
     else if (strSpecial.Left(15).Equals("$VIDEOPLAYLISTS"))
-      URIUtils::AddFileToFolder("special://videoplaylists/", strSpecial.Mid(15), strReturn);
+      return URIUtils::AddFileToFolder("special://videoplaylists/", strSpecial.Mid(15));
     else if (strSpecial.Left(7).Equals("$CDRIPS"))
-      URIUtils::AddFileToFolder("special://cdrips/", strSpecial.Mid(7), strReturn);
+      return URIUtils::AddFileToFolder("special://cdrips/", strSpecial.Mid(7));
     // this one will be removed post 2.0
     else if (strSpecial.Left(10).Equals("$PLAYLISTS"))
-      URIUtils::AddFileToFolder(g_guiSettings.GetString("system.playlistspath",false), strSpecial.Mid(10), strReturn);
+      return URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), strSpecial.Mid(10));
   }
-  return strReturn;
+  return strSpecial;
 }
 
 CStdString CUtil::MusicPlaylistsLocation()
 {
   vector<CStdString> vec;
-  CStdString strReturn;
-  URIUtils::AddFileToFolder(g_guiSettings.GetString("system.playlistspath"), "music", strReturn);
-  vec.push_back(strReturn);
-  URIUtils::AddFileToFolder(g_guiSettings.GetString("system.playlistspath"), "mixed", strReturn);
-  vec.push_back(strReturn);
-  return XFILE::CMultiPathDirectory::ConstructMultiPath(vec);;
+  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "music"));
+  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "mixed"));
+  return XFILE::CMultiPathDirectory::ConstructMultiPath(vec);
 }
 
 CStdString CUtil::VideoPlaylistsLocation()
 {
   vector<CStdString> vec;
-  CStdString strReturn;
-  URIUtils::AddFileToFolder(g_guiSettings.GetString("system.playlistspath"), "video", strReturn);
-  vec.push_back(strReturn);
-  URIUtils::AddFileToFolder(g_guiSettings.GetString("system.playlistspath"), "mixed", strReturn);
-  vec.push_back(strReturn);
-  return XFILE::CMultiPathDirectory::ConstructMultiPath(vec);;
+  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "video"));
+  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "mixed"));
+  return XFILE::CMultiPathDirectory::ConstructMultiPath(vec);
 }
 
 void CUtil::DeleteMusicDatabaseDirectoryCache()
@@ -1568,8 +1561,7 @@ CStdString CUtil::GetDefaultFolderThumb(const CStdString &folderThumb)
 
 void CUtil::GetSkinThemes(vector<CStdString>& vecTheme)
 {
-  CStdString strPath;
-  URIUtils::AddFileToFolder(g_graphicsContext.GetMediaDir(),"media",strPath);
+  CStdString strPath = URIUtils::AddFileToFolder(g_graphicsContext.GetMediaDir(), "media");
   CFileItemList items;
   CDirectory::GetDirectory(strPath, items);
   // Search for Themes in the Current skin!
@@ -1912,14 +1904,14 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
   CStdString strMovieFileNameNoExt(URIUtils::ReplaceExtension(strMovieFileName, ""));
   strLookInPaths.push_back(strPath);
   
-  if (!CMediaSettings::Get().GetAdditionalSubtitleDirectoryChecked() && !g_guiSettings.GetString("subtitles.custompath").IsEmpty()) // to avoid checking non-existent directories (network) every time..
+  if (!CMediaSettings::Get().GetAdditionalSubtitleDirectoryChecked() && !CSettings::Get().GetString("subtitles.custompath").empty()) // to avoid checking non-existent directories (network) every time..
   {
-    if (!g_application.getNetwork().IsAvailable() && !URIUtils::IsHD(g_guiSettings.GetString("subtitles.custompath")))
+    if (!g_application.getNetwork().IsAvailable() && !URIUtils::IsHD(CSettings::Get().GetString("subtitles.custompath")))
     {
       CLog::Log(LOGINFO,"CUtil::CacheSubtitles: disabling alternate subtitle directory for this session, it's nonaccessible");
       CMediaSettings::Get().SetAdditionalSubtitleDirectoryChecked(-1); // disabled
     }
-    else if (!CDirectory::Exists(g_guiSettings.GetString("subtitles.custompath")))
+    else if (!CDirectory::Exists(CSettings::Get().GetString("subtitles.custompath")))
     {
       CLog::Log(LOGINFO,"CUtil::CacheSubtitles: disabling alternate subtitle directory for this session, it's nonexistant");
       CMediaSettings::Get().SetAdditionalSubtitleDirectoryChecked(-1); // disabled
@@ -1993,7 +1985,7 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
   // this is last because we dont want to check any common subdirs or cd-dirs in the alternate <subtitles> dir.
   if (CMediaSettings::Get().GetAdditionalSubtitleDirectoryChecked() == 1)
   {
-    strPath = g_guiSettings.GetString("subtitles.custompath");
+    strPath = CSettings::Get().GetString("subtitles.custompath");
     URIUtils::AddSlashAtEnd(strPath);
     strLookInPaths.push_back(strPath);
   }
@@ -2239,6 +2231,20 @@ bool CUtil::CanBindPrivileged()
   return true;
 
 #endif //_LINUX
+}
+
+bool CUtil::ValidatePort(int port)
+{
+  // check that it's a valid port
+#ifdef _LINUX
+  if (!CUtil::CanBindPrivileged() && (port < 1024 || port > 65535))
+    return false;
+  else
+#endif
+  if (port <= 0 || port > 65535)
+    return false;
+
+  return true;
 }
 
 int CUtil::GetRandomNumber()

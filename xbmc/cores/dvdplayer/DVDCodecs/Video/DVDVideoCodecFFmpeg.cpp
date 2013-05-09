@@ -33,7 +33,7 @@
 #include "utils/CPUInfo.h"
 #endif
 #include "settings/AdvancedSettings.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/log.h"
 #include "boost/shared_ptr.hpp"
 #include "threads/Atomics.h"
@@ -72,11 +72,8 @@ enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
   while(*cur != PIX_FMT_NONE)
   {
 #ifdef HAVE_LIBVDPAU
-    if(CVDPAU::IsVDPAUFormat(*cur) && g_guiSettings.GetBool("videoplayer.usevdpau"))
+    if(CVDPAU::IsVDPAUFormat(*cur) && CSettings::Get().GetBool("videoplayer.usevdpau"))
     {
-      if(ctx->GetHardware())
-        return *cur;
-        
       CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::GetFormat - Creating VDPAU(%ix%i)", avctx->width, avctx->height);
       CVDPAU* vdp = new CVDPAU();
       if(vdp->Open(avctx, *cur))
@@ -89,7 +86,7 @@ enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
     }
 #endif
 #ifdef HAS_DX
-  if(DXVA::CDecoder::Supports(*cur) && g_guiSettings.GetBool("videoplayer.usedxva2"))
+  if(DXVA::CDecoder::Supports(*cur) && CSettings::Get().GetBool("videoplayer.usedxva2"))
   {
     DXVA::CDecoder* dec = new DXVA::CDecoder();
     if(dec->Open(avctx, *cur, ctx->m_uSurfacesCount))
@@ -103,7 +100,7 @@ enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
 #endif
 #ifdef HAVE_LIBVA
     // mpeg4 vaapi decoding is disabled
-    if(*cur == PIX_FMT_VAAPI_VLD && g_guiSettings.GetBool("videoplayer.usevaapi") 
+    if(*cur == PIX_FMT_VAAPI_VLD && CSettings::Get().GetBool("videoplayer.usevaapi") 
     && (avctx->codec_id != CODEC_ID_MPEG4 || g_advancedSettings.m_videoAllowMpeg4VAAPI)) 
     {
       if (ctx->GetHardware() != NULL)
@@ -202,39 +199,6 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
       break;
     }
   }
-
-#ifdef HAVE_LIBVDPAU
-  if(g_guiSettings.GetBool("videoplayer.usevdpau") && !m_bSoftware)
-  {
-    while((pCodec = m_dllAvCodec.av_codec_next(pCodec)))
-    {
-      if(pCodec->id == hints.codec
-      && pCodec->capabilities & CODEC_CAP_HWACCEL_VDPAU)
-      {
-        if ((pCodec->id == CODEC_ID_MPEG4) && !g_advancedSettings.m_videoAllowMpeg4VDPAU)
-          continue;
-
-        CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::Open() Creating VDPAU(%ix%i, %d)",hints.width, hints.height, hints.codec);
-        CVDPAU* vdp = new CVDPAU();
-        m_pCodecContext = m_dllAvCodec.avcodec_alloc_context3(pCodec);
-        m_pCodecContext->codec_id = hints.codec;
-        m_pCodecContext->width    = hints.width;
-        m_pCodecContext->height   = hints.height;
-        m_pCodecContext->coded_width   = hints.width;
-        m_pCodecContext->coded_height  = hints.height;
-        if(vdp->Open(m_pCodecContext, pCodec->pix_fmts ? pCodec->pix_fmts[0] : PIX_FMT_NONE))
-        {
-          m_pHardware = vdp;
-          m_pCodecContext->codec_id = CODEC_ID_NONE; // ffmpeg will complain if this has been set
-          break;
-        }
-        m_dllAvUtil.av_freep(&m_pCodecContext);
-        CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::Open() Failed to get VDPAU device");
-        vdp->Release();
-      }
-    }
-  }
-#endif
 
   if(pCodec == NULL)
     pCodec = m_dllAvCodec.avcodec_find_decoder(hints.codec);

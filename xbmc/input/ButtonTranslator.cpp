@@ -220,6 +220,8 @@ static const ActionMapping actions[] =
         {"volampdown"        , ACTION_VOLAMP_DOWN},
         {"createbookmark"        , ACTION_CREATE_BOOKMARK},
         {"createepisodebookmark" , ACTION_CREATE_EPISODE_BOOKMARK},
+        {"settingsreset"      , ACTION_SETTINGS_RESET},
+        {"settingslevelchange", ACTION_SETTINGS_LEVEL_CHANGE},
 
         // PVR actions
         {"channelup"             , ACTION_CHANNEL_UP},
@@ -562,8 +564,7 @@ bool CButtonTranslator::Load(bool AlwaysLoad)
 #else
 #define REMOTEMAP "IRSSmap.xml"
 #endif
-  CStdString lircmapPath;
-  URIUtils::AddFileToFolder("special://xbmc/system/", REMOTEMAP, lircmapPath);
+  CStdString lircmapPath = URIUtils::AddFileToFolder("special://xbmc/system/", REMOTEMAP);
   lircRemotesMap.clear();
   if(CFile::Exists(lircmapPath))
     success |= LoadLircMap(lircmapPath);

@@ -63,10 +63,9 @@
 #endif
 #include "settings/AdvancedSettings.h"
 #include "FileItem.h"
-#include "settings/GUISettings.h"
-#include "settings/MediaSettings.h"
 #include "GUIUserMessages.h"
 #include "settings/Settings.h"
+#include "settings/MediaSettings.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "utils/StreamDetails.h"
@@ -142,7 +141,7 @@ static bool PredicateAudioPriority(const SelectionStream& lh, const SelectionStr
   PREDICATE_RETURN(lh.type_index == CMediaSettings::Get().GetCurrentVideoSettings().m_AudioStream
                  , rh.type_index == CMediaSettings::Get().GetCurrentVideoSettings().m_AudioStream);
 
-  if(!g_guiSettings.GetString("locale.audiolanguage").Equals("original"))
+  if(!StringUtils::EqualsNoCase(CSettings::Get().GetString("locale.audiolanguage"), "original"))
   {
     CStdString audio_language = g_langInfo.GetAudioLanguage();
     PREDICATE_RETURN(audio_language.Equals(lh.language.c_str())
@@ -172,7 +171,7 @@ static bool PredicateSubtitlePriority(const SelectionStream& lh, const Selection
                  , rh.type_index == CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleStream);
 
   CStdString subtitle_language = g_langInfo.GetSubtitleLanguage();
-  if(!g_guiSettings.GetString("locale.subtitlelanguage").Equals("original"))
+  if(!StringUtils::EqualsNoCase(CSettings::Get().GetString("locale.subtitlelanguage"), "original"))
   {
     PREDICATE_RETURN((lh.source == STREAM_SOURCE_DEMUX_SUB || lh.source == STREAM_SOURCE_TEXT) && subtitle_language.Equals(lh.language.c_str())
                    , (rh.source == STREAM_SOURCE_DEMUX_SUB || rh.source == STREAM_SOURCE_TEXT) && subtitle_language.Equals(rh.language.c_str()));
@@ -184,7 +183,7 @@ static bool PredicateSubtitlePriority(const SelectionStream& lh, const Selection
   PREDICATE_RETURN(lh.source == STREAM_SOURCE_TEXT
                  , rh.source == STREAM_SOURCE_TEXT);
 
-  if(!g_guiSettings.GetString("locale.subtitlelanguage").Equals("original"))
+  if(!StringUtils::EqualsNoCase(CSettings::Get().GetString("locale.subtitlelanguage"), "original"))
   {
     PREDICATE_RETURN(subtitle_language.Equals(lh.language.c_str())
                    , subtitle_language.Equals(rh.language.c_str()));
@@ -583,7 +582,7 @@ bool CDVDPlayer::OpenInputStream()
   if (filename.Left(7) == "http://" && CURL(filename).GetFileName().Right(5) == ".m3u8")
   {
     // get the available bandwidth (as per user settings)
-    int maxrate = g_guiSettings.GetInt("network.bandwidth");
+    int maxrate = CSettings::Get().GetInt("network.bandwidth");
     if(maxrate <= 0)
       maxrate = INT_MAX;
 
@@ -1190,10 +1189,6 @@ void CDVDPlayer::Process()
       m_CurrentVideo.inited    = false;
       m_CurrentSubtitle.inited = false;
       m_CurrentTeletext.inited = false;
-      m_CurrentAudio.started    = false;
-      m_CurrentVideo.started    = false;
-      m_CurrentSubtitle.started = false;
-      m_CurrentTeletext.started = false;
 
       // if we are caching, start playing it again
       SetCaching(CACHESTATE_DONE);
@@ -1208,6 +1203,11 @@ void CDVDPlayer::Process()
 
       if (!m_pInputStream->IsEOF())
         CLog::Log(LOGINFO, "%s - eof reading from demuxer", __FUNCTION__);
+
+      m_CurrentAudio.started    = false;
+      m_CurrentVideo.started    = false;
+      m_CurrentSubtitle.started = false;
+      m_CurrentTeletext.started = false;
 
       break;
     }
@@ -2068,7 +2068,10 @@ void CDVDPlayer::HandleMessages()
               CLog::Log(LOGDEBUG, "failed to seek subtitle demuxer: %d, success", time);
           }
           // dts after successful seek
-          m_StateInput.dts = start;
+          if (m_StateInput.time_src  == ETIMESOURCE_CLOCK && start == DVD_NOPTS_VALUE)
+            m_StateInput.dts = DVD_MSEC_TO_TIME(time);
+          else
+            m_StateInput.dts = start;
 
           FlushBuffers(!msg.GetFlush(), start, msg.GetAccurate());
         }
@@ -2273,7 +2276,7 @@ void CDVDPlayer::HandleMessages()
         if(input)
         {
           bool bSwitchSuccessful(false);
-          bool bShowPreview(g_guiSettings.GetInt("pvrplayback.channelentrytimeout") > 0);
+          bool bShowPreview(CSettings::Get().GetInt("pvrplayback.channelentrytimeout") > 0);
 
           if (!bShowPreview)
           {
@@ -2291,7 +2294,7 @@ void CDVDPlayer::HandleMessages()
             if (bShowPreview)
             {
               UpdateApplication(0);
-              m_iChannelEntryTimeOut = XbmcThreads::SystemClockMillis() + g_guiSettings.GetInt("pvrplayback.channelentrytimeout");
+              m_iChannelEntryTimeOut = XbmcThreads::SystemClockMillis() + CSettings::Get().GetInt("pvrplayback.channelentrytimeout");
             }
             else
             {
@@ -2374,7 +2377,7 @@ void CDVDPlayer::SetCaching(ECacheState state)
     m_dvdPlayerVideo.SendMessage(new CDVDMsg(CDVDMsg::PLAYER_STARTED), 1);
 
     if (state == CACHESTATE_PVR)
-      m_pInputStream->ResetScanTimeout((unsigned int) g_guiSettings.GetInt("pvrplayback.scantime") * 1000);
+      m_pInputStream->ResetScanTimeout((unsigned int) CSettings::Get().GetInt("pvrplayback.scantime") * 1000);
   }
 
   if(state == CACHESTATE_PLAY
@@ -3450,9 +3453,9 @@ bool CDVDPlayer::ShowPVRChannelInfo(void)
 {
   bool bReturn(false);
 
-  if (g_guiSettings.GetBool("pvrmenu.infoswitch"))
+  if (CSettings::Get().GetBool("pvrmenu.infoswitch"))
   {
-    int iTimeout = g_guiSettings.GetBool("pvrmenu.infotimeout") ? g_guiSettings.GetInt("pvrmenu.infotime") : 0;
+    int iTimeout = CSettings::Get().GetBool("pvrmenu.infotimeout") ? CSettings::Get().GetInt("pvrmenu.infotime") : 0;
     g_PVRManager.ShowPlayerInfo(iTimeout);
 
     bReturn = true;

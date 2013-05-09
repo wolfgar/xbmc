@@ -42,11 +42,10 @@
 #include "Application.h"
 #include "ApplicationMessenger.h"
 #include "profiles/ProfilesManager.h"
-#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/GUISettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/MediaSourceSettings.h"
+#include "settings/Settings.h"
 #include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "storage/MediaManager.h"
@@ -121,7 +120,7 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
       /* We don't want to show Autosourced items (ie removable pendrives, memorycards) in Library mode */
       m_rootDir.AllowNonLocalSources(false);
 
-      SetProperty("flattened", g_guiSettings.GetBool("myvideos.flatten"));
+      SetProperty("flattened", CSettings::Get().GetBool("myvideos.flatten"));
       if (message.GetNumStringParams() && message.GetStringParam(0).Equals("Files") &&
           CMediaSourceSettings::Get().GetSources("video")->empty())
       {
@@ -165,15 +164,15 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
       else if (iControl == CONTROL_BTNSHOWMODE)
       {
         CMediaSettings::Get().CycleWatchedMode(m_vecItems->GetContent());
-        g_settings.Save();
+        CSettings::Get().Save();
         OnFilterItems(GetProperty("filter").asString());
         return true;
       }
       else if (iControl == CONTROL_BTNFLATTEN)
       {
-        g_guiSettings.ToggleBool("myvideos.flatten");
-        g_settings.Save();
-        SetProperty("flattened", g_guiSettings.GetBool("myvideos.flatten"));
+        CSettings::Get().ToggleBool("myvideos.flatten");
+        CSettings::Get().Save();
+        SetProperty("flattened", CSettings::Get().GetBool("myvideos.flatten"));
         CUtil::DeleteVideoDatabaseDirectoryCache();
         SetupShares();
         Update("");
@@ -185,7 +184,7 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
           CMediaSettings::Get().SetWatchedMode(m_vecItems->GetContent(), WatchedModeUnwatched);
         else
           CMediaSettings::Get().SetWatchedMode(m_vecItems->GetContent(), WatchedModeAll);
-        g_settings.Save();
+        CSettings::Get().Save();
         OnFilterItems(GetProperty("filter").asString());
         return true;
       }
@@ -269,8 +268,6 @@ CStdString CGUIWindowVideoNav::GetQuickpathName(const CStdString& strPath) const
 
 bool CGUIWindowVideoNav::GetDirectory(const CStdString &strDirectory, CFileItemList &items)
 {
-  CFileItem directory(strDirectory, true);
-
   if (m_thumbLoader.IsLoading())
     m_thumbLoader.StopThread();
 
@@ -425,8 +422,8 @@ void CGUIWindowVideoNav::LoadVideoInfo(CFileItemList &items, CVideoDatabase &dat
     Similarly, we assign the "clean" library labels to the item only if the "Replace filenames with library titles"
     setting is enabled.
     */
-  const bool stackItems    = items.GetProperty("isstacked").asBoolean() || (StackingAvailable(items) && g_guiSettings.GetBool("myvideos.stackvideos"));
-  const bool replaceLabels = allowReplaceLabels && g_guiSettings.GetBool("myvideos.replacelabels");
+  const bool stackItems    = items.GetProperty("isstacked").asBoolean() || (StackingAvailable(items) && CSettings::Get().GetBool("myvideos.stackvideos"));
+  const bool replaceLabels = allowReplaceLabels && CSettings::Get().GetBool("myvideos.replacelabels");
 
   CFileItemList dbItems;
   /* NOTE: In the future when GetItemsForPath returns all items regardless of whether they're "in the library"
@@ -543,7 +540,7 @@ void CGUIWindowVideoNav::UpdateButtons()
 
   SET_CONTROL_SELECTED(GetID(),CONTROL_BTNPARTYMODE, g_partyModeManager.IsEnabled());
 
-  SET_CONTROL_SELECTED(GetID(),CONTROL_BTNFLATTEN, g_guiSettings.GetBool("myvideos.flatten"));
+  SET_CONTROL_SELECTED(GetID(),CONTROL_BTNFLATTEN, CSettings::Get().GetBool("myvideos.flatten"));
 }
 
 bool CGUIWindowVideoNav::GetFilteredItems(const CStdString &filter, CFileItemList &items)
@@ -745,7 +742,7 @@ void CGUIWindowVideoNav::OnDeleteItem(CFileItemPtr pItem)
     if (URIUtils::HasSlashAtEnd(strDeletePath))
       pItem->m_bIsFolder=true;
 
-    if (g_guiSettings.GetBool("filelists.allowfiledeletion") &&
+    if (CSettings::Get().GetBool("filelists.allowfiledeletion") &&
         CUtil::SupportsWriteFileOperations(strDeletePath))
     {
       pItem->SetPath(strDeletePath);
@@ -1047,7 +1044,7 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
 
       if (!m_vecItems->IsVideoDb() && !m_vecItems->IsVirtualDirectoryRoot())
       { // non-video db items, file operations are allowed
-        if ((g_guiSettings.GetBool("filelists.allowfiledeletion") &&
+        if ((CSettings::Get().GetBool("filelists.allowfiledeletion") &&
             CUtil::SupportsWriteFileOperations(item->GetPath())) ||
             (inPlaylists && !URIUtils::GetFileName(item->GetPath()).Equals("PartyMode-Video.xsp")
                          && (item->IsPlayList() || item->IsSmartPlayList())))
@@ -1063,8 +1060,7 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
             if (info && info->Content() != CONTENT_NONE)
             {
               buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20442);
-              if (info && g_application.IsVideoScanning())
-                buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
+              buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
             }
             else
               buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20333);
@@ -1191,8 +1187,7 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       bool local=false;
       if (button == CONTEXT_BUTTON_SET_ARTIST_THUMB)
       {
-        CStdString strThumb;
-        URIUtils::AddFileToFolder(artistPath,"folder.jpg",strThumb);
+        CStdString strThumb = URIUtils::AddFileToFolder(artistPath, "folder.jpg");
         if (XFILE::CFile::Exists(strThumb))
         {
           CFileItemPtr pItem(new CFileItem(strThumb,false));
@@ -1208,8 +1203,7 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       if (button == CONTEXT_BUTTON_SET_ACTOR_THUMB)
       {
         CStdString picturePath;
-        CStdString strThumb;
-        URIUtils::AddFileToFolder(picturePath,"folder.jpg",strThumb);
+        CStdString strThumb = URIUtils::AddFileToFolder(picturePath, "folder.jpg");
         if (XFILE::CFile::Exists(strThumb))
         {
           CFileItemPtr pItem(new CFileItem(strThumb,false));
@@ -1420,7 +1414,7 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       CMusicDatabase database;
       database.Open();
       CSong song;
-      if (database.GetSongById(database.GetSongByArtistAndAlbumAndTitle(StringUtils::Join(m_vecItems->Get(itemNumber)->GetVideoInfoTag()->m_artist, g_advancedSettings.m_videoItemSeparator),m_vecItems->Get(itemNumber)->GetVideoInfoTag()->m_strAlbum,
+      if (database.GetSong(database.GetSongByArtistAndAlbumAndTitle(StringUtils::Join(m_vecItems->Get(itemNumber)->GetVideoInfoTag()->m_artist, g_advancedSettings.m_videoItemSeparator),m_vecItems->Get(itemNumber)->GetVideoInfoTag()->m_strAlbum,
                                                                         m_vecItems->Get(itemNumber)->GetVideoInfoTag()->m_strTitle),
                                                                         song))
       {
@@ -1542,7 +1536,7 @@ void CGUIWindowVideoNav::OnLinkMovieToTvShow(int itemnumber, bool bRemove)
   int iSelectedLabel = 0;
   if (list.Size() > 1)
   {
-    list.Sort(g_guiSettings.GetBool("filelists.ignorethewhensorting") ? SORT_METHOD_LABEL_IGNORE_THE : SORT_METHOD_LABEL, SortOrderAscending);
+    list.Sort(CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SORT_METHOD_LABEL_IGNORE_THE : SORT_METHOD_LABEL, SortOrderAscending);
     CGUIDialogSelect* pDialog = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
     pDialog->Reset();
     pDialog->SetItems(&list);
