@@ -38,6 +38,8 @@ class CVDPAU;
 class COpenMax;
 class COpenMaxVideo;
 struct OpenMaxVideoBuffer;
+/* FIXME dont use directly this class in final implementtaion */
+class CDVDVideoCodecIMX;
 
 // should be entirely filled by all codecs
 struct DVDVideoPicture
@@ -60,14 +62,15 @@ struct DVDVideoPicture
     struct {
       VAAPI::CHolder* vaapi;
     };
-
     struct {
       COpenMax *openMax;
       OpenMaxVideoBuffer *openMaxBuffer;
     };
-
     struct {
       struct __CVBuffer *cvBufferRef;
+    };
+    struct {
+      CDVDVideoCodecIMX *imx;
     };
   };
 

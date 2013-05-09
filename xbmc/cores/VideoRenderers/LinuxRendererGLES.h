@@ -158,6 +158,9 @@ public:
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   virtual void         AddProcessor(struct __CVBuffer *cvBufferRef);
 #endif
+#ifdef HAVE_IMX
+  virtual void         AddProcessor(CDVDVideoCodecIMX *imx);
+#endif
 
 protected:
   virtual void Render(DWORD flags, int index);
@@ -247,7 +250,10 @@ protected:
     OpenMaxVideoBuffer *openMaxBuffer;
 #endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
-  struct __CVBuffer *cvBufferRef;
+    struct __CVBuffer *cvBufferRef;
+#endif
+#ifdef HAVE_IMX
+    CDVDVideoCodecIMX *imx;
 #endif
 
   };

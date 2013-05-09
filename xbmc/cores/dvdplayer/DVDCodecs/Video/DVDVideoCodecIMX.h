@@ -18,7 +18,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
+#include <queue>
 #include <linux/videodev2.h>
 #include <imx-mm/vpu/vpu_wrapper.h>
 #include "DVDVideoCodec.h"
@@ -46,7 +46,7 @@ public:
   CDVDVideoCodecIMX();
   virtual ~CDVDVideoCodecIMX();
 
-  // Required overrideskwrite ./
+  // Required overrides
   virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
   virtual void Dispose(void);
   virtual int  Decode(BYTE *pData, int iSize, double dts, double pts);
@@ -54,7 +54,8 @@ public:
   virtual bool GetPicture(DVDVideoPicture *pDvdVideoPicture);
   virtual void SetDropState(bool bDrop);
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
-  
+
+  void RenderFrame(void);
 protected:
 
   CDVDStreamInfo      m_hints;
@@ -77,8 +78,9 @@ protected:
   bool VpuAllocFrameBuffers(void);
   bool VpuPushFrame(VpuFrameBuffer *);
   bool VpuDeQueueFrame(void);
-  void initFB(void);
-  void restoreFB(void);
+  int GetAvailableBufferNb(void);
+  void InitFB(void);
+  void RestoreFB(void);
   
   static const int    m_extraVpuBuffers;
   static const char  *m_v4lDeviceName;
@@ -86,12 +88,13 @@ protected:
   struct v4l2_crop    m_crop;
   int                 m_xscreen, m_yscreen;
   int                 m_v4lfd;
-  int                 m_vpuFrameBufferNum;
-  VpuFrameBuffer     *m_vpuFrameBuffers;
-  struct v4l2_buffer *m_v4lBuffers;
-  VpuFrameBuffer    **m_outputBuffers;
-  bool                m_streamon;
-  VpuMemDesc          m_extraMem;   
+  int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
+  VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
+  struct v4l2_buffer *m_v4lBuffers;        // Table of V4L buffer info (as returned by VIDIOC_QUERYBUF)
+  VpuFrameBuffer    **m_outputBuffers;     // Output buffer pointers from VPU (table index is V4L buffer index). Enable to call VPU_DecOutFrameDisplayed
+  bool                m_streamon;          // Flag that indicates whether streaming in on (from V4L point of view)
+  std::queue <struct v4l2_buffer*> m_outputFrames;   // Frames to be displayed  
+  VpuMemDesc          m_extraMem;
   
   /* FIXME create a real class and share with openmax */
   // bitstream to bytestream (Annex B) conversion support.

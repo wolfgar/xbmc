@@ -18,6 +18,13 @@
  *
  */
 
+#ifdef HAVE_IMX
+#include <linux/mxcfb.h>
+//#include <linux/mxc_v4l2.h>
+#include "DVDCodecs/Video/DVDVideoCodecIMX.h"
+#endif
+
+
 #include "system.h"
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
@@ -87,6 +94,9 @@ CLinuxRendererGLES::CLinuxRendererGLES()
 #endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
     m_buffers[i].cvBufferRef = NULL;
+#endif
+#ifdef HAVE_IMX
+    m_buffers[i].imx = NULL;
 #endif
   }
 
@@ -446,7 +456,15 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     //glScissor(0, 0, iWidth, iHeight);
 
     g_graphicsContext.EndPaint();
-    // FIXME 
+
+    // FIXME : move in its own render mode instead of mixup with BYPASS
+    if (m_format == RENDER_FMT_IMX)
+    {
+      int index = m_iYV12RenderBuffer;
+      CDVDVideoCodecIMX *imx = m_buffers[index].imx;
+
+      imx->RenderFrame();
+    }
     //CLog::Log(LOGDEBUG, "%s : %d %d %f %f %f %f",  __FUNCTION__, iWidth, iHeight, m_destRect.x1, m_destRect.y1, m_destRect.x2, m_destRect.y2);
     return;
   }
@@ -548,6 +566,9 @@ unsigned int CLinuxRendererGLES::PreInit()
 #endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   m_formats.push_back(RENDER_FMT_CVBREF);
+#endif
+#ifdef HAVE_IMX
+  m_formats.push_back(RENDER_FMT_IMX);
 #endif
 
   // setup the background colour
@@ -660,6 +681,13 @@ void CLinuxRendererGLES::LoadShaders(int field)
         m_renderMethod = RENDER_CVREF;
         break;
       }
+      else if (m_format == RENDER_FMT_IMX)
+      {
+        CLog::Log(LOGNOTICE, "GL: IMX format Uses BYPASS render method");
+        m_renderMethod = RENDER_BYPASS;
+        break;
+      }
+      
       #if defined(TARGET_DARWIN_IOS)
       else if (ios_version < 5.0 && m_format == RENDER_FMT_YUV420P)
       {
@@ -2016,6 +2044,12 @@ void CLinuxRendererGLES::AddProcessor(struct __CVBuffer *cvBufferRef)
   CVBufferRetain(buf.cvBufferRef);
 }
 #endif
-
+#ifdef HAVE_IMX
+void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx)
+{
+  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
+  buf.imx = imx;
+}
+#endif
 #endif
 
