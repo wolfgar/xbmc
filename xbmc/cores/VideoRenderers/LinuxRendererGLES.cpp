@@ -20,10 +20,7 @@
 
 #ifdef HAVE_IMX
 #include <linux/mxcfb.h>
-//#include <linux/mxc_v4l2.h>
-#include "DVDCodecs/Video/DVDVideoCodecIMX.h"
 #endif
-
 
 #include "system.h"
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
@@ -67,6 +64,9 @@
 #endif
 #ifdef TARGET_DARWIN_IOS
 #include "osx/DarwinUtils.h"
+#endif
+#ifdef HAVE_IMX
+#include "DVDCodecs/Video/DVDVideoCodecIMX.h"
 #endif
 
 using namespace Shaders;
