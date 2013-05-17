@@ -40,6 +40,37 @@ typedef struct
   unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];      
 } DecMemInfo;
 
+class CDTSManager
+{
+public:
+  CDTSManager();
+  ~CDTSManager();
+
+  void Register(double pts, int size);
+  bool Associate(int size, void *key);
+  void Flush();
+  double Get(void *key);
+
+protected:
+
+  int FindFree();
+
+  static const int maxEntries = 32;
+  struct TEntry
+  {
+    unsigned int id;
+    int  size;
+    void *key;
+    double pts;
+    bool used;
+  } m_entries[maxEntries];
+  unsigned int m_current;
+
+
+};
+
+
+
 class CDVDVideoCodecIMX : public CDVDVideoCodec
 {
 public:
@@ -62,18 +93,21 @@ protected:
   DVDVideoPicture     m_picture;
   const char         *m_pFormatName;
   int                 m_nframes;
+  int                 m_displayedFrames;
   
   /* FIXME pure VPU  stuff : TO be moved in a dedicated class ? */
   bool VpuOpen(void);
   bool VpuAllocBuffers(VpuMemInfo *);
   bool VpuFreeBuffers(void);
-  
+
+
   VpuDecOpenParam     m_decOpenParam;
   DecMemInfo          m_decMemInfo;
   VpuDecHandle        m_vpuHandle;
   VpuDecInitInfo      m_initInfo;
-  
-  
+  CDTSManager         m_ts;
+  //void               *m_tsm;    // Timestamp manager
+  bool                m_tsSyncRequired;
   /* FIXME V4L rendering stuff & Frame Buffers: To be moved in a dedicated class */
   bool VpuAllocFrameBuffers(void);
   bool VpuPushFrame(VpuFrameBuffer *);
@@ -119,3 +153,5 @@ protected:
   omx_bitstream_ctx m_sps_pps_context; 
   bool m_convert_bitstream;
 };
+
+
