@@ -18,7 +18,7 @@
  *
  */
 
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
 #include <linux/mxcfb.h>
 #endif
 
@@ -65,7 +65,7 @@
 #ifdef TARGET_DARWIN_IOS
 #include "osx/DarwinUtils.h"
 #endif
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
 #include "DVDCodecs/Video/DVDVideoCodecIMX.h"
 #endif
 
@@ -94,7 +94,7 @@ CLinuxRendererGLES::CLinuxRendererGLES()
 #ifdef HAVE_VIDEOTOOLBOXDECODER
     m_buffers[i].cvBufferRef = NULL;
 #endif
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
     m_buffers[i].imx = NULL;
 #endif
   }
@@ -578,7 +578,7 @@ unsigned int CLinuxRendererGLES::PreInit()
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   m_formats.push_back(RENDER_FMT_CVBREF);
 #endif
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
   m_formats.push_back(RENDER_FMT_IMX);
 #endif
 
@@ -2057,7 +2057,7 @@ void CLinuxRendererGLES::AddProcessor(struct __CVBuffer *cvBufferRef)
   CVBufferRetain(buf.cvBufferRef);
 }
 #endif
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
 void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx)
 {
   YUVBUFFER &buf = m_buffers[NextYV12Texture()];

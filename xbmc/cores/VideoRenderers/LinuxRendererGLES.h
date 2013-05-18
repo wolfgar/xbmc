@@ -159,7 +159,7 @@ public:
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   virtual void         AddProcessor(struct __CVBuffer *cvBufferRef);
 #endif
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
   virtual void         AddProcessor(CDVDVideoCodecIMX *imx);
 #endif
 
@@ -253,7 +253,7 @@ protected:
 #ifdef HAVE_VIDEOTOOLBOXDECODER
     struct __CVBuffer *cvBufferRef;
 #endif
-#ifdef HAVE_IMX
+#ifdef HAS_IMXVPU
     CDVDVideoCodecIMX *imx;
 #endif
 

@@ -35,7 +35,7 @@
 #include "Video/DVDVideoCodecFFmpeg.h"
 #include "Video/DVDVideoCodecOpenMax.h"
 #include "Video/DVDVideoCodecLibMpeg2.h"
-#if defined(HAVE_IMX)
+#if defined(HAS_IMXVPU)
 #include "Video/DVDVideoCodecIMX.h"
 #endif
 #if defined(HAVE_LIBCRYSTALHD)
@@ -182,7 +182,7 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #elif defined(_LINUX) && !defined(TARGET_DARWIN)
   hwSupport += "VAAPI:no ";
 #endif
-#if defined(HAVE_IMX)
+#if defined(HAS_IMXVPU)
   hwSupport += "iMXVPU:yes ";
 #else
   hwSupport += "iMXVPU:no ";
@@ -196,7 +196,7 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   }
 #endif
   
-#if defined(HAVE_IMX)
+#if defined(HAS_IMXVPU)
   if ( (pCodec = OpenCodec(new CDVDVideoCodecIMX(), hint, options)) ) return pCodec;
 #endif
   
