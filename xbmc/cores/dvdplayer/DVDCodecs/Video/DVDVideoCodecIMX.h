@@ -23,6 +23,7 @@
 #include <imx-mm/vpu/vpu_wrapper.h>
 #include "DVDVideoCodec.h"
 #include "DVDStreamInfo.h"
+#include "threads/CriticalSection.h"
 
 /* FIXME TODO Develop real proper CVPUBuffer class */
 #define VPU_DEC_MAX_NUM_MEM_NUM 20
@@ -40,37 +41,11 @@ typedef struct
   unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];      
 } DecMemInfo;
 
-class CDTSManager
-{
-public:
-  CDTSManager();
-  ~CDTSManager();
-
-  void Register(double pts, int size);
-  bool Associate(int size, void *key);
-  void Flush();
-  double Get(void *key);
-
-protected:
-
-  int FindFree();
-
-  static const int maxEntries = 32;
-  struct TEntry
-  {
-    unsigned int id;
-    int  size;
-    void *key;
-    double pts;
-    bool used;
-  } m_entries[maxEntries];
-  unsigned int m_current;
-
-
-};
-
-
-
+typedef struct {
+  struct v4l2_buffer *v4l2_buffer;
+  double pts;
+} outputFrameType;
+  
 class CDVDVideoCodecIMX : public CDVDVideoCodec
 {
 public:
@@ -92,8 +67,9 @@ protected:
   CDVDStreamInfo      m_hints;
   DVDVideoPicture     m_picture;
   const char         *m_pFormatName;
-  int                 m_nframes;
+  //int                 m_nframes;
   int                 m_displayedFrames;
+  
   
   /* FIXME pure VPU  stuff : TO be moved in a dedicated class ? */
   bool VpuOpen(void);
@@ -105,9 +81,9 @@ protected:
   DecMemInfo          m_decMemInfo;
   VpuDecHandle        m_vpuHandle;
   VpuDecInitInfo      m_initInfo;
-  CDTSManager         m_ts;
-  //void               *m_tsm;    // Timestamp manager
+  void               *m_tsm;               // fsl Timestamp manager
   bool                m_tsSyncRequired;
+  bool                m_dropState;
   /* FIXME V4L rendering stuff & Frame Buffers: To be moved in a dedicated class */
   bool VpuAllocFrameBuffers(void);
   bool VpuPushFrame(VpuFrameBuffer *);
@@ -119,15 +95,16 @@ protected:
   static const int    m_extraVpuBuffers;
   static const char  *m_v4lDeviceName;
   
-  struct v4l2_crop    m_crop;
-  int                 m_xscreen, m_yscreen;
-  int                 m_v4lfd;
+  struct v4l2_crop    m_crop;              // Current cropping properties 
+  int                 m_xscreen, m_yscreen;// Current screen resolution
+  int                 m_v4lfd;             // fd on V4L2 device
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   struct v4l2_buffer *m_v4lBuffers;        // Table of V4L buffer info (as returned by VIDIOC_QUERYBUF)
   VpuFrameBuffer    **m_outputBuffers;     // Output buffer pointers from VPU (table index is V4L buffer index). Enable to call VPU_DecOutFrameDisplayed
   bool                m_streamon;          // Flag that indicates whether streaming in on (from V4L point of view)
-  std::queue <struct v4l2_buffer*> m_outputFrames;   // Frames to be displayed  
+  CCriticalSection outputFrameQueueLock;
+  std::queue <outputFrameType> m_outputFrames;   // Frames to be displayed  
   VpuMemDesc          m_extraMem;
   
   /* FIXME create a real class and share with openmax */
@@ -153,5 +130,3 @@ protected:
   omx_bitstream_ctx m_sps_pps_context; 
   bool m_convert_bitstream;
 };
-
-
