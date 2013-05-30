@@ -17,6 +17,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#include <linux/fb.h>
 
 #include "EGLNativeTypeAmlogic.h"
 #include "guilib/gui3d.h"
@@ -24,7 +25,6 @@
 #include "utils/StringUtils.h"
 
 #include <stdlib.h>
-#include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <EGL/egl.h>
 
