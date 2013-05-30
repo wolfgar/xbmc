@@ -197,7 +197,10 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #endif
   
 #if defined(HAS_IMXVPU)
-  if ( (pCodec = OpenCodec(new CDVDVideoCodecIMX(), hint, options)) ) return pCodec;
+  if (!hint.software)
+  {
+    if ( (pCodec = OpenCodec(new CDVDVideoCodecIMX(), hint, options)) ) return pCodec;
+  }
 #endif
   
 #if defined(HAVE_LIBVDADECODER)
