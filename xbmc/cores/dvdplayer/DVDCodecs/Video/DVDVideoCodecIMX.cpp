@@ -1063,7 +1063,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
       pDvdVideoPicture->pts = DVD_NOPTS_VALUE;
       CLog::Log(LOGERROR, "%s - player is ahead of time (%f)\n", __FUNCTION__, currentPlayerPts - ts);
     }
-    CLog::Log(LOGNOTICE, "%s - player : %f (%f) - ts fsl : %f (%f) - decoded %d - getpicture %d\n",  __FUNCTION__, currentPlayerPts, ts -currentPlayerPts ,ts, ts - previous, m_displayedFrames, displayedFrames);
+//    CLog::Log(LOGNOTICE, "%s - player : %f (%f) - ts fsl : %f (%f) - decoded %d - getpicture %d\n",  __FUNCTION__, currentPlayerPts, ts -currentPlayerPts ,ts, ts - previous, m_displayedFrames, displayedFrames);
     
     #if 0
     /* Check timestamp good health and ask for resync in case of persistent bad values */
