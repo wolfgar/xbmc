@@ -612,6 +612,10 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   m_convert_bitstream = false;
   switch(m_hints.codec)
   {
+  case CODEC_ID_MPEG2VIDEO:
+    m_decOpenParam.CodecFormat = VPU_V_MPEG2;
+    m_pFormatName = "iMX-mpeg2";
+    break;
   case CODEC_ID_H263:
     m_decOpenParam.CodecFormat = VPU_V_H263;   
     m_pFormatName = "iMX-h263";
@@ -887,7 +891,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
       }//VPU_DEC_ONE_FRM_CONSUMED
       
-      if (decRet & VPU_DEC_OUTPUT_DIS)
+      if ((decRet & VPU_DEC_OUTPUT_DIS) ||
+          (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS))
       /* Frame ready to be displayed */
       {
         ret = VPU_DecGetOutputFrame(m_vpuHandle, &frameInfo);
@@ -907,11 +912,11 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         }
       } //VPU_DEC_OUTPUT_DIS
       
-      if (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS)
+    /*  if (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS)
       {
         TSManagerSend(m_tsm);
         CLog::Log(LOGERROR, "%s - Unexpected OUTPUT_MOSAIC_DIS.\n", __FUNCTION__);
-      }
+      }*/
       if (decRet & VPU_DEC_OUTPUT_REPEAT)
       {
         TSManagerSend(m_tsm);
@@ -972,13 +977,14 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     } while (retry == true);
   } //(pData && iSize)
   
-
+test_fb:
   if (GetAvailableBufferNb() > (m_vpuFrameBufferNum - m_extraVpuBuffers))
   {
     retSatus |= VC_BUFFER;
   }
   else
   {
+   
     /* If pData == NULL,  then we are in dvdplayervideo's special loop
      * where it checks for more picture frames and calls us in loop
      * But we cannot accept any additional input data for now.
@@ -988,19 +994,30 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     outputFrameType outputFrame;
       
     CLog::Log(LOGNOTICE, "%s - No frame buffer available (min Free %d - Ready picture %d)\n", __FUNCTION__, GetAvailableBufferNb(),  m_outputFrames.size());
-    CSingleLock lock(outputFrameQueueLock);
-    while (m_outputFrames.size() > 0)
+#if 0
+    if (!(retSatus & VC_PICTURE))
     {
-      outputFrame = m_outputFrames.front();
-      m_outputFrames.pop();
-      CLog::Log(LOGNOTICE, "%s - Dropping one frame at idx %d to free frame buffer\n", __FUNCTION__, outputFrame.v4l2_buffer->index);
-      VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
-      m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
-      retSatus |= VC_BUFFER;
-    }
-    retSatus &= ~VC_PICTURE;
+      /* This tempo gives a chance to the renderer thread to display the picture before loosing it for good */
+      usleep(1000);    
+      if (VpuDeQueueFrame())
+        goto test_fb;
+#endif      
+      CSingleLock lock(outputFrameQueueLock);
+      while (m_outputFrames.size() > 0)
+      {
+        outputFrame = m_outputFrames.front();
+        m_outputFrames.pop();
+        CLog::Log(LOGNOTICE, "%s - Dropping one frame at idx %d to free frame buffer\n", __FUNCTION__, outputFrame.v4l2_buffer->index);
+        VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
+        m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
+        retSatus |= VC_BUFFER;
+      }
+      retSatus &= ~VC_PICTURE;      
+    //}
   }
 
+
+   
   if (bitstream_convered)
       free(demuxer_content);
   return retSatus;
@@ -1059,11 +1076,11 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     displayedFrames++;
     currentPlayerPts = GetPlayerPtsSeconds() * (double)DVD_TIME_BASE;      
     if (currentPlayerPts > ts)
-    {
-      pDvdVideoPicture->pts = DVD_NOPTS_VALUE;
+    {    
       CLog::Log(LOGERROR, "%s - player is ahead of time (%f)\n", __FUNCTION__, currentPlayerPts - ts);
+      ts = DVD_NOPTS_VALUE;
     }
-//    CLog::Log(LOGNOTICE, "%s - player : %f (%f) - ts fsl : %f (%f) - decoded %d - getpicture %d\n",  __FUNCTION__, currentPlayerPts, ts -currentPlayerPts ,ts, ts - previous, m_displayedFrames, displayedFrames);
+    //CLog::Log(LOGNOTICE, "%s - player : %f (%f) - ts fsl : %f (%f) - decoded %d - getpicture %d\n",  __FUNCTION__, currentPlayerPts, ts -currentPlayerPts ,ts, ts - previous, m_displayedFrames, displayedFrames);
     
     #if 0
     /* Check timestamp good health and ask for resync in case of persistent bad values */
