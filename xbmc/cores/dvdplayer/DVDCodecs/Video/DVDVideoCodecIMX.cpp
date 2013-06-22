@@ -594,6 +594,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   CLog::Log(LOGDEBUG, "Decode: MEDIAINFO: Profile %d \n", m_hints.profile);
   CLog::Log(LOGDEBUG, "Decode: MEDIAINFO: PTS_invalid %d \n", m_hints.ptsinvalid);
   CLog::Log(LOGDEBUG, "Decode: MEDIAINFO: Tag %d \n", m_hints.codec_tag);
+  CLog::Log(LOGDEBUG, "Decode: MEDIAINFO: %dx%d \n", m_hints.width,  m_hints.height);
   { uint8_t *pb = (uint8_t*)&m_hints.codec_tag;
     if (isalnum(pb[0]) && isalnum(pb[1]) && isalnum(pb[2]) && isalnum(pb[3]))
       CLog::Log(LOGDEBUG, "Decode: MEDIAINFO: Tag fourcc %c%c%c%c\n", pb[0], pb[1], pb[2], pb[3]);
@@ -632,7 +633,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
       m_convert_bitstream = bitstream_convert_init(hints.extradata, hints.extrasize);
     break;
   case CODEC_ID_VC1:
-    m_decOpenParam.CodecFormat = VPU_V_VC1;
+    m_decOpenParam.CodecFormat = VPU_V_VC1_AP;
     m_pFormatName = "iMX-vc1";
     break;
 /* FIXME TODO
@@ -813,10 +814,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     if (m_tsSyncRequired)
     {
       m_tsSyncRequired = false;
-      //m_tsErrors = 0;
-      if (pts == DVD_NOPTS_VALUE)
-        pts = 0;
-      resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);
+      if (pts != DVD_NOPTS_VALUE)
+        resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);      
     }
     
     if (pts != DVD_NOPTS_VALUE)
@@ -831,8 +830,17 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     inData.pPhyAddr = NULL;
     inData.pVirAddr = demuxer_content;
     /* FIXME TODO VP8 & DivX3 require specific sCodecData values */
-    inData.sCodecData.pData = NULL;
-    inData.sCodecData.nSize = 0;
+    if ((m_decOpenParam.CodecFormat == VPU_V_MPEG2) ||
+        (m_decOpenParam.CodecFormat == VPU_V_VC1_AP))
+    {
+      inData.sCodecData.pData = (unsigned char *)m_hints.extradata;
+      inData.sCodecData.nSize = m_hints.extrasize;
+    }
+    else
+    {
+      inData.sCodecData.pData = NULL;
+      inData.sCodecData.nSize = 0;
+    }
 
     do // Decode as long as the VPU uses data
     {
@@ -843,7 +851,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         CLog::Log(LOGERROR, "%s - VPU decode failed with error code %d.\n", __FUNCTION__, ret);
         goto out_error;
       }
-      /*else
+/*      else
       {
         CLog::Log(LOGDEBUG, "%s - VPU decode success : %x.\n", __FUNCTION__, decRet);
       }*/
@@ -912,11 +920,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         }
       } //VPU_DEC_OUTPUT_DIS
       
-    /*  if (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS)
-      {
-        TSManagerSend(m_tsm);
-        CLog::Log(LOGERROR, "%s - Unexpected OUTPUT_MOSAIC_DIS.\n", __FUNCTION__);
-      }*/
       if (decRet & VPU_DEC_OUTPUT_REPEAT)
       {
         TSManagerSend(m_tsm);
@@ -1075,6 +1078,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   {
     displayedFrames++;
     currentPlayerPts = GetPlayerPtsSeconds() * (double)DVD_TIME_BASE;      
+    //CLog::Log(LOGNOTICE, "%s - ts : %f \n",  __FUNCTION__, ts);
     if (currentPlayerPts > ts)
     {    
       CLog::Log(LOGERROR, "%s - player is ahead of time (%f)\n", __FUNCTION__, currentPlayerPts - ts);
