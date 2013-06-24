@@ -303,6 +303,9 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     m_crop.c.top = m_crop.c.top + (m_crop.c.height - height) / 2;
     m_crop.c.height = height;
   }
+  /* FIXME This is a workaround for the black screen bug with BSP 4.0.0 */
+  if (m_crop.c.height == 816)
+    m_crop.c.height = 824;
   ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
   if (ret < 0)
   {
