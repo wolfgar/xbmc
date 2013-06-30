@@ -18,9 +18,9 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
   #include "config.h"
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
 #include "system.h"
 #endif
 
@@ -280,7 +280,7 @@ void COpenMaxVideo::SetDropState(bool bDrop)
   }
 }
 
-int COpenMaxVideo::Decode(BYTE* pData, int iSize, double dts, double pts)
+int COpenMaxVideo::Decode(uint8_t* pData, int iSize, double dts, double pts)
 {
   if (pData)
   {

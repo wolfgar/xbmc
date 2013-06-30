@@ -61,15 +61,13 @@ public:
   float GetCacheTotal();
   COMXAudio();
   bool Initialize(AEAudioFormat format, std::string& device, OMXClock *clock, CDVDStreamInfo &hints, bool bUsePassthrough, bool bUseHWDecode);
+  bool PortSettingsChanged();
   ~COMXAudio();
 
   unsigned int AddPackets(const void* data, unsigned int len);
   unsigned int AddPackets(const void* data, unsigned int len, double dts, double pts);
   unsigned int GetSpace();
   bool Deinitialize();
-  bool Pause();
-  bool Stop();
-  bool Resume();
 
   long GetCurrentVolume() const;
   void Mute(bool bMute);
@@ -87,7 +85,7 @@ public:
   void SetCodingType(AEDataFormat dataFormat);
   static bool CanHWDecode(CodecID codec);
 
-  void PrintChannels(OMX_AUDIO_CHANNELTYPE eChannelMapping[]);
+  static void PrintChannels(OMX_AUDIO_CHANNELTYPE eChannelMapping[]);
   void PrintPCM(OMX_AUDIO_PARAM_PCMMODETYPE *pcm, std::string direction);
   void PrintDDP(OMX_AUDIO_PARAM_DDPTYPE *ddparm);
   void PrintDTS(OMX_AUDIO_PARAM_DTSTYPE *dtsparam);
@@ -100,8 +98,6 @@ public:
 private:
   IAudioCallback* m_pCallback;
   bool          m_Initialized;
-  bool          m_Pause;
-  bool          m_CanPause;
   float         m_CurrentVolume;
   long          m_drc;
   bool          m_Passthrough;
@@ -113,14 +109,14 @@ private:
   unsigned int  m_BitsPerSample;
   COMXCoreComponent *m_omx_clock;
   OMXClock       *m_av_clock;
-  bool          m_first_frame;
+  bool          m_settings_changed;
   bool          m_LostSync;
   int           m_SampleRate;
   OMX_AUDIO_CODINGTYPE m_eEncoding;
   uint8_t       *m_extradata;
   int           m_extrasize;
+  std::string   m_deviceuse;
   // stuff for visualisation
-  unsigned int  m_vizBufferSamples;
   double        m_last_pts;
   int           m_vizBufferSize;
   uint8_t       *m_vizBuffer;
@@ -134,7 +130,7 @@ private:
   WAVEFORMATEXTENSIBLE        m_wave_header;
   AEAudioFormat m_format;
 protected:
-  COMXCoreComponent *m_omx_render;
+  COMXCoreComponent m_omx_render;
   COMXCoreComponent m_omx_mixer;
   COMXCoreComponent m_omx_decoder;
   COMXCoreTunel     m_omx_tunnel_clock;
@@ -147,9 +143,9 @@ protected:
 
   CAEChannelInfo    m_channelLayout;
 
-  CAEChannelInfo    GetChannelLayout(AEAudioFormat format);
+  static CAEChannelInfo    GetChannelLayout(AEAudioFormat format);
 
-  void CheckOutputBufferSize(void **buffer, int *oldSize, int newSize);
+  static void CheckOutputBufferSize(void **buffer, int *oldSize, int newSize);
   CCriticalSection m_critSection;
 };
 #endif

@@ -18,18 +18,17 @@
  *
  */
 #include "system.h" //HAS_ZEROCONF define
+#include <assert.h>
 #include "Zeroconf.h"
 #include "settings/Settings.h"
 
-#ifdef _LINUX
-#if !defined(TARGET_DARWIN)
+#if defined(HAS_AVAHI)
 #include "linux/ZeroconfAvahi.h"
-#else
+#elif defined(TARGET_DARWIN)
 //on osx use the native implementation
 #include "osx/ZeroconfOSX.h"
-#endif
-#elif defined(TARGET_WINDOWS)
-#include "windows/ZeroconfWIN.h"
+#elif defined(HAS_MDNS)
+#include "mdns/ZeroconfMDNS.h"
 #endif
 
 #include "threads/CriticalSection.h"
@@ -136,10 +135,10 @@ CZeroconf*  CZeroconf::GetInstance()
 #else
 #if defined(TARGET_DARWIN)
     smp_instance = new CZeroconfOSX;
-#elif defined(_LINUX)
+#elif defined(HAS_AVAHI)
     smp_instance  = new CZeroconfAvahi;
-#elif defined(TARGET_WINDOWS)
-    smp_instance  = new CZeroconfWIN;
+#elif defined(HAS_MDNS)
+    smp_instance  = new CZeroconfMDNS;
 #endif
 #endif
   }

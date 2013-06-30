@@ -29,12 +29,13 @@
 #if defined(TARGET_DARWIN)
 #include "osx/OSXGNUReplacements.h"
 #endif
-#ifdef __FreeBSD__
+#ifdef TARGET_FREEBSD
 #include "freebsd/FreeBSDGNUReplacements.h"
 #endif
 
 #include "Util.h"
 #include "XBDateTime.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 
 using namespace std;

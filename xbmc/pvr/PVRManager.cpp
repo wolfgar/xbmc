@@ -32,6 +32,7 @@
 #include "music/tags/MusicInfoTag.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/MediaSettings.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "windows/GUIWindowPVR.h"
@@ -165,7 +166,7 @@ void CPVRManager::OnSettingAction(const CSetting *setting)
   else if (settingId == "pvrclient.menuhook")
   {
     if (IsStarted())
-      Clients()->ProcessMenuHooks(-1, PVR_MENUHOOK_SETTING);
+      Clients()->ProcessMenuHooks(-1, PVR_MENUHOOK_SETTING, NULL);
   }
 }
 

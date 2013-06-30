@@ -178,7 +178,7 @@ void CGUIDialogAudioSubtitleSettings::AddAudioStreams(unsigned int id)
     else
       strItem.Format("%s - %s", strLanguage.c_str(), info.name.c_str());
 
-    strItem.Format("%s (%i/%i)", strItem.c_str(), i + 1, (int)setting.max + 1);
+    strItem.AppendFormat(" (%i/%i)", i + 1, (int)setting.max + 1);
     setting.entry.push_back(make_pair(setting.entry.size(), strItem));
   }
 
@@ -200,7 +200,7 @@ void CGUIDialogAudioSubtitleSettings::AddSubtitleStreams(unsigned int id)
   setting.type = SettingInfo::SPIN;
   setting.min = 0;
   setting.data = &m_subtitleStream;
-  m_subtitleStream = g_application.m_pPlayer->GetSubtitle();
+  m_subtitleStream = CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleStream;
 
   if(m_subtitleStream < 0) m_subtitleStream = 0;
 
@@ -224,7 +224,7 @@ void CGUIDialogAudioSubtitleSettings::AddSubtitleStreams(unsigned int id)
     else
       strItem.Format("%s - %s", strLanguage.c_str(), info.name.c_str());
 
-    strItem.Format("%s (%i/%i)", strItem.c_str(), i + 1, (int)setting.max + 1);
+    strItem.AppendFormat(" (%i/%i)", i + 1, (int)setting.max + 1);
 
     setting.entry.push_back(make_pair(setting.entry.size(), strItem));
   }
@@ -339,7 +339,7 @@ void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
     }
     if (CGUIDialogFileBrowser::ShowAndGetFile(shares,strMask,g_localizeStrings.Get(293),strPath,false,true)) // "subtitles"
     {
-      if (URIUtils::GetExtension(strPath) == ".sub")
+      if (URIUtils::HasExtension(strPath, ".sub"))
         if (CFile::Exists(URIUtils::ReplaceExtension(strPath, ".idx")))
           strPath = URIUtils::ReplaceExtension(strPath, ".idx");
       

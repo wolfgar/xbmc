@@ -92,6 +92,9 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/windows/windows.a \
                    xbmc/xbmc.a \
 
+ifneq (@USE_LIBXBMC@,1)
+DIRECTORY_ARCHIVES +=xbmc/main/main.a
+endif
 
 NWAOBJSXBMC=	xbmc/threads/threads.a \
 		xbmc/commons/commons.a
@@ -117,6 +120,10 @@ endif
 ifeq (@USE_UPNP@,1)
 DIRECTORY_ARCHIVES += lib/libUPnP/libupnp.a \
                       xbmc/network/upnp/upnp.a
+endif
+
+ifeq (@USE_MDNSEMBEDDED@,1)
+DIRECTORY_ARCHIVES += xbmc/network/mdns/mdns.a
 endif
 
 ifeq ($(findstring osx,@ARCH@),osx)
@@ -159,6 +166,7 @@ DIRECTORY_ARCHIVES += xbmc/android/loader/AndroidDyload.a
 DIRECTORY_ARCHIVES += xbmc/windowing/android/windowing_android.a
 DIRECTORY_ARCHIVES += xbmc/android/activity/activity.a
 DIRECTORY_ARCHIVES += xbmc/android/bionic_supplement/bionic_supplement.a
+DIRECTORY_ARCHIVES += xbmc/android/jni/jni.a
 endif
 
 ifeq (@USE_AMLPLAYER@,1)
@@ -425,23 +433,43 @@ endif
 
 OBJSXBMC:=$(filter-out $(DYNOBJSXBMC), $(OBJSXBMC))
 
-libxbmc.so: $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC)
+MAINOBJS=xbmc/xbmc.o
+ifeq (@USE_ANDROID@,1)
+MAINOBJS+=xbmc/android/activity/android_main.o
+endif
+ifneq (@USE_LIBXBMC@,1)
+MAINOBJS+=xbmc/main/main.o
+endif
+
+# sync with tools/depends/target/xbmc-addon-bindings
+BINDINGS =xbmc/addons/include/xbmc_addon_cpp_dll.h
+BINDINGS+=xbmc/addons/include/xbmc_addon_dll.h
+BINDINGS+=xbmc/addons/include/xbmc_addon_types.h
+BINDINGS+=xbmc/addons/include/xbmc_epg_types.h
+BINDINGS+=xbmc/addons/include/xbmc_pvr_dll.h
+BINDINGS+=xbmc/addons/include/xbmc_pvr_types.h
+BINDINGS+=xbmc/addons/include/xbmc_scr_dll.h
+BINDINGS+=xbmc/addons/include/xbmc_scr_types.h
+BINDINGS+=xbmc/addons/include/xbmc_vis_dll.h
+BINDINGS+=xbmc/addons/include/xbmc_vis_types.h
+BINDINGS+=addons/library.xbmc.addon/libXBMC_addon.h
+BINDINGS+=addons/library.xbmc.gui/libXBMC_gui.h
+BINDINGS+=addons/library.xbmc.pvr/libXBMC_pvr.h
+
+libxbmc.so: $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(MAINOBJS)
 ifeq ($(findstring osx,@ARCH@), osx)
 	$(SILENT_LD) $(CXX) $(LDFLAGS) -bundle -o $@ -Wl,-all_load,-ObjC $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) $(LIBS)
 else
-	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -o $@ -Wl,--whole-archive $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--no-whole-archive -Wl,--no-undefined $(NWAOBJSXBMC) $(LIBS)
+	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -o $@ $(MAINOBJS) -Wl,--start-group $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--end-group -Wl,--no-undefined $(NWAOBJSXBMC) $(LIBS)
 endif
 
-xbmc.bin: xbmc/main/main.a $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC)
+xbmc.bin: $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(MAINOBJS)
 
 ifeq ($(findstring osx,@ARCH@), osx)
-	$(SILENT_LD) $(CXX) $(LDFLAGS) -o xbmc.bin -Wl,-all_load,-ObjC $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) xbmc/main/main.a $(LIBS) -rdynamic
+	$(SILENT_LD) $(CXX) $(LDFLAGS) -o xbmc.bin -Wl,-all_load,-ObjC $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) $(LIBS) -rdynamic
 else
-	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -o xbmc.bin -Wl,--whole-archive $(DYNOBJSXBMC) $(OBJSXBMC) xbmc/main/main.a -Wl,--no-whole-archive $(NWAOBJSXBMC) $(LIBS) -rdynamic
+	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -o xbmc.bin $(MAINOBJS) -Wl,--start-group $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--end-group $(NWAOBJSXBMC) $(LIBS) -rdynamic
 endif
-
-xbmc/main/main.a: force
-	$(MAKE) -C xbmc/main
 
 xbmc-xrandr: xbmc-xrandr.c
 ifneq (1,@USE_XRANDR@)
@@ -552,6 +580,12 @@ endif
 	@install -d $(DESTDIR)$(datadir)/icons/hicolor/256x256/apps
 	@install -m 0644 media/icon.png $(DESTDIR)$(datadir)/icons/hicolor/256x256/apps/xbmc.png
 	@test -z "$(DESTDIR)" && gtk-update-icon-cache -f -q -t $(datadir)/icons/hicolor || :
+
+	@echo "Copying bindings to $(DESTDIR)$(includedir)/xbmc"
+	@install -d $(DESTDIR)$(includedir)/xbmc
+	@for f in $(BINDINGS); do \
+	  install -m 0644 $$f $(DESTDIR)$(includedir)/xbmc ; \
+	done
 
 uninstall:
 	@echo "Removing XBMC..."

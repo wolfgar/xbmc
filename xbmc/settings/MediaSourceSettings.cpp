@@ -28,6 +28,7 @@
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
+#include "network/WakeOnAccess.h"
 
 #define SOURCES_FILE  "sources.xml"
 #define XML_SOURCES   "sources"
@@ -66,7 +67,7 @@ void CMediaSourceSettings::OnSettingsLoaded()
   Load();
 }
 
-void CMediaSourceSettings::OnSettingsCleared()
+void CMediaSourceSettings::OnSettingsUnloaded()
 {
   Clear();
 }
@@ -128,6 +129,8 @@ bool CMediaSourceSettings::Save(const std::string &file) const
   SetSources(pRoot, "music", m_musicSources, m_defaultMusicSource);
   SetSources(pRoot, "pictures", m_pictureSources, m_defaultPictureSource);
   SetSources(pRoot, "files", m_fileSources, m_defaultFileSource);
+
+  CWakeOnAccess::Get().QueueMACDiscoveryForAllRemotes();
 
   return doc.SaveFile(file);
 }
@@ -413,6 +416,8 @@ bool CMediaSourceSettings::GetSource(const std::string &category, const TiXmlNod
   if (pThumbnailNode && pThumbnailNode->FirstChild())
     share.m_strThumbnailImage = pThumbnailNode->FirstChild()->Value();
 
+  XMLUtils::GetBoolean(source, "allowsharing", share.m_allowSharing);
+
   return true;
 }
 
@@ -482,8 +487,11 @@ bool CMediaSourceSettings::SetSources(TiXmlNode *root, const char *section, cons
       XMLUtils::SetString(&source, "lockcode", share.m_strLockCode);
       XMLUtils::SetInt(&source, "badpwdcount", share.m_iBadPwdCount);
     }
+
     if (!share.m_strThumbnailImage.empty())
       XMLUtils::SetPath(&source, "thumbnail", share.m_strThumbnailImage);
+
+    XMLUtils::SetBoolean(&source, "allowsharing", share.m_allowSharing);
 
     sectionNode->InsertEndChild(source);
   }

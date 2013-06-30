@@ -173,6 +173,7 @@ CVDPAU::CVDPAU()
   vdp_video_mixer_query_feature_support = NULL;
   vdp_video_mixer_destroy = NULL;
   vdp_video_mixer_render = NULL;
+  m_hwContext.bitstream_buffers_allocated = 0;
 }
 
 bool CVDPAU::Open(AVCodecContext* avctx, const enum PixelFormat, unsigned int surfaces)
@@ -952,8 +953,7 @@ void CVDPAU::ReadFormatOf( AVCodecID codec
       vdp_decoder_profile = VDP_DECODER_PROFILE_VC1_ADVANCED;
       vdp_chroma_type     = VDP_CHROMA_TYPE_420;
       break;
-#if (defined PIX_FMT_VDPAU_MPEG4_IN_AVUTIL) && \
-    (defined VDP_DECODER_PROFILE_MPEG4_PART2_ASP)
+#if (defined VDP_DECODER_PROFILE_MPEG4_PART2_ASP)
     case AV_CODEC_ID_MPEG4:
       vdp_decoder_profile = VDP_DECODER_PROFILE_MPEG4_PART2_ASP;
       vdp_chroma_type     = VDP_CHROMA_TYPE_420;

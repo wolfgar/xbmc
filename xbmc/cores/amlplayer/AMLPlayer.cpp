@@ -1049,11 +1049,6 @@ int CAMLPlayer::AddSubtitle(const CStdString& strSubPath)
   return AddSubtitleFile(strSubPath);
 }
 
-void CAMLPlayer::Update(bool bPauseDrawing)
-{
-  g_renderManager.Update(bPauseDrawing);
-}
-
 void CAMLPlayer::GetVideoRect(CRect& SrcRect, CRect& DestRect)
 {
   g_renderManager.GetVideoRect(SrcRect, DestRect);
@@ -2168,7 +2163,7 @@ void CAMLPlayer::FindSubtitleFiles()
   for(unsigned int i=0;i<filenames.size();i++)
   {
     // if vobsub subtitle:		
-    if (URIUtils::GetExtension(filenames[i]) == ".idx")
+    if (URIUtils::HasExtension(filenames[i], ".idx"))
     {
       CStdString strSubFile;
       if ( CUtil::FindVobSubPair( filenames, filenames[i], strSubFile ) )

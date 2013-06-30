@@ -286,7 +286,10 @@ bool CDirectory::Remove(const CStdString& strPath)
     auto_ptr<IDirectory> pDirectory(CDirectoryFactory::Create(realPath));
     if (pDirectory.get())
       if(pDirectory->Remove(realPath.c_str()))
+      {
+        g_directoryCache.ClearFile(realPath);
         return true;
+      }
   }
   XBMCCOMMONS_HANDLE_UNCHECKED
   catch (...)
@@ -302,7 +305,7 @@ void CDirectory::FilterFileDirectories(CFileItemList &items, const CStdString &m
   for (int i=0; i< items.Size(); ++i)
   {
     CFileItemPtr pItem=items[i];
-    if ((!pItem->m_bIsFolder) && (!pItem->IsInternetStream()))
+    if (!pItem->m_bIsFolder && pItem->IsFileFolder(EFILEFOLDER_TYPE_ALWAYS))
     {
       auto_ptr<IFileDirectory> pDirectory(CFileDirectoryFactory::Create(pItem->GetPath(),pItem.get(),mask));
       if (pDirectory.get())

@@ -88,16 +88,13 @@
 #define DLL_PATH_VORBIS        "@VORBIS_SONAME@"
 
 /* broadcom crystalhd */
-#if defined(_LINUX) && !defined(__APPLE__)
-#define DLL_PATH_LIBCRYSTALHD  "@CRYSTALHD_SONAME@"
-#else
+#if defined(TARGET_DARWIN)
 #define DLL_PATH_LIBCRYSTALHD  "libcrystalhd.dylib"
+#else
+#define DLL_PATH_LIBCRYSTALHD  "@CRYSTALHD_SONAME@"
 #endif
 
 /* libbluray */
 #define DLL_PATH_LIBBLURAY     "@BLURAY_SONAME@"
-
-/* apple vdadecoder */
-#define DLL_PATH_LIBVDADECODER "/System/Library/Frameworks/VideoDecodeAcceleration.framework/Versions/Current/VideoDecodeAcceleration"
 
 #endif

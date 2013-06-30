@@ -28,6 +28,7 @@
 #include "utils/LangCodeExpander.h"
 #include "LangInfo.h"
 #include "profiles/ProfilesManager.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
@@ -46,7 +47,6 @@ using namespace std;
 CAdvancedSettings::CAdvancedSettings()
 {
   m_initialized = false;
-  m_loaded = false;
 }
 
 void CAdvancedSettings::OnSettingsLoaded()
@@ -71,6 +71,11 @@ void CAdvancedSettings::OnSettingsLoaded()
     CLog::Log(LOGNOTICE, "Disabled debug logging due to GUI setting. Level %d.", m_logLevel);
   }
   CLog::SetLogLevel(m_logLevel);
+}
+
+void CAdvancedSettings::OnSettingsUnloaded()
+{
+  m_initialized = false;
 }
 
 void CAdvancedSettings::OnSettingChanged(const CSetting *setting)
@@ -100,6 +105,9 @@ void CAdvancedSettings::OnSettingAction(const CSetting *setting)
 
 void CAdvancedSettings::Initialize()
 {
+  if (m_initialized)
+    return;
+
   m_audioHeadRoom = 0;
   m_ac3Gain = 12.0f;
   m_audioApplyDrc = true;
@@ -322,7 +330,7 @@ void CAdvancedSettings::Initialize()
   m_bVirtualShares = true;
 
 //caused lots of jerks
-//#ifdef _WIN32
+//#ifdef TARGET_WINDOWS
 //  m_ForcedSwapTime = 2.0;
 //#else
   m_ForcedSwapTime = 0.0;
@@ -353,6 +361,7 @@ void CAdvancedSettings::Initialize()
   m_measureRefreshrate = false;
 
   m_cacheMemBufferSize = 1024 * 1024 * 20;
+  m_alwaysForceBuffer = false;
   m_addonPackageFolderSize = 200;
 
   m_jsonOutputCompact = true;
@@ -410,9 +419,6 @@ bool CAdvancedSettings::Load()
 
 void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
 {
-  if (m_loaded)
-    return;
-
   CXBMCTinyXML advancedXML;
   if (!CFile::Exists(file))
   {
@@ -759,6 +765,7 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     XMLUtils::GetInt(pElement, "curlretries", m_curlretries, 0, 10);
     XMLUtils::GetBoolean(pElement,"disableipv6", m_curlDisableIPV6);
     XMLUtils::GetUInt(pElement, "cachemembuffersize", m_cacheMemBufferSize);
+    XMLUtils::GetBoolean(pElement, "alwaysforcebuffer", m_alwaysForceBuffer);
   }
 
   pElement = pRootElement->FirstChildElement("jsonrpc");
@@ -1124,9 +1131,6 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     XMLUtils::GetInt(pElement, "nofliptimeout",             m_guiDirtyRegionNoFlipTimeout);
   }
 
-  // must be done before calling CSettings::Load() to avoid an infinite loop
-  m_loaded = true;
-
   // load in the settings overrides
   CSettings::Get().Load(pRootElement, true);  // true to hide the settings we read in
 }
@@ -1150,8 +1154,6 @@ void CAdvancedSettings::Clear()
 
   m_logFolder.clear();
   m_userAgent.clear();
-
-  m_loaded = false;
 }
 
 void CAdvancedSettings::GetCustomTVRegexps(TiXmlElement *pRootElement, SETTINGS_TVSHOWLIST& settings)
@@ -1198,7 +1200,6 @@ void CAdvancedSettings::GetCustomTVRegexps(TiXmlElement *pRootElement, SETTINGS_
           }
         }
         CStdString regExp = pRegExp->FirstChild()->Value();
-        regExp.MakeLower();
         if (iAction == 2)
           settings.insert(settings.begin() + i++, 1, TVShowRegexp(bByDate,regExp,iDefaultSeason));
         else

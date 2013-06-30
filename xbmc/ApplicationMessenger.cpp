@@ -49,7 +49,7 @@
 
 #include "powermanagement/PowerManager.h"
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "WIN32Util.h"
 #define CHalManager CWIN32Util
 #elif defined(TARGET_DARWIN)
@@ -306,6 +306,12 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       }
       break;
 
+    case TMSG_ACTIVATESCREENSAVER:
+      {
+        g_application.ActivateScreenSaver();
+      }
+      break;
+
     case TMSG_MEDIA_PLAY:
       {
         // first check if we were called from the PlayFile() function
@@ -546,9 +552,9 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       {
         CLog::Log(LOGNOTICE, "%s: Failed to suspend AudioEngine before launching external program",__FUNCTION__);
       }
-#if defined( _LINUX) && !defined(TARGET_DARWIN)
+#if defined( TARGET_POSIX) && !defined(TARGET_DARWIN)
       CUtil::RunCommandLine(pMsg->strParam.c_str(), (pMsg->dwParam1 == 1));
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
       CWIN32Util::XBMCShellExecute(pMsg->strParam.c_str(), (pMsg->dwParam1 == 1));
 #endif
       /* Resume AE processing of XBMC native audio */
@@ -704,6 +710,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       }
       break;
 
+#ifdef HAS_PYTHON
     case TMSG_GUI_PYTHON_DIALOG:
       {
         // This hack is not much better but at least I don't need to make ApplicationMessenger
@@ -712,6 +719,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
         ((CGUIWindow*)pMsg->lpVoid)->OnAction(caction);
       }
       break;
+#endif
 
     case TMSG_GUI_ACTION:
       {
@@ -1150,6 +1158,12 @@ void CApplicationMessenger::RestartApp()
 void CApplicationMessenger::InhibitIdleShutdown(bool inhibit)
 {
   ThreadMessage tMsg = {TMSG_INHIBITIDLESHUTDOWN, (unsigned int)inhibit};
+  SendMessage(tMsg);
+}
+
+void CApplicationMessenger::ActivateScreensaver()
+{
+  ThreadMessage tMsg = {TMSG_ACTIVATESCREENSAVER};
   SendMessage(tMsg);
 }
 

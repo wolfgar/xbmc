@@ -55,6 +55,7 @@
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/LegacyPathTranslation.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "TextureCache.h"
@@ -186,7 +187,7 @@ bool CMusicDatabase::CreateTables()
     CLog::Log(LOGINFO, "create song index3");
     m_pDS->exec("CREATE INDEX idxSong3 ON song(idAlbum)");
     CLog::Log(LOGINFO, "create song index6");
-    m_pDS->exec("CREATE UNIQUE INDEX idxSong6 ON song( idPath, strFileName(255) )");
+    m_pDS->exec("CREATE INDEX idxSong6 ON song( idPath, strFileName(255) )");
     CLog::Log(LOGINFO, "create song index7");
     m_pDS->exec("CREATE UNIQUE INDEX idxSong7 ON song( idAlbum, strMusicBrainzTrackID(36) )");
 
@@ -439,13 +440,13 @@ int CMusicDatabase::AddSong(const int idAlbum,
   return idSong;
 }
 
-  int CMusicDatabase::UpdateSong(int idSong,
-                                 const CStdString& strTitle, const CStdString& strMusicBrainzTrackID,
-                                 const CStdString& strPathAndFileName, const CStdString& strComment, const CStdString& strThumb,
-                                 const std::vector<std::string>& artists, const std::vector<std::string>& genres,
-                                 int iTrack, int iDuration, int iYear,
-                                 int iTimesPlayed, int iStartOffset, int iEndOffset,
-                                 const CDateTime& dtLastPlayed, char rating, int iKaraokeNumber)
+int CMusicDatabase::UpdateSong(int idSong,
+                               const CStdString& strTitle, const CStdString& strMusicBrainzTrackID,
+                               const CStdString& strPathAndFileName, const CStdString& strComment, const CStdString& strThumb,
+                               const std::vector<std::string>& artists, const std::vector<std::string>& genres,
+                               int iTrack, int iDuration, int iYear,
+                               int iTimesPlayed, int iStartOffset, int iEndOffset,
+                               const CDateTime& dtLastPlayed, char rating, int iKaraokeNumber)
 {
   CStdString sql;
   if (idSong < 0)
@@ -2021,8 +2022,7 @@ bool CMusicDatabase::CleanupSongsByIds(const CStdString &strSongIds)
       //  Special case for streams inside an ogg file. (oggstream)
       //  The last dir in the path is the ogg file that
       //  contains the stream, so test if its there
-      CStdString strExtension=URIUtils::GetExtension(strFileName);
-      if (strExtension==".oggstream" || strExtension==".nsfstream")
+      if (URIUtils::HasExtension(strFileName, ".oggstream|.nsfstream"))
       {
         CStdString strFileAndPath=strFileName;
         URIUtils::GetDirectory(strFileAndPath, strFileName);
@@ -2190,6 +2190,12 @@ bool CMusicDatabase::CleanupPaths()
     CLog::Log(LOGERROR, "Exception in CMusicDatabase::CleanupPaths() or was aborted");
   }
   return false;
+}
+
+bool CMusicDatabase::InsideScannedPath(const CStdString& path)
+{
+  CStdString sql = PrepareSQL("select idPath from path where SUBSTR(strPath,1,%i)='%s' LIMIT 1", path.size(), path.c_str());
+  return !GetSingleValue(sql).empty();
 }
 
 bool CMusicDatabase::CleanupArtists()
@@ -3723,7 +3729,7 @@ bool CMusicDatabase::UpdateOldVersion(int version)
   if (version < 33)
   {
     m_pDS->exec("DROP INDEX idxSong6 ON song");
-    m_pDS->exec("CREATE UNIQUE INDEX idxSong6 on song( idPath, strFileName(255) )");
+    m_pDS->exec("CREATE INDEX idxSong6 on song( idPath, strFileName(255) )");
   }
 
   if (version < 34)
@@ -3755,6 +3761,34 @@ bool CMusicDatabase::UpdateOldVersion(int version)
     CSettings::Get().Save();
   }
 
+  if (version < 36)
+  {
+    // translate legacy musicdb:// paths
+    if (m_pDS->query("SELECT strPath FROM content"))
+    {
+      vector<string> contentPaths;
+      while (!m_pDS->eof())
+      {
+        contentPaths.push_back(m_pDS->fv(0).get_asString());
+        m_pDS->next();
+      }
+      m_pDS->close();
+
+      for (vector<string>::const_iterator it = contentPaths.begin(); it != contentPaths.end(); it++)
+      {
+        std::string originalPath = *it;
+        std::string path = CLegacyPathTranslation::TranslateMusicDbPath(originalPath);
+        m_pDS->exec(PrepareSQL("UPDATE content SET strPath='%s' WHERE strPath='%s'", path.c_str(), originalPath.c_str()).c_str());
+      }
+    }
+  }
+ 
+  if (version < 37)
+  {
+    m_pDS->exec("DROP INDEX idxSong6 ON song");
+    m_pDS->exec("CREATE INDEX idxSong6 on song( idPath, strFileName(255) )");
+  }
+    
   // always recreate the views after any table change
   CreateViews();
 
@@ -3763,7 +3797,7 @@ bool CMusicDatabase::UpdateOldVersion(int version)
 
 int CMusicDatabase::GetMinVersion() const
 {
-  return 35;
+  return 37;
 }
 
 unsigned int CMusicDatabase::GetSongIDs(const Filter &filter, vector<pair<int,int> > &songIDs)
@@ -3868,9 +3902,9 @@ bool CMusicDatabase::SaveAlbumThumb(int idAlbum, const CStdString& strThumb)
   SetArtForItem(idAlbum, "album", "thumb", strThumb);
   // TODO: We should prompt the user to update the art for songs
   CStdString sql = PrepareSQL("UPDATE art"
-                              " SET art_url='-'"
+                              " SET url='-'"
                               " WHERE media_type='song'"
-                              " AND art_type='thumb'"
+                              " AND type='thumb'"
                               " AND media_id IN"
                               " (SELECT idSong FROM song WHERE idAlbum=%ld)", idAlbum);
   ExecuteQuery(sql);

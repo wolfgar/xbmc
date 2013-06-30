@@ -288,11 +288,13 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
       {
         if (item->HasPVRChannelInfoTag())
           object["type"] = "channel";
-        else if (item->HasMusicInfoTag() && !item->GetMusicInfoTag()->GetType().empty())
+        else if (item->HasMusicInfoTag())
         {
           std::string type = item->GetMusicInfoTag()->GetType();
-          if (type == "album" || type == "song")
+          if (type == "album" || type == "song" || type == "artist")
             object["type"] = type;
+          else
+            object["type"] = "song";
         }
         else if (item->HasVideoInfoTag() && !item->GetVideoInfoTag()->m_type.empty())
         {
@@ -306,10 +308,13 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
         if (!object.isMember("type"))
           object["type"] = "unknown";
 
-        if (item->m_bIsFolder)
-          object["filetype"] = "directory";
-        else 
-          object["filetype"] = "file";
+        if (fields.find("filetype") != fields.end())
+        {
+          if (item->m_bIsFolder)
+            object["filetype"] = "directory";
+          else 
+            object["filetype"] = "file";
+        }
       }
     }
 

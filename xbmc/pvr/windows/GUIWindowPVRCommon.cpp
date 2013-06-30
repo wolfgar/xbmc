@@ -342,13 +342,13 @@ bool CGUIWindowPVRCommon::OnContextButtonMenuHooks(CFileItem *item, CONTEXT_BUTT
     bReturn = true;
 
     if (item->IsEPG() && item->GetEPGInfoTag()->HasPVRChannel())
-      g_PVRClients->ProcessMenuHooks(item->GetEPGInfoTag()->ChannelTag()->ClientID(), PVR_MENUHOOK_EPG);
+      g_PVRClients->ProcessMenuHooks(item->GetEPGInfoTag()->ChannelTag()->ClientID(), PVR_MENUHOOK_EPG, item);
     else if (item->IsPVRChannel())
-      g_PVRClients->ProcessMenuHooks(item->GetPVRChannelInfoTag()->ClientID(), PVR_MENUHOOK_CHANNEL);
+      g_PVRClients->ProcessMenuHooks(item->GetPVRChannelInfoTag()->ClientID(), PVR_MENUHOOK_CHANNEL, item);
     else if (item->IsPVRRecording())
-      g_PVRClients->ProcessMenuHooks(item->GetPVRRecordingInfoTag()->m_iClientId, PVR_MENUHOOK_RECORDING);
+      g_PVRClients->ProcessMenuHooks(item->GetPVRRecordingInfoTag()->m_iClientId, PVR_MENUHOOK_RECORDING, item);
     else if (item->IsPVRTimer())
-      g_PVRClients->ProcessMenuHooks(item->GetPVRTimerInfoTag()->m_iClientId, PVR_MENUHOOK_TIMER);
+      g_PVRClients->ProcessMenuHooks(item->GetPVRTimerInfoTag()->m_iClientId, PVR_MENUHOOK_TIMER, item);
   }
 
   return bReturn;
@@ -524,27 +524,25 @@ bool CGUIWindowPVRCommon::ActionPlayChannel(CFileItem *item)
 
 bool CGUIWindowPVRCommon::ActionPlayEpg(CFileItem *item)
 {
-  bool bReturn = false;
-
   CEpgInfoTag *epgTag = item->GetEPGInfoTag();
   if (!epgTag)
-    return bReturn;
+    return false;
 
   CPVRChannelPtr channel = epgTag->ChannelTag();
   if (!channel || channel->ChannelNumber() > 0 ||
       !g_PVRManager.CheckParentalLock(*channel))
-    return bReturn;
+    return false;
 
-  bReturn = g_application.PlayFile(CFileItem(*channel));
+  PlayBackRet ret = g_application.PlayFile(CFileItem(*channel));
 
-  if (!bReturn)
+  if (ret == PLAYBACK_FAIL)
   {
     CStdString msg;
     msg.Format(g_localizeStrings.Get(19035).c_str(), channel->ChannelName().c_str()); // CHANNELNAME could not be played. Check the log for details.
     CGUIDialogOK::ShowAndGetInput(19033, 0, msg, 0);
   }
 
-  return bReturn;
+  return ret == PLAYBACK_OK;
 }
 
 bool CGUIWindowPVRCommon::ActionDeleteChannel(CFileItem *item)
@@ -645,7 +643,7 @@ bool CGUIWindowPVRCommon::PlayRecording(CFileItem *item, bool bPlayMinimized /* 
       vector<int> stack;
       for (int i = 0; i < items.Size(); ++i)
       {
-        if (URIUtils::GetExtension(items[i]->GetPath()) == ext)
+        if (URIUtils::HasExtension(items[i]->GetPath(), ext))
           stack.push_back(i);
       }
 

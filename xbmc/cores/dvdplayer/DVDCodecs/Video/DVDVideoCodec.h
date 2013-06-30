@@ -50,7 +50,7 @@ struct DVDVideoPicture
   union
   {
     struct {
-      BYTE* data[4];      // [4] = alpha channel, currently not used
+      uint8_t* data[4];      // [4] = alpha channel, currently not used
       int iLineSize[4];   // [4] = alpha channel, currently not used
     };
     struct {
@@ -85,7 +85,6 @@ struct DVDVideoPicture
   unsigned int color_primaries;
   unsigned int color_transfer;
   unsigned int extended_format;
-  int iGroupId;
 
   int8_t* qscale_table; // Quantization parameters, primarily used by filters
   int qscale_stride;
@@ -101,7 +100,7 @@ struct DVDVideoPicture
 
 struct DVDVideoUserData
 {
-  BYTE* data;
+  uint8_t* data;
   int size;
 };
 
@@ -151,7 +150,7 @@ public:
    * returns one or a combination of VC_ messages
    * pData and iSize can be NULL, this means we should flush the rest of the data.
    */
-  virtual int Decode(BYTE* pData, int iSize, double dts, double pts) = 0;
+  virtual int Decode(uint8_t* pData, int iSize, double dts, double pts) = 0;
 
  /*
    * Reset the decoder.
@@ -246,4 +245,11 @@ public:
   {
     return 0;
   }
+
+
+  /**
+   * Number of references to old pictures that are allowed to
+   * be retained when calling decode on the next demux packet
+   */
+  virtual unsigned GetAllowedReferences() { return 0; }
 };

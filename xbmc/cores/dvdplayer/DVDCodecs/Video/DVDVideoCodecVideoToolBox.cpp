@@ -18,7 +18,7 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
   #include "config.h"
 #endif
 
@@ -1332,7 +1332,7 @@ void CDVDVideoCodecVideoToolBox::SetDropState(bool bDrop)
   m_DropPictures = bDrop;
 }
 
-int CDVDVideoCodecVideoToolBox::Decode(BYTE* pData, int iSize, double dts, double pts)
+int CDVDVideoCodecVideoToolBox::Decode(uint8_t* pData, int iSize, double dts, double pts)
 {
   if (pData)
   {

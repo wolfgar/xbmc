@@ -37,6 +37,7 @@
 #include "pictures/GUIWindowSlideShow.h"
 #include "pictures/PictureInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
+#include "guilib/IGUIContainer.h"
 #include "guilib/GUIWindowManager.h"
 #include "playlists/PlayList.h"
 #include "profiles/ProfilesManager.h"
@@ -2112,13 +2113,13 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
     bReturn = g_application.IsMusicScanning();
   }
   else if (condition == SYSTEM_PLATFORM_LINUX)
-#if defined(_LINUX) && !defined(TARGET_DARWIN) && !defined(TARGET_ANDROID)
+#if defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
     bReturn = true;
 #else
     bReturn = false;
 #endif
   else if (condition == SYSTEM_PLATFORM_WINDOWS)
-#ifdef WIN32
+#ifdef TARGET_WINDOWS
     bReturn = true;
 #else
     bReturn = false;
@@ -3716,22 +3717,21 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
     case VIDEOPLAYER_PLOT_OUTLINE:
       return m_currentFile->GetVideoInfoTag()->m_strPlotOutline;
     case VIDEOPLAYER_EPISODE:
+      if (m_currentFile->GetVideoInfoTag()->m_iEpisode > 0)
       {
         CStdString strEpisode;
-        if (m_currentFile->GetVideoInfoTag()->m_iSpecialSortEpisode > 0)
-          strEpisode.Format("S%i", m_currentFile->GetVideoInfoTag()->m_iSpecialSortEpisode);
-        else if(m_currentFile->GetVideoInfoTag()->m_iEpisode > 0)
+        if (m_currentFile->GetVideoInfoTag()->m_iSeason == 0) // prefix episode with 'S'
+          strEpisode.Format("S%i", m_currentFile->GetVideoInfoTag()->m_iEpisode);
+        else 
           strEpisode.Format("%i", m_currentFile->GetVideoInfoTag()->m_iEpisode);
         return strEpisode;
       }
       break;
     case VIDEOPLAYER_SEASON:
+      if (m_currentFile->GetVideoInfoTag()->m_iSeason > 0)
       {
         CStdString strSeason;
-        if (m_currentFile->GetVideoInfoTag()->m_iSpecialSortSeason > 0)
-          strSeason.Format("%i", m_currentFile->GetVideoInfoTag()->m_iSpecialSortSeason);
-        else if(m_currentFile->GetVideoInfoTag()->m_iSeason > 0)
-          strSeason.Format("%i", m_currentFile->GetVideoInfoTag()->m_iSeason);
+        strSeason.Format("%i", m_currentFile->GetVideoInfoTag()->m_iSeason);
         return strSeason;
       }
       break;
@@ -3959,7 +3959,7 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
   if (CTimeUtils::GetFrameTime() - m_lastSysHeatInfoTime >= SYSHEATUPDATEINTERVAL)
   { // update our variables
     m_lastSysHeatInfoTime = CTimeUtils::GetFrameTime();
-#if defined(_LINUX)
+#if defined(TARGET_POSIX)
     g_cpuInfo.getTemperature(m_cpuTemp);
     m_gpuTemp = GetGPUTemperature();
 #endif
@@ -3978,7 +3978,7 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
       text.Format("%i%%", m_fanSpeed * 2);
       break;
     case SYSTEM_CPU_USAGE:
-#if defined(TARGET_DARWIN) || defined(_WIN32)
+#if defined(TARGET_DARWIN) || defined(TARGET_WINDOWS)
       text.Format("%d%%", g_cpuInfo.getUsedPercentage());
 #else
       text.Format("%s", g_cpuInfo.GetCoresUsageString());
@@ -4478,24 +4478,21 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
       return item->GetVideoInfoTag()->m_strPlotOutline;
     break;
   case LISTITEM_EPISODE:
-    if (item->HasVideoInfoTag())
+    if (item->HasVideoInfoTag() && item->GetVideoInfoTag()->m_iEpisode > 0)
     {
       CStdString strResult;
-      if (item->GetVideoInfoTag()->m_iSpecialSortEpisode > 0)
+      if (item->GetVideoInfoTag()->m_iSeason == 0) // prefix episode with 'S'
         strResult.Format("S%d",item->GetVideoInfoTag()->m_iEpisode);
-      else if (item->GetVideoInfoTag()->m_iEpisode > 0) // if m_iEpisode = -1 there's no episode detail
+      else
         strResult.Format("%d",item->GetVideoInfoTag()->m_iEpisode);
       return strResult;
     }
     break;
   case LISTITEM_SEASON:
-    if (item->HasVideoInfoTag())
+    if (item->HasVideoInfoTag() && item->GetVideoInfoTag()->m_iSeason > 0)
     {
       CStdString strResult;
-      if (item->GetVideoInfoTag()->m_iSpecialSortSeason > 0)
-        strResult.Format("%d",item->GetVideoInfoTag()->m_iSpecialSortSeason);
-      else if (item->GetVideoInfoTag()->m_iSeason > 0) // if m_iSeason = -1 there's no season detail
-        strResult.Format("%d",item->GetVideoInfoTag()->m_iSeason);
+      strResult.Format("%d",item->GetVideoInfoTag()->m_iSeason);
       return strResult;
     }
     break;

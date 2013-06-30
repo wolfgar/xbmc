@@ -126,7 +126,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   /* request output of wanted endianness */
   if (!fOut->priv_class || m_dllAvUtil.av_opt_set(muxer.m_pFormat->priv_data, "spdif_flags", spdifFlags, 0) != 0)
   {
-#if defined(WORDS_BIGENDIAN) && !defined(__APPLE__)
+#if defined(WORDS_BIGENDIAN) && !defined(TARGET_DARWIN)
     CLog::Log(LOGERROR, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - Unable to set big-endian stream mode (FFmpeg too old?), disabling passthrough");
     Dispose();
     return false;
@@ -375,7 +375,7 @@ void CDVDAudioCodecPassthroughFFmpeg::Dispose()
   m_Codec   = NULL;
 }
 
-int CDVDAudioCodecPassthroughFFmpeg::Decode(BYTE* pData, int iSize)
+int CDVDAudioCodecPassthroughFFmpeg::Decode(uint8_t* pData, int iSize)
 {
   unsigned int used, fSize;
   fSize = iSize;
@@ -450,7 +450,7 @@ int CDVDAudioCodecPassthroughFFmpeg::Decode(BYTE* pData, int iSize)
     return used;
 }
 
-int CDVDAudioCodecPassthroughFFmpeg::GetData(BYTE** dst)
+int CDVDAudioCodecPassthroughFFmpeg::GetData(uint8_t** dst)
 {
   return GetMuxerData(m_SPDIF, dst);
 }
@@ -509,7 +509,7 @@ int CDVDAudioCodecPassthroughFFmpeg::GetBufferSize()
 }
 
 /* ========================== SYNC FUNCTIONS ========================== */
-unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(BYTE* pData, unsigned int iSize, unsigned int *fSize)
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(uint8_t* pData, unsigned int iSize, unsigned int *fSize)
 {
   unsigned int skip = 0;
   for(skip = 0; iSize - skip > 6; ++skip, ++pData)
@@ -566,7 +566,7 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(BYTE* pData, unsigned int 
   return iSize;
 }
 
-unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int iSize, unsigned int *fSize)
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(uint8_t* pData, unsigned int iSize, unsigned int *fSize)
 {
   unsigned int skip;
   unsigned int srCode;
@@ -614,7 +614,7 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int 
   return iSize;
 }
 
-unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAAC(BYTE* pData, unsigned int iSize, unsigned int *fSize)
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAAC(uint8_t* pData, unsigned int iSize, unsigned int *fSize)
 {
   unsigned int skip;
   for(skip = 0; iSize - skip > 5; ++skip, ++pData)

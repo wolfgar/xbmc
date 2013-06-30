@@ -50,23 +50,17 @@ protected:
   bool                      m_open;
   CDVDStreamInfo            m_hints;
   double                    m_iCurrentPts;
-  double                    m_iSleepEndTime;
+  double                    m_nextOverlay;
   OMXClock                  *m_av_clock;
   COMXVideo                 m_omxVideo;
   float                     m_fFrameRate;
-  bool                      m_Deinterlace;
   bool                      m_hdmi_clock_sync;
   double                    m_iVideoDelay;
   int                       m_speed;
-  double                    m_FlipTimeStamp; // time stamp of last flippage. used to play at a forced framerate
-  int                       m_audio_count;
   bool                      m_stalled;
   bool                      m_started;
   bool                      m_flush;
   std::string               m_codecname;
-  double                    m_droptime;
-  double                    m_dropbase;
-  unsigned int              m_autosync;
   double                    m_iSubtitleDelay;
   bool                      m_bRenderSubs;
   bool                      m_bAllowFullscreen;
@@ -84,9 +78,8 @@ protected:
 
   BitstreamStats m_videoStats;
 
-  DVDVideoPicture* m_pTempOverlayPicture;
-
-  void ProcessOverlays(int iGroupId, double pts);
+  void ProcessOverlays(double pts);
+  double NextOverlay(double pts);
 
   virtual void OnStartup();
   virtual void OnExit();
@@ -106,12 +99,12 @@ public:
   bool IsStalled()                                  { return m_stalled;  }
   bool IsEOS();
   bool CloseStream(bool bWaitForBuffers);
-  void Output(int iGroupId, double pts, bool bDropPacket);
+  void Output(double pts, bool bDropPacket);
   void Flush();
   bool OpenDecoder();
   int  GetDecoderBufferSize();
   int  GetDecoderFreeSpace();
-  double GetCurrentPTS() { return m_iCurrentPts; };
+  double GetCurrentPts() { return m_iCurrentPts; };
   double GetFPS() { return m_fFrameRate; };
   void  SubmitEOS();
   bool SubmittedEOS();

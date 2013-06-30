@@ -31,7 +31,7 @@
 #if defined(TARGET_DARWIN)
 #include "osx/OSXGNUReplacements.h" // strnlen
 #endif
-#ifdef __FreeBSD__
+#ifdef TARGET_FREEBSD
 #include "freebsd/FreeBSDGNUReplacements.h"
 #endif
 
@@ -389,7 +389,7 @@ void CSAPSessions::Process()
   if(m_socket == INVALID_SOCKET)
     return;
 
-#ifdef _MSC_VER
+#ifdef TARGET_WINDOWS
   unsigned long nonblocking = 1;
   ioctlsocket(m_socket, FIONBIO, &nonblocking);
 #else

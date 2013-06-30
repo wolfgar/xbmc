@@ -19,7 +19,7 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
   #include "config.h"
 #endif
 
@@ -41,6 +41,9 @@
 #include "utils/TimeUtils.h"
 #include "Util.h"
 #include "guilib/GraphicContext.h"
+#ifdef TARGET_WINDOWS
+#include "utils/Environment.h"
+#endif
 
 #include "threads/SystemClock.h"
 #include "addons/Addon.h"
@@ -466,7 +469,7 @@ void XBPython::Initialize()
   if (!m_bInitialized)
   {
       // first we check if all necessary files are installed
-#ifndef _LINUX
+#ifndef TARGET_POSIX
       if(!FileExist("special://xbmc/system/python/DLLs/_socket.pyd") ||
         !FileExist("special://xbmc/system/python/DLLs/_ssl.pyd") ||
         !FileExist("special://xbmc/system/python/DLLs/bz2.pyd") ||
@@ -488,7 +491,7 @@ void XBPython::Initialize()
       // Info about interesting python envvars available
       // at http://docs.python.org/using/cmdline.html#environment-variables
 
-#if !defined(_WIN32) && !defined(TARGET_ANDROID)
+#if !defined(TARGET_WINDOWS) && !defined(TARGET_ANDROID)
       /* PYTHONOPTIMIZE is set off intentionally when using external Python.
          Reason for this is because we cannot be sure what version of Python
          was used to compile the various Python object files (i.e. .pyo,
@@ -504,20 +507,18 @@ void XBPython::Initialize()
         CLog::Log(LOGDEBUG, "PYTHONPATH -> %s", CSpecialProtocol::TranslatePath("special://frameworks").c_str());
       }
       setenv("PYTHONCASEOK", "1", 1); //This line should really be removed
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
       // because the third party build of python is compiled with vs2008 we need
       // a hack to set the PYTHONPATH
-      // buf is corrupted after putenv and might need a strdup but it seems to
-      // work this way
       CStdString buf;
       buf = "PYTHONPATH=" + CSpecialProtocol::TranslatePath("special://xbmc/system/python/DLLs") + ";" + CSpecialProtocol::TranslatePath("special://xbmc/system/python/Lib");
-      pgwin32_putenv(buf.c_str());
+      CEnvironment::putenv(buf);
       buf = "PYTHONOPTIMIZE=1";
-      pgwin32_putenv(buf.c_str());
+      CEnvironment::putenv(buf);
       buf = "PYTHONHOME=" + CSpecialProtocol::TranslatePath("special://xbmc/system/python");
-      pgwin32_putenv(buf.c_str());
+      CEnvironment::putenv(buf);
       buf = "OS=win32";
-      pgwin32_putenv(buf.c_str());
+      CEnvironment::putenv(buf);
 
 #elif defined(TARGET_ANDROID)
       CStdString apkPath = getenv("XBMC_ANDROID_APK");
@@ -589,15 +590,15 @@ void XBPython::Finalize()
       PyEval_ReleaseLock();
     }
 
-#if !(defined(TARGET_DARWIN) || defined(_WIN32))
+#if !(defined(TARGET_DARWIN) || defined(TARGET_WINDOWS))
     UnloadExtensionLibs();
 #endif
 
     // first free all dlls loaded by python, after that python24.dll (this is done by UnloadPythonDlls
-#if !(defined(TARGET_DARWIN) || defined(_WIN32))
+#if !(defined(TARGET_DARWIN) || defined(TARGET_WINDOWS))
     DllLoaderContainer::UnloadPythonDlls();
 #endif
-#if defined(_LINUX) && !defined(__APPLE__) && !defined(__FreeBSD__)
+#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN) && !defined(TARGET_FREEBSD)
     // we can't release it on windows, as this is done in UnloadPythonDlls() for win32 (see above).
     // The implementation for linux needs looking at - UnloadPythonDlls() currently only searches for "python24.dll"
     // The implementation for osx can never unload the python dylib.

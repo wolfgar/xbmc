@@ -46,7 +46,7 @@ class CDVDAudioCodec;
 
 typedef struct stDVDAudioFrame
 {
-  BYTE* data;
+  uint8_t* data;
   double pts;
   double duration;
   unsigned int size;
@@ -126,6 +126,8 @@ protected:
 
   int DecodeFrame(DVDAudioFrame &audioframe, bool bDropPacket);
 
+  void UpdatePlayerInfo();
+
   CDVDMessageQueue m_messageQueue;
   CDVDMessageQueue& m_messageParent;
 
@@ -146,7 +148,7 @@ protected:
     }
 
     CDVDMsgDemuxerPacket*  msg;
-    BYTE*                  data;
+    uint8_t*               data;
     int                    size;
     double                 dts;
 
@@ -206,5 +208,9 @@ protected:
   bool   m_prevskipped;
   double m_maxspeedadjust;
   double m_resampleratio; //resample ratio when using SYNC_RESAMPLE, used for the codec info
+
+
+  CCriticalSection m_info_section;
+  std::string      m_info;
 };
 

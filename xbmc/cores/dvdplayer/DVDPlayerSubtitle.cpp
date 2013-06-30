@@ -34,7 +34,7 @@
 #include "DVDDemuxers/DVDDemuxUtils.h"
 #include "utils/log.h"
 #include "threads/SingleLock.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include "config.h"
 #endif
 
@@ -80,7 +80,6 @@ void CDVDPlayerSubtitle::SendMessage(CDVDMsg* pMsg)
 
         while((overlay = m_pOverlayCodec->GetOverlay()) != NULL)
         {
-          overlay->iGroupId = pPacket->iGroupId;
           m_pOverlayContainer->Add(overlay);
           overlay->Release();
         }
@@ -92,7 +91,6 @@ void CDVDPlayerSubtitle::SendMessage(CDVDMsg* pMsg)
       if (pSPUInfo)
       {
         CLog::Log(LOGDEBUG, "CDVDPlayer::ProcessSubData: Got complete SPU packet");
-        pSPUInfo->iGroupId = pPacket->iGroupId;
         m_pOverlayContainer->Add(pSPUInfo);
         pSPUInfo->Release();
       }
@@ -104,8 +102,8 @@ void CDVDPlayerSubtitle::SendMessage(CDVDMsg* pMsg)
     CDVDMsgSubtitleClutChange* pData = (CDVDMsgSubtitleClutChange*)pMsg;
     for (int i = 0; i < 16; i++)
     {
-      BYTE* color = m_dvdspus.m_clut[i];
-      BYTE* t = (BYTE*)pData->m_data[i];
+      uint8_t* color = m_dvdspus.m_clut[i];
+      uint8_t* t = (uint8_t*)pData->m_data[i];
 
 // pData->m_data[i] points to an uint32_t
 // Byte swapping is needed between big and little endian systems

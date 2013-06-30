@@ -44,6 +44,9 @@
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
+#include "settings/MediaSourceSettings.h"
+#include "Application.h"
+#include "music/MusicDatabase.h"
 
 using namespace std;
 using namespace XFILE;
@@ -56,6 +59,7 @@ CCDDARipper& CCDDARipper::GetInstance()
 }
 
 CCDDARipper::CCDDARipper()
+  : CJobQueue(false, 1) //enforce fifo and non-parallel processing
 {
 }
 
@@ -67,9 +71,7 @@ CCDDARipper::~CCDDARipper()
 bool CCDDARipper::RipTrack(CFileItem* pItem)
 {
   // don't rip non cdda items
-  CStdString strExt;
-  URIUtils::GetExtension(pItem->GetPath(), strExt);
-  if (strExt.CompareNoCase(".cdda") != 0) 
+  if (!URIUtils::HasExtension(pItem->GetPath(), ".cdda"))
   {
     CLog::Log(LOGDEBUG, "cddaripper: file is not a cdda track");
     return false;
@@ -184,7 +186,7 @@ bool CCDDARipper::CreateAlbumDir(const MUSIC_INFO::CMusicInfoTag& infoTag, CStdS
   CFileItem ripPath(strDirectory, true);
   if (ripPath.IsSmb())
     legalType = LEGAL_WIN32_COMPAT;
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
   if (ripPath.IsHD())
     legalType = LEGAL_WIN32_COMPAT;
 #endif
@@ -305,7 +307,22 @@ CStdString CCDDARipper::GetTrackName(CFileItem *item)
 void CCDDARipper::OnJobComplete(unsigned int jobID, bool success, CJob* job)
 {
   if (success)
+  {
+    if(CJobQueue::QueueEmpty())
+    {
+      CStdString dir;
+      URIUtils::GetDirectory(((CCDDARipJob*)job)->GetOutput(), dir);
+      bool unimportant;
+      int source = CUtil::GetMatchingSource(dir, *CMediaSourceSettings::Get().CMediaSourceSettings::GetSources("music"), unimportant);
+
+      CMusicDatabase database;
+      database.Open();
+      if (source>=0 && database.InsideScannedPath(dir))
+        g_application.StartMusicScan(dir);
+      database.Close();
+    }
     return CJobQueue::OnJobComplete(jobID, success, job);
+  }
 
   CancelJobs();
 }

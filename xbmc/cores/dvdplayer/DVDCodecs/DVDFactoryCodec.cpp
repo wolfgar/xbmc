@@ -26,7 +26,7 @@
 #include "Audio/DVDAudioCodec.h"
 #include "Overlay/DVDOverlayCodec.h"
 
-#if defined(HAVE_LIBVDADECODER)
+#if defined(TARGET_DARWIN_OSX)
 #include "Video/DVDVideoCodecVDA.h"
 #endif
 #if defined(HAVE_VIDEOTOOLBOXDECODER)
@@ -142,10 +142,8 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   //when support for a hardware decoder is not compiled in
   //only print it if it's actually available on the platform
   CStdString hwSupport;
-#if defined(HAVE_LIBVDADECODER) && defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN_OSX)
   hwSupport += "VDADecoder:yes ";
-#elif defined(TARGET_DARWIN)
-  hwSupport += "VDADecoder:no ";
 #endif
 #if defined(HAVE_VIDEOTOOLBOXDECODER) && defined(TARGET_DARWIN)
   hwSupport += "VideoToolBoxDecoder:yes ";
@@ -162,24 +160,24 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #else
   hwSupport += "AMCodec:no ";
 #endif
-#if defined(HAVE_LIBOPENMAX) && defined(_LINUX)
+#if defined(HAVE_LIBOPENMAX) && defined(TARGET_POSIX)
   hwSupport += "OpenMax:yes ";
-#elif defined(_LINUX)
+#elif defined(TARGET_POSIX)
   hwSupport += "OpenMax:no ";
 #endif
-#if defined(HAVE_LIBVDPAU) && defined(_LINUX)
+#if defined(HAVE_LIBVDPAU) && defined(TARGET_POSIX)
   hwSupport += "VDPAU:yes ";
-#elif defined(_LINUX) && !defined(TARGET_DARWIN)
+#elif defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
   hwSupport += "VDPAU:no ";
 #endif
-#if defined(_WIN32) && defined(HAS_DX)
+#if defined(TARGET_WINDOWS) && defined(HAS_DX)
   hwSupport += "DXVA:yes ";
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
   hwSupport += "DXVA:no ";
 #endif
-#if defined(HAVE_LIBVA) && defined(_LINUX)
+#if defined(HAVE_LIBVA) && defined(TARGET_POSIX)
   hwSupport += "VAAPI:yes ";
-#elif defined(_LINUX) && !defined(TARGET_DARWIN)
+#elif defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
   hwSupport += "VAAPI:no ";
 #endif
 #if defined(HAS_IMXVPU)
@@ -203,15 +201,12 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   }
 #endif
   
-#if defined(HAVE_LIBVDADECODER)
+#if defined(TARGET_DARWIN_OSX)
   if (!hint.software && CSettings::Get().GetBool("videoplayer.usevda"))
   {
-    if (g_sysinfo.HasVDADecoder())
+    if (hint.codec == CODEC_ID_H264 && !hint.ptsinvalid)
     {
-      if (hint.codec == CODEC_ID_H264 && !hint.ptsinvalid)
-      {
-        if ( (pCodec = OpenCodec(new CDVDVideoCodecVDA(), hint, options)) ) return pCodec;
-      }
+      if ( (pCodec = OpenCodec(new CDVDVideoCodecVDA(), hint, options)) ) return pCodec;
     }
   }
 #endif
@@ -278,7 +273,7 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #endif
 
   // try to decide if we want to try halfres decoding
-#if !defined(_LINUX) && !defined(_WIN32)
+#if !defined(TARGET_POSIX) && !defined(TARGET_WINDOWS)
   float pixelrate = (float)hint.width*hint.height*hint.fpsrate/hint.fpsscale;
   if( pixelrate > 1400.0f*720.0f*30.0f )
   {

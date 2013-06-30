@@ -25,9 +25,7 @@
 #if !defined(AFX_FILEHD_H__DD2B0A9E_4971_4A29_B525_78CEFCDAF4A1__INCLUDED_)
 #define AFX_FILEHD_H__DD2B0A9E_4971_4A29_B525_78CEFCDAF4A1__INCLUDED_
 
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include "IFile.h"
 #include "utils/AutoPtrHandle.h"
@@ -64,6 +62,7 @@ protected:
   AUTOPTR::CAutoPtrHandle m_hFile;
   int64_t m_i64FilePos;
   int64_t m_i64FileLen;
+  int64_t m_i64LastDropPos;
 };
 
 }

@@ -28,17 +28,36 @@ class URIUtils
 public:
   URIUtils(void);
   virtual ~URIUtils(void);
-  static CStdString GetParentFolderURI(const CStdString& uri,
-                                       bool preserveFileNameInPath);
   static bool IsInPath(const CStdString &uri, const CStdString &baseURI);
 
   static void GetDirectory(const CStdString& strFilePath,
                            CStdString& strDirectoryPath);
   static CStdString GetDirectory(const CStdString &filePath);
-
-  static const CStdString GetExtension(const CStdString& strFileName);
-  static void GetExtension(const CStdString& strFile, CStdString& strExtension);
   static const CStdString GetFileName(const CStdString& strFileNameAndPath);
+
+  static CStdString GetExtension(const CStdString& strFileName);
+
+  /*!
+   \brief Check if there is a file extension
+   \param strFileName Path or URL to check
+   \return \e true if strFileName have an extension.
+   \note Returns false when strFileName is empty.
+   \sa GetExtension
+   */
+  static bool HasExtension(const CStdString& strFileName);
+
+  /*!
+   \brief Check if filename have any of the listed extensions
+   \param strFileName Path or URL to check
+   \param strExtensions List of '.' prefixed lowercase extensions seperated with '|'
+   \return \e true if strFileName have any one of the extensions.
+   \note The check is case insensitive for strFileName, but requires
+         strExtensions to be lowercase. Returns false when strFileName or
+         strExtensions is empty.
+   \sa GetExtension
+   */
+  static bool HasExtension(const CStdString& strFileName, const CStdString& strExtensions);
+
   static void RemoveExtension(CStdString& strFileName);
   static CStdString ReplaceExtension(const CStdString& strFile,
                                      const CStdString& strNewExtension);
