@@ -60,6 +60,7 @@ public:
   virtual bool GetPicture(DVDVideoPicture *pDvdVideoPicture);
   virtual void SetDropState(bool bDrop);
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
+  virtual unsigned GetAllowedReferences();
 
   void RenderFrame(void);
 protected:

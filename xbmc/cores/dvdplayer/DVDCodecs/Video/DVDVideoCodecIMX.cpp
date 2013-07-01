@@ -457,11 +457,12 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuFrameBuffer *frameBuffer)
 void CDVDVideoCodecIMX::RenderFrame(void)
 {
   /* Warning : called from renderer thread
-   * Especially do not call any VPU funcrions as they are not thread safe
+   * Especially do not call any VPU functions as they are not thread safe
    */  
   int ret, type;
   outputFrameType outputFrame;
-  
+
+  CSingleLock lock(outputFrameQueueLock);
   if (m_outputFrames.size() == 0)
   {
     CLog::Log(LOGNOTICE, "%s - No frame available to render !\n",
@@ -496,7 +497,6 @@ void CDVDVideoCodecIMX::RenderFrame(void)
   }
 #endif
   //CLog::Log(LOGERROR, "%s - render frame called on buffer %d (size : %d) \n", __FUNCTION__, buffer->index, m_outputFrames.size());
-  CSingleLock lock(outputFrameQueueLock);
   m_outputFrames.pop(); 
 }
 
@@ -505,7 +505,7 @@ int CDVDVideoCodecIMX::GetAvailableBufferNb(void)
 {
   int i, nb;
   nb = 0;
-  for (i=0; i<m_vpuFrameBufferNum; i++)
+  for (i=0; i < m_vpuFrameBufferNum; i++)
   {
     if (m_outputBuffers[i] == NULL)
       nb++;
@@ -1128,6 +1128,11 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   return true;
 }
 
+unsigned CDVDVideoCodecIMX::GetAllowedReferences()
+{
+  return 0;
+  /* FIXME handle buffering  - m_extraVpuBuffers;*/
+}
 
 void CDVDVideoCodecIMX::SetDropState(bool bDrop)
 {

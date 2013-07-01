@@ -161,7 +161,7 @@ public:
   virtual void         AddProcessor(struct __CVBuffer *cvBufferRef, int index);
 #endif
 #ifdef HAS_IMXVPU
-  virtual void         AddProcessor(CDVDVideoCodecIMX *imx);
+  virtual void         AddProcessor(CDVDVideoCodecIMX *imx, int index);
 #endif
 
 protected:

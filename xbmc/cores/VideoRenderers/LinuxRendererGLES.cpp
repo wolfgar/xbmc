@@ -82,20 +82,22 @@ CLinuxRendererGLES::YUVBUFFER::YUVBUFFER()
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   cvBufferRef = NULL;
 #endif
+#ifdef HAS_IMXVPU
+  imx = NULL;
+#endif
 }
 
 CLinuxRendererGLES::YUVBUFFER::~YUVBUFFER()
 {
+
 }
 
 CLinuxRendererGLES::CLinuxRendererGLES()
 {
   m_textureTarget = GL_TEXTURE_2D;
-  for (int i = 0; i < NUM_BUFFERS; i++) {
+  for (int i = 0; i < NUM_BUFFERS; i++)
+  {
     m_eventTexturesDone[i] = new CEvent(false,true);
-#ifdef HAS_IMXVPU
-    m_buffers[i].imx = NULL;
-#endif
   }
 
   m_renderMethod = RENDER_GLSL;
@@ -461,10 +463,13 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     // FIXME : move in its own render mode instead of mixup with BYPASS
     if (m_format == RENDER_FMT_IMX)
     {
+
       int index = m_iYV12RenderBuffer;
       CDVDVideoCodecIMX *imx = m_buffers[index].imx;
 
-      imx->RenderFrame();
+      //CLog::Log(LOGDEBUG, "%s : render update called idx %d - %x",  __FUNCTION__, index, imx);
+      if (imx != NULL)
+        imx->RenderFrame();
     }
     //CLog::Log(LOGDEBUG, "%s : %d %d %f %f %f %f",  __FUNCTION__, iWidth, iHeight, m_destRect.x1, m_destRect.y1, m_destRect.x2, m_destRect.y2);
     return;
@@ -2056,10 +2061,16 @@ void CLinuxRendererGLES::AddProcessor(struct __CVBuffer *cvBufferRef, int index)
 }
 #endif
 #ifdef HAS_IMXVPU
-void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx)
+void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx, int index)
 {
-  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
-  buf.imx = imx;
+  int i;
+/* FIXME force all index for now - 
+   understand why render update is not called with correct index later */
+  for (i = 0; i < 3; i++)
+  {
+    YUVBUFFER &buf = m_buffers[i];
+    buf.imx = imx;
+  }
 }
 #endif
 #endif
