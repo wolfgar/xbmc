@@ -100,12 +100,13 @@ protected:
   int                 m_v4lfd;             // fd on V4L2 device
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
+  VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   struct v4l2_buffer *m_v4lBuffers;        // Table of V4L buffer info (as returned by VIDIOC_QUERYBUF)
   VpuFrameBuffer    **m_outputBuffers;     // Output buffer pointers from VPU (table index is V4L buffer index). Enable to call VPU_DecOutFrameDisplayed
   bool                m_streamon;          // Flag that indicates whether streaming in on (from V4L point of view)
   CCriticalSection outputFrameQueueLock;
   std::queue <outputFrameType> m_outputFrames;   // Frames to be displayed  
-  VpuMemDesc          m_extraMem;
+  
   
   /* FIXME create a real class and share with openmax */
   // bitstream to bytestream (Annex B) conversion support.

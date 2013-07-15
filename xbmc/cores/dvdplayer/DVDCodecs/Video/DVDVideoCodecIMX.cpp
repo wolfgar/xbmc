@@ -42,7 +42,7 @@
 /* video device on which the video will be rendered (/dev/video17 => /dev/fb1) */
 const char *CDVDVideoCodecIMX::m_v4lDeviceName = "/dev/video17";
 /* Experiments show that we need at least one more (+1) V4L buffer than the min value returned by the VPU */
-const int CDVDVideoCodecIMX::m_extraVpuBuffers = 8;
+const int CDVDVideoCodecIMX::m_extraVpuBuffers = 10;
 
 bool CDVDVideoCodecIMX::VpuAllocBuffers(VpuMemInfo *pMemBlock)
 {
@@ -266,7 +266,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   struct v4l2_requestbuffers bufReq;
   struct v4l2_format fmt;
 //  struct v4l2_control ctrl;
-  int ret, i;
+  int ret, i, j;
   int width, height;
   int ySize, cSize;
   int video_width, video_height;
@@ -361,6 +361,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   m_outputBuffers = new VpuFrameBuffer*[m_vpuFrameBufferNum];
   m_vpuFrameBuffers = new VpuFrameBuffer[m_vpuFrameBufferNum];  
   m_v4lBuffers = new v4l2_buffer[m_vpuFrameBufferNum];
+  m_extraMem = new VpuMemDesc[m_vpuFrameBufferNum];
   ySize = fmt.fmt.pix.width * fmt.fmt.pix.height;
   cSize = ySize / 4;
   for (i=0 ; i<m_vpuFrameBufferNum; i++)
@@ -400,21 +401,20 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   }
   
   /* Allocate physical extra memory */
-  m_extraMem.nSize = cSize * m_vpuFrameBufferNum;
-  vpuRet = VPU_DecGetMem(&m_extraMem);
-  if (vpuRet != VPU_DEC_RET_SUCCESS)
+  for (i=0 ; i<m_vpuFrameBufferNum; i++)
   {
-    m_extraMem.nSize = 0;
-    CLog::Log(LOGERROR, "%s - Extra memory (%d bytes) allocation failure (%d).\n",
-               __FUNCTION__, m_extraMem.nSize , vpuRet);
-    return false;
-  }
-  m_vpuFrameBuffers[0].pbufMvCol = (unsigned char *)m_extraMem.nPhyAddr;
-  m_vpuFrameBuffers[0].pbufVirtMvCol = (unsigned char *)m_extraMem.nVirtAddr;
-  for (i=1 ; i<m_vpuFrameBufferNum; i++)
-  {
-    m_vpuFrameBuffers[i].pbufMvCol =  m_vpuFrameBuffers[i-1].pbufMvCol + cSize;
-    m_vpuFrameBuffers[i].pbufVirtMvCol = m_vpuFrameBuffers[i-1].pbufVirtMvCol + cSize;
+    m_extraMem[i].nSize = cSize;
+    vpuRet = VPU_DecGetMem(&m_extraMem[i]);
+    if (vpuRet != VPU_DEC_RET_SUCCESS)
+    {
+      CLog::Log(LOGERROR, "%s - Extra memory (%d bytes) allocation failure (%d).\n",
+               __FUNCTION__, m_extraMem[i].nSize , vpuRet);
+      for (j=i ; j<m_vpuFrameBufferNum; j++)
+        m_extraMem[j].nSize = 0;
+      return false;
+    }
+    m_vpuFrameBuffers[i].pbufMvCol =  (unsigned char *)m_extraMem[i].nPhyAddr;
+    m_vpuFrameBuffers[i].pbufVirtMvCol =  (unsigned char *)m_extraMem[i].nVirtAddr;
   }
   
   return true;
@@ -565,8 +565,8 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX()
   m_vpuFrameBuffers = NULL;
   m_outputBuffers = NULL;
   m_v4lBuffers = NULL;
+  m_extraMem = NULL;
   m_vpuFrameBufferNum = 0;
-  m_extraMem.nSize = 0;
   m_streamon = false;   
 //  m_tsSyncRequired = true;  
   m_dropState = false;
@@ -738,22 +738,30 @@ void CDVDVideoCodecIMX::Dispose(void)
       delete m_outputBuffers;
       m_outputBuffers = NULL;
     }    
+    /* Free extramem */
+    if (m_extraMem != NULL)
+    {
+      for (i = 0; i < m_vpuFrameBufferNum; i++)
+      {
+        if (m_extraMem[i].nSize > 0)
+        {
+          ret = VPU_DecFreeMem(&m_extraMem[i]);
+          if (ret != VPU_DEC_RET_SUCCESS)
+          {
+            CLog::Log(LOGERROR, "%s - Release extra mem failed with error code %d.\n", __FUNCTION__, ret);
+          }
+          m_extraMem[i].nSize = 0;
+        }
+      }
+      delete m_extraMem;
+      m_extraMem = NULL;
+    }
     m_vpuFrameBufferNum = 0;
 
     /* vpuFrameBuffers (V4L buffers) will be released by this close ? */
     close(m_v4lfd);
     m_v4lfd = -1;   
-
-    /* Free extramem */
-    if (m_extraMem.nSize > 0)
-    {
-      ret = VPU_DecFreeMem(&m_extraMem);
-      if (ret != VPU_DEC_RET_SUCCESS)
-      {
-        CLog::Log(LOGERROR, "%s - Release extra mem failed with error code %d.\n", __FUNCTION__, ret);
-      }
-      m_extraMem.nSize = 0;
-    }
+    
   }
 
   ret = VPU_DecUnLoad();
