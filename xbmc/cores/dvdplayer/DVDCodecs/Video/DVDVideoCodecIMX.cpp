@@ -570,6 +570,7 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX()
   m_streamon = false;   
 //  m_tsSyncRequired = true;  
   m_dropState = false;
+  m_tsm = NULL;
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
