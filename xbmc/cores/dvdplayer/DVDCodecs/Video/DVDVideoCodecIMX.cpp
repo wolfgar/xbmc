@@ -165,7 +165,7 @@ bool CDVDVideoCodecIMX::VpuOpen(void)
   VpuAllocBuffers(&memInfo);
 
   m_decOpenParam.nReorderEnable = 1;
-  m_decOpenParam.nChromaInterleave = 0;   // No YUV chroma interleave
+  m_decOpenParam.nChromaInterleave = 0; // No YUV chroma interleave
   m_decOpenParam.nMapType = 0;            // Linear
   m_decOpenParam.nTiled2LinearEnable = 0; 
   m_decOpenParam.nEnableFileMode = 0;
@@ -618,6 +618,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   switch(m_hints.codec)
   {
   case CODEC_ID_MPEG2VIDEO:
+  case CODEC_ID_MPEG2VIDEO_XVMC:
     m_decOpenParam.CodecFormat = VPU_V_MPEG2;
     m_pFormatName = "iMX-mpeg2";
     break;
@@ -645,11 +646,30 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   case CODEC_ID_MJPEG:
     m_decOpenParam.CodecFormat = VPU_V_MJPG;
     m_pFormatName = "iMX-mjpg";
+    break;*/
+  case CODEC_ID_CAVS:
+  case CODEC_ID_AVS:
+    m_decOpenParam.CodecFormat = VPU_V_AVS;
+    m_pFormatName = "iMX-AVS";
     break;
-*/
+  case CODEC_ID_RV10:
+  case CODEC_ID_RV20:
+  case CODEC_ID_RV30:
+  case CODEC_ID_RV40:
+    m_decOpenParam.CodecFormat = VPU_V_RV;
+    m_pFormatName = "iMX-RV";
+    break;
+  case CODEC_ID_KMVC:
+    m_decOpenParam.CodecFormat = VPU_V_AVC_MVC;
+    m_pFormatName = "iMX-MVC";
+    break;  
   case CODEC_ID_VP8:
     m_decOpenParam.CodecFormat = VPU_V_VP8;
     m_pFormatName = "iMX-vp8";
+    break;
+  case CODEC_ID_MSMPEG4V3:
+    m_decOpenParam.CodecFormat = VPU_V_DIVX3;
+    m_pFormatName = "iMX-divx3";
     break;
   case CODEC_ID_MPEG4:
     switch(m_hints.codec_tag)
@@ -854,7 +874,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       inData.sCodecData.nSize = 0;
     }
 
-    do // Decode as long as the VPU uses data
+    do // Decode as long as the VPU consumes data
     {
       retry = false;
       ret = VPU_DecDecodeBuf(m_vpuHandle, &inData, &decRet);
