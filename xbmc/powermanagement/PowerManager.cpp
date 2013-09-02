@@ -73,13 +73,7 @@ void CPowerManager::Initialize()
 #elif defined(TARGET_ANDROID)
   m_instance = new CAndroidPowerSyscall();
 #elif defined(_LINUX) && defined(HAS_DBUS)
-  if (CConsoleUPowerSyscall::HasConsoleKitAndUPower())
-    m_instance = new CConsoleUPowerSyscall();
-  else if (CConsoleDeviceKitPowerSyscall::HasDeviceConsoleKit())
-    m_instance = new CConsoleDeviceKitPowerSyscall();
-  else if (CSystemdUPowerSyscall::HasSystemdAndUPower())
-    m_instance = new CSystemdUPowerSyscall();
-  else if (CUPowerSyscall::HasUPower())
+  if (CUPowerSyscall::HasUPower())
     m_instance = new CUPowerSyscall();
 #ifdef HAS_HAL
   else
