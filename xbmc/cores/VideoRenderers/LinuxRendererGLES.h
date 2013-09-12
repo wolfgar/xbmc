@@ -166,7 +166,7 @@ public:
   virtual void         AddProcessor(CStageFrightVideo* stf, EGLImageKHR eglimg, int index);
 #endif
 #ifdef HAS_IMXVPU
-  virtual void         AddProcessor(CDVDVideoCodecIMX *imx);
+  virtual void         AddProcessor(CDVDVideoCodecIMX *imx,  int index);
 #endif
 
 protected:

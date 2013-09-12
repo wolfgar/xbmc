@@ -101,6 +101,10 @@ CLinuxRendererGLES::YUVBUFFER::YUVBUFFER()
   stf = NULL;
   eglimg = EGL_NO_IMAGE_KHR;
 #endif
+#ifdef HAS_IMXVPU
+  imx = NULL;
+#endif
+
 }
 
 CLinuxRendererGLES::YUVBUFFER::~YUVBUFFER()
@@ -111,9 +115,11 @@ CLinuxRendererGLES::CLinuxRendererGLES()
 {
   m_textureTarget = GL_TEXTURE_2D;
 
+    /* FIXME a verifier */
+#if 0
+
   for (int i = 0; i < NUM_BUFFERS; i++)
   {
-    //m_eventTexturesDone[i] = new CEvent(false,true);
 #if defined(HAVE_LIBOPENMAX)
     m_buffers[i].openMaxBuffer = 0;
 #endif
@@ -124,7 +130,7 @@ CLinuxRendererGLES::CLinuxRendererGLES()
     m_buffers[i].imx = NULL;
 #endif
   }
-
+#endif
 
   m_renderMethod = RENDER_GLSL;
   m_oldRenderMethod = m_renderMethod;
@@ -2248,10 +2254,20 @@ void CLinuxRendererGLES::AddProcessor(struct __CVBuffer *cvBufferRef, int index)
 #endif
 
 #ifdef HAS_IMXVPU
-void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx)
+void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx, int index)
 {
-  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
-  buf.imx = imx;
+  int i;
+
+  /* FIXME force all index for now - 
+   understand why render update is not called with correct index later */
+  for (i = 0; i < 3; i++)
+  {
+    YUVBUFFER &buf = m_buffers[i];
+    buf.imx = imx;
+  }
+
+/*  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
+  buf.imx = imx;*/
 }
 #endif
 
