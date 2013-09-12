@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,16 +41,11 @@ CDVDOverlayCodecText::~CDVDOverlayCodecText()
 
 bool CDVDOverlayCodecText::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
 {
-  m_bIsSSA = (hints.codec == CODEC_ID_SSA);
-  if(hints.codec == CODEC_ID_TEXT || hints.codec == CODEC_ID_SSA)
+  m_bIsSSA = (hints.codec == AV_CODEC_ID_SSA);
+  if(hints.codec == AV_CODEC_ID_TEXT || hints.codec == AV_CODEC_ID_SSA)
     return true;
-#if defined(LIBAVCODEC_FROM_FFMPEG) && LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(54,53,100)
-  // API changed in:
-  // ffmpeg: commit 2626cc4580bfd560c6983338d77b2c11c16af94f (11 Aug 2012)
-  //         release 1.0 (28 Sept 2012)
   if(hints.codec == AV_CODEC_ID_SUBRIP)
     return true;
-#endif
   return false;
 }
 
@@ -68,8 +63,8 @@ int CDVDOverlayCodecText::Decode(DemuxPacket *pPacket)
   if(!pPacket)
     return OC_ERROR;
   
-  BYTE *data = pPacket->pData;
-  int size = pPacket->iSize;
+  uint8_t *data = pPacket->pData;
+  int      size = pPacket->iSize;
   
   m_pOverlay = new CDVDOverlayText();
   CDVDOverlayCodec::GetAbsoluteTimes(m_pOverlay->iPTSStartTime, m_pOverlay->iPTSStopTime, pPacket, m_pOverlay->replace);

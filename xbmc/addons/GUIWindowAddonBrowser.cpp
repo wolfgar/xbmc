@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -59,7 +59,6 @@ using namespace std;
 CGUIWindowAddonBrowser::CGUIWindowAddonBrowser(void)
 : CGUIMediaWindow(WINDOW_ADDON_BROWSER, "AddonBrowser.xml")
 {
-  m_thumbLoader.SetNumOfWorkers(1);
 }
 
 CGUIWindowAddonBrowser::~CGUIWindowAddonBrowser()
@@ -158,7 +157,7 @@ void CGUIWindowAddonBrowser::GetContextButtons(int itemNumber,
   if (addon->Type() == ADDON_REPOSITORY && pItem->m_bIsFolder)
   {
     buttons.Add(CONTEXT_BUTTON_SCAN,24034);
-    buttons.Add(CONTEXT_BUTTON_UPDATE_LIBRARY,24035);
+    buttons.Add(CONTEXT_BUTTON_REFRESH,24035);
   }
 
   buttons.Add(CONTEXT_BUTTON_INFO,24003);
@@ -186,7 +185,7 @@ bool CGUIWindowAddonBrowser::OnContextButton(int itemNumber,
   if (button == CONTEXT_BUTTON_SETTINGS)
     return CGUIDialogAddonSettings::ShowAndGetInput(addon);
 
-  if (button == CONTEXT_BUTTON_UPDATE_LIBRARY)
+  if (button == CONTEXT_BUTTON_REFRESH)
   {
     CAddonDatabase database;
     database.Open();
@@ -449,7 +448,7 @@ int CGUIWindowAddonBrowser::SelectAddonID(const vector<ADDON::TYPE> &types, CStd
     item->SetSpecialSort(SortSpecialOnTop);
     items.Add(item);
   }
-  items.Sort(SORT_METHOD_LABEL, SortOrderAscending);
+  items.Sort(SortByLabel, SortOrderAscending);
 
   if (addonIDs.size() > 0)
   {

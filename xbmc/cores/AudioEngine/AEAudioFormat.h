@@ -40,7 +40,7 @@ enum AEDataFormat
   AE_FMT_S32BE,
   AE_FMT_S32LE,
   AE_FMT_S32NE,
-
+  
   AE_FMT_S24BE4,
   AE_FMT_S24LE4,
   AE_FMT_S24NE4, /* S24 in 4 bytes */
@@ -61,11 +61,21 @@ enum AEDataFormat
   AE_FMT_DTSHD,
   AE_FMT_LPCM,
 
+  /* planar formats */
+  AE_FMT_U8P,
+  AE_FMT_S16NEP,
+  AE_FMT_S32NEP,
+  AE_FMT_S24NE4P,
+  AE_FMT_S24NE3P,
+  AE_FMT_DOUBLEP,
+  AE_FMT_FLOATP,
+
   AE_FMT_MAX
 };
 
-#define AE_IS_RAW(x) ((x) >= AE_FMT_AAC && (x) < AE_FMT_MAX)
-#define AE_IS_RAW_HD(x) ((x) >= AE_FMT_EAC3 && (x) < AE_FMT_MAX)
+#define AE_IS_RAW(x) ((x) >= AE_FMT_AAC && (x) < AE_FMT_U8P)
+#define AE_IS_RAW_HD(x) ((x) >= AE_FMT_EAC3 && (x) < AE_FMT_U8P)
+#define AE_IS_PLANAR(x) ((x) >= AE_FMT_U8P && (x) <= AE_FMT_FLOATP)
 
 /**
  * The audio format structure that fully defines a stream's audio information

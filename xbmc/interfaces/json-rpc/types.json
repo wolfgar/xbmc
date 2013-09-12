@@ -780,6 +780,24 @@
       }
     }
   },
+  "Profiles.Password": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "required": true, "description": "Password" },
+      "encryption": { "type": "string", "description": "Password Encryption", "default": "md5", "enum": [ "none", "md5" ] }
+    }
+  },
+  "Profiles.Fields.Profile": {
+    "extends": "Item.Fields.Base",
+    "items": { "type": "string", "enum": [ "thumbnail", "lockmode" ] }
+  },
+  "Profiles.Details.Profile": {
+    "extends": "Item.Details.Base",
+    "properties": {
+      "thumbnail": { "type": "string" },
+      "lockmode": { "type": "integer" }
+    }
+  },
   "List.Filter.Rule": {
     "type": "object",
     "properties": {
@@ -1083,7 +1101,7 @@
     "properties": {
       "file": { "type": "string", "required": true },
       "filetype": { "type": "string", "enum": [ "file", "directory" ], "required": true },
-      "size": { "type": "integer", "description": "Size of the file in kB (1000 Byte)" },
+      "size": { "type": "integer", "description": "Size of the file in bytes" },
       "lastmodified": { "type": "string" },
       "mimetype": { "type": "string" }
     }

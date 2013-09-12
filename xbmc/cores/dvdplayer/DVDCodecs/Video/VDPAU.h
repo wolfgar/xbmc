@@ -2,7 +2,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -77,6 +77,8 @@ public:
   virtual int  Check(AVCodecContext* avctx);
 
   virtual const std::string Name() { return "vdpau"; }
+
+  virtual unsigned GetAllowedReferences() { return 2; /* this is a lie, we can only do one, but we block on decode to get the surface */ }
 
   bool MakePixmap(int width, int height);
   bool MakePixmapGL();

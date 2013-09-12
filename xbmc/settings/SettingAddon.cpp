@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -58,25 +58,18 @@ bool CSettingAddon::Deserialize(const TiXmlNode *node, bool update /* = false */
     return false;
   }
     
-  // get the default value by abusing the FromString
-  // implementation to parse the default value
-  CStdString value;
-  if (XMLUtils::GetString(node, XML_ELM_DEFAULT, value))
-    m_value = m_default = value;
-  else if (!update)
-  {
-    CLog::Log(LOGERROR, "CSettingAddon: error reading the default value of \"%s\"", m_id.c_str());
-    return false;
-  }
-    
-  // get the addon type
+  bool ok = false;
   CStdString strAddonType;
-  bool ok = XMLUtils::GetString(node, "addontype", strAddonType);
-  if (ok)
+  const TiXmlNode *constraints = node->FirstChild("constraints");
+  if (constraints != NULL)
   {
-    m_addonType = ADDON::TranslateType(strAddonType);
-    if (m_addonType == ADDON::ADDON_UNKNOWN)
-      ok = false;
+    // get the addon type
+    if (XMLUtils::GetString(constraints, "addontype", strAddonType) && !strAddonType.empty())
+    {
+      m_addonType = ADDON::TranslateType(strAddonType);
+      if (m_addonType != ADDON::ADDON_UNKNOWN)
+        ok = true;
+    }
   }
 
   if (!ok && !update)

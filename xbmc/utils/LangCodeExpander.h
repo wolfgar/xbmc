@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -64,6 +64,8 @@ public:
 
   void LoadUserCodes(const TiXmlElement* pRootElement);
   void Clear();
+
+  std::vector<std::string> GetLanguageNames(LANGFORMATS format = ISO_639_1) const;
 protected:
 
   /** \brief Converts a language code given as a long, see #MAKECODE(a, b, c, d)

@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,6 @@ private:
   DllBcmHost                    *m_DllBcmHost;
   DISPMANX_ELEMENT_HANDLE_T     m_dispman_display;
   DISPMANX_ELEMENT_HANDLE_T     m_dispman_element;
-  DISPMANX_ELEMENT_HANDLE_T     m_dispman_element2;
   TV_GET_STATE_RESP_T           m_tv_state;
   sem_t                         m_tv_synced;
   bool                          m_fixedMode;

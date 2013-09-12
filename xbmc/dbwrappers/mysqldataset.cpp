@@ -24,11 +24,12 @@
 
 #include "utils/log.h"
 #include "system.h" // for GetLastError()
+#include "network/WakeOnAccess.h"
 
 #ifdef HAS_MYSQL
 #include "mysqldataset.h"
 #include "mysql/errmsg.h"
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #pragma comment(lib, "mysqlclient.lib")
 #endif
 
@@ -118,6 +119,8 @@ int MysqlDatabase::connect(bool create_new) {
 
     if (conn == NULL)
       conn = mysql_init(conn);
+
+    CWakeOnAccess::Get().WakeUpHost(host, "MySQL : " + db);
 
     // establish connection with just user credentials
     if (mysql_real_connect(conn, host.c_str(),login.c_str(),passwd.c_str(), NULL, atoi(port.c_str()),NULL,0) != NULL)
@@ -1400,9 +1403,15 @@ bool MysqlDataset::query(const char *query) {
 
   close();
 
+  size_t loc;
+
+  // mysql doesn't understand CAST(foo as integer) => change to CAST(foo as signed integer)
+  if ((loc = ci_find(qry, "as integer)")) != string::npos)
+    qry = qry.insert(loc + 3, "signed ");
+
   MYSQL_RES *stmt = NULL;
 
-  if ( static_cast<MysqlDatabase*>(db)->setErr(static_cast<MysqlDatabase*>(db)->query_with_reconnect(query), query) != MYSQL_OK )
+  if ( static_cast<MysqlDatabase*>(db)->setErr(static_cast<MysqlDatabase*>(db)->query_with_reconnect(qry.c_str()), qry.c_str()) != MYSQL_OK )
     throw DbErrors(db->getErrorMsg());
 
   MYSQL* conn = handle();

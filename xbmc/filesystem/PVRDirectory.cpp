@@ -1,8 +1,8 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
- * This Program is free software; you can redistribute it and/or modify
+ *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2, or (at your option)
  *  any later version.
@@ -92,7 +92,7 @@ bool CPVRDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     items.Add(item);
 
     // Sort by name only. Labels are preformated.
-    items.AddSortMethod(SORT_METHOD_LABEL, 551 /* Name */, LABEL_MASKS("%L", "", "%L", ""));
+    items.AddSortMethod(SortByLabel, 551 /* Name */, LABEL_MASKS("%L", "", "%L", ""));
 
     return true;
   }

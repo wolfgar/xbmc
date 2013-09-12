@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -105,6 +105,7 @@ struct SPlayerVideoStreamInfo
   std::string videoCodecName;
   CRect SrcRect;
   CRect DestRect;
+  std::string stereoMode;
 
   SPlayerVideoStreamInfo()
   {
@@ -145,7 +146,6 @@ public:
   virtual void GetAudioInfo( CStdString& strAudioInfo) = 0;
   virtual void GetVideoInfo( CStdString& strVideoInfo) = 0;
   virtual void GetGeneralInfo( CStdString& strVideoInfo) = 0;
-  virtual void Update(bool bPauseDrawing = false) = 0;
   virtual bool CanRecord() { return false;};
   virtual bool IsRecording() { return false;};
   virtual bool Record(bool bOnOff) { return false;};

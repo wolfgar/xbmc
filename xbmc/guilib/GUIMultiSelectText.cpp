@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,10 +39,10 @@ CGUIMultiSelectTextControl::CSelectableString::CSelectableString(CGUIFont *font,
 
 CGUIMultiSelectTextControl::CGUIMultiSelectTextControl(int parentID, int controlID, float posX, float posY, float width, float height, const CTextureInfo& textureFocus, const CTextureInfo& textureNoFocus, const CLabelInfo& labelInfo, const CGUIInfoLabel &content)
     : CGUIControl(parentID, controlID, posX, posY, width, height)
+    , m_label(labelInfo)
+    , m_info(content)
     , m_button(parentID, controlID, posX, posY, width, height, textureFocus, textureNoFocus, labelInfo)
 {
-  m_info = content;
-  m_label = labelInfo;
   m_selectedItem = 0;
   m_offset = 0;
   m_totalWidth = 0;

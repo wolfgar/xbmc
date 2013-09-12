@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
  */
 
 #include "settings/AdvancedSettings.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogYesNo.h"
@@ -1224,4 +1225,10 @@ bool CPVRChannelGroup::IsSelectedGroup(void) const
 {
   CSingleLock lock(m_critSection);
   return m_bSelectedGroup;
+}
+
+bool CPVRChannelGroup::CreateChannelEpgs(bool bForce /* = false */)
+{
+  /* used only by internal channel groups */
+  return true;
 }

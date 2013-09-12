@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,9 +30,11 @@
 #include "IInputHandler.h"
 
 #include "xbmc.h"
-
+#include "android/jni/Context.h"
+#include "android/jni/BroadcastReceiver.h"
 
 // forward delares
+class CJNIWakeLock;
 class CAESinkAUDIOTRACK;
 typedef struct _JNIEnv JNIEnv;
 
@@ -50,11 +52,13 @@ struct androidPackage
 };
 
 
-class CXBMCApp : public IActivityHandler
+class CXBMCApp : public IActivityHandler, public CJNIContext, public CJNIBroadcastReceiver
 {
 public:
   CXBMCApp(ANativeActivity *nativeActivity);
   virtual ~CXBMCApp();
+  virtual void onReceive(CJNIIntent intent);
+  virtual void onNewIntent(CJNIIntent intent);
 
   bool isValid() { return m_activity != NULL; }
 
@@ -105,15 +109,14 @@ protected:
 
 private:
   static bool HasLaunchIntent(const std::string &package);
-  bool getWakeLock(JNIEnv *env);
-  void acquireWakeLock();
-  void releaseWakeLock();
+  bool getWakeLock();
+  std::string GetFilenameFromIntent(const CJNIIntent &intent);
   void run();
   void stop();
-
+  void SetupEnv();
   static ANativeActivity *m_activity;
-  jobject m_wakeLock;
-  
+  CJNIWakeLock *m_wakeLock;
+  static int m_batteryLevel;  
   bool m_firstrun;
   bool m_exiting;
   pthread_t m_thread;

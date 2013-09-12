@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -116,6 +116,7 @@ ICodec* CodecFactory::CreateCodecDemux(const CStdString& strFile, const CStdStri
 {
   CURL urlFile(strFile);
   if( strContent.Equals("audio/mpeg")
+  ||  strContent.Equals("audio/mpeg3")
   ||  strContent.Equals("audio/mp3") )
     return new MP3Codec();
   else if (strContent.Left(9).Equals("audio/l16"))

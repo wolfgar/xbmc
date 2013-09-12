@@ -85,6 +85,17 @@ struct RefreshVideoLatency
   float delay;
 };
 
+struct StagefrightConfig
+{
+  int useAVCcodec;
+  int useVC1codec;
+  int useVPXcodec;
+  int useMP4codec;
+  int useMPEG2codec;
+  bool useSwRenderer;
+  bool useInputDTS;
+};
+
 typedef std::vector<TVShowRegexp> SETTINGS_TVSHOWLIST;
 
 class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
@@ -95,6 +106,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     static CAdvancedSettings* getInstance();
 
     virtual void OnSettingsLoaded();
+    virtual void OnSettingsUnloaded();
 
     virtual void OnSettingChanged(const CSetting *setting);
 
@@ -122,7 +134,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     bool m_audioAudiophile;
     bool m_allChannelStereo;
     bool m_streamSilence;
-    int m_audioSinkBufferDurationMsec;
     CStdString m_audioTranscodeTo;
     float m_limiterHold;
     float m_limiterRelease;
@@ -178,6 +189,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     bool m_DXVANoDeintProcForProgressive;
     int  m_videoFpsDetect;
     bool m_videoDisableHi10pMultithreading;
+    StagefrightConfig m_stagefrightConfig;
 
     CStdString m_videoDefaultPlayer;
     CStdString m_videoDefaultDVDPlayer;
@@ -246,6 +258,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     int m_iMusicLibraryRecentlyAddedItems;
     bool m_bMusicLibraryAllItemsOnBottom;
     bool m_bMusicLibraryAlbumsSortByArtistThenYear;
+    bool m_bMusicLibraryCleanOnUpdate;
     CStdString m_strMusicLibraryAlbumFormat;
     CStdString m_strMusicLibraryAlbumFormatRight;
     bool m_prioritiseAPEv2tags;
@@ -299,7 +312,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     int m_iEdlCommBreakAutowait;    // seconds
     int m_iEdlCommBreakAutowind;    // seconds
 
-    bool m_bFirstLoop;
     int m_curlconnecttimeout;
     int m_curllowspeedtime;
     int m_curlretries;
@@ -336,7 +348,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     CStdString m_cpuTempCmd;
     CStdString m_gpuTempCmd;
-    int m_bgInfoLoaderMaxThreads;
 
     /* PVR/TV related advanced settings */
     int m_iPVRTimeCorrection;     /*!< @brief correct all times (epg tags, timer tags, recording tags) by this amount of minutes. defaults to 0. */
@@ -363,6 +374,8 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     unsigned int m_addonPackageFolderSize;
 
     unsigned int m_cacheMemBufferSize;
+    bool m_alwaysForceBuffer;
+    float m_readBufferFactor;
 
     bool m_jsonOutputCompact;
     unsigned int m_jsonTcpPort;
@@ -373,7 +386,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     float GetDisplayLatency(float refreshrate);
     bool m_initialized;
-    bool m_loaded;
 
     void SetDebugMode(bool debug);
     void SetExtraLogsFromAddon(ADDON::IAddon* addon);
@@ -383,6 +395,9 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     CStdString m_musicExtensions;
     CStdString m_videoExtensions;
     CStdString m_discStubExtensions;
+
+    CStdString m_stereoscopicflags_sbs;
+    CStdString m_stereoscopicflags_tab;
 
     CStdString m_logFolder;
 

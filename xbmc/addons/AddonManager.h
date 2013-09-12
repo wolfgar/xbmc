@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ namespace ADDON
   const CStdString ADDON_VERSION_RE = "(?<Major>\\d*)\\.?(?<Minor>\\d*)?\\.?(?<Build>\\d*)?\\.?(?<Revision>\\d*)?";
 
   /**
-  * Class - IAddonCallback
+  * Class - IAddonMgrCallback
   * This callback should be inherited by any class which manages
   * specific addon types. Could be mostly used for Dll addon types to handle
   * cleanup before restart/removal

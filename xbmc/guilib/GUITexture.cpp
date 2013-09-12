@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,17 +46,17 @@ CTextureInfo& CTextureInfo::operator=(const CTextureInfo &right)
   diffuse = right.diffuse;
   filename = right.filename;
   useLarge = right.useLarge;
+  diffuseColor = right.diffuseColor;
 
   return *this;
 }
 
-CGUITextureBase::CGUITextureBase(float posX, float posY, float width, float height, const CTextureInfo& texture)
+CGUITextureBase::CGUITextureBase(float posX, float posY, float width, float height, const CTextureInfo& texture) :
+  m_height(height), m_info(texture)
 {
   m_posX = posX;
   m_posY = posY;
   m_width = width;
-  m_height = height;
-  m_info = texture;
 
   // defaults
   m_visible = true;
@@ -85,18 +85,18 @@ CGUITextureBase::CGUITextureBase(float posX, float posY, float width, float heig
   m_invalid = true;
 }
 
-CGUITextureBase::CGUITextureBase(const CGUITextureBase &right)
+CGUITextureBase::CGUITextureBase(const CGUITextureBase &right) :
+  m_height(right.m_height),
+  m_alpha(right.m_alpha),
+  m_info(right.m_info),
+  m_aspect(right.m_aspect)
 {
   m_posX = right.m_posX;
   m_posY = right.m_posY;
   m_width = right.m_width;
-  m_height = right.m_height;
-  m_info = right.m_info;
 
   m_visible = right.m_visible;
   m_diffuseColor = right.m_diffuseColor;
-  m_alpha = right.m_alpha;
-  m_aspect = right.m_aspect;
 
   m_allocateDynamically = right.m_allocateDynamically;
 
@@ -174,8 +174,12 @@ void CGUITextureBase::Render()
 
   // set our draw color
   #define MIX_ALPHA(a,c) (((a * (c >> 24)) / 255) << 24) | (c & 0x00ffffff)
-  color_t color = m_diffuseColor;
-  if (m_alpha != 0xFF) color = MIX_ALPHA(m_alpha, m_diffuseColor);
+
+  // diffuse color
+  color_t color = (m_info.diffuseColor) ? (color_t)m_info.diffuseColor : m_diffuseColor;
+  if (m_alpha != 0xFF)
+	  color = MIX_ALPHA(m_alpha, color);
+
   color = g_graphicsContext.MergeAlpha(color);
 
   // setup our renderer
@@ -301,11 +305,12 @@ bool CGUITextureBase::AllocResources()
   { // we want to use the large image loader, but we first check for bundled textures
     if (!IsAllocated())
     {
-      int images = g_TextureManager.Load(m_info.filename, true);
-      if (images)
+      CTextureArray texture;
+      texture = g_TextureManager.Load(m_info.filename, true);
+      if (texture.size())
       {
         m_isAllocated = NORMAL;
-        m_texture = g_TextureManager.GetTexture(m_info.filename);
+        m_texture = texture;
         changed = true;
       }
     }
@@ -329,15 +334,14 @@ bool CGUITextureBase::AllocResources()
   }
   else if (!IsAllocated())
   {
-    int images = g_TextureManager.Load(m_info.filename);
+    CTextureArray texture = g_TextureManager.Load(m_info.filename);
 
     // set allocated to true even if we couldn't load the image to save
     // us hitting the disk every frame
-    m_isAllocated = images ? NORMAL : NORMAL_FAILED;
-    if (!images)
+    m_isAllocated = texture.size() ? NORMAL : NORMAL_FAILED;
+    if (!texture.size())
       return false;
-
-    m_texture = g_TextureManager.GetTexture(m_info.filename);
+    m_texture = texture;
     changed = true;
   }
   m_frameWidth = (float)m_texture.m_width;
@@ -346,8 +350,7 @@ bool CGUITextureBase::AllocResources()
   // load the diffuse texture (if necessary)
   if (!m_info.diffuse.IsEmpty())
   {
-    g_TextureManager.Load(m_info.diffuse);
-    m_diffuse = g_TextureManager.GetTexture(m_info.diffuse);
+    m_diffuse = g_TextureManager.Load(m_info.diffuse);
   }
 
   CalculateSize();
@@ -543,6 +546,7 @@ bool CGUITextureBase::SetDiffuseColor(color_t color)
 {
   bool changed = m_diffuseColor != color;
   m_diffuseColor = color;
+  changed |= m_info.diffuseColor.Update();
   return changed;
 }
 

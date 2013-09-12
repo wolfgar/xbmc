@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,12 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "XBMCTinyXML.h"
 #include "filesystem/File.h"
+#include "utils/FileUtils.h"
 #include "RegExp.h"
 
 #define MAX_ENTITY_LENGTH 8 // size of largest entity "&#xNNNN;"
@@ -52,18 +54,11 @@ bool CXBMCTinyXML::LoadFile(const char *_filename, TiXmlEncoding encoding)
 
 bool CXBMCTinyXML::LoadFile(const CStdString &_filename, TiXmlEncoding encoding)
 {
-  // There was a really terrifying little bug here. The code:
-  //    value = filename
-  // in the STL case, cause the assignment method of the std::string to
-  // be called. What is strange, is that the std::string had the same
-  // address as it's c_str() method, and so bad things happen. Looks
-  // like a bug in the Microsoft STL implementation.
-  // Add an extra string to avoid the crash.
-  CStdString filename(_filename);
-  value = filename;
+  value = _filename.c_str();
 
-  XFILE::CFileStream file;
-  if (!file.Open(value))
+  void * buffPtr;
+  unsigned int buffSize = CFileUtils::LoadFile(value, buffPtr);
+  if (buffSize == 0)
   {
     SetError(TIXML_ERROR_OPENING_FILE, NULL, NULL, TIXML_ENCODING_UNKNOWN);
     return false;
@@ -73,10 +68,8 @@ bool CXBMCTinyXML::LoadFile(const CStdString &_filename, TiXmlEncoding encoding)
   Clear();
   location.Clear();
 
-  CStdString data;
-  data.reserve(8 * 1000);
-  StreamIn(&file, &data);
-  file.Close();
+  CStdString data ((char*) buffPtr, (size_t) buffSize);
+  free(buffPtr);
 
   Parse(data, NULL, encoding);
 
@@ -129,7 +122,7 @@ const char *CXBMCTinyXML::Parse(CStdString &data, TiXmlParsingData *prevData, Ti
   re.RegComp("^&(amp|lt|gt|quot|apos|#x[a-fA-F0-9]{1,4}|#[0-9]{1,5});.*");
   while ((pos = data.find("&", pos)) != CStdString::npos)
   {
-    CStdString tmp = data.substr(pos, pos + MAX_ENTITY_LENGTH);
+    CStdString tmp = data.substr(pos, MAX_ENTITY_LENGTH);
     if (re.RegFind(tmp) < 0)
       data.insert(pos + 1, "amp;");
     pos++;

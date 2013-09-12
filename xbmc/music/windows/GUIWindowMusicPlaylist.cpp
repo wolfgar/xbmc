@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/Key.h"
 #include "GUIUserMessages.h"
-#include "Favourites.h"
+#include "filesystem/FavouritesDirectory.h"
 #include "profiles/ProfilesManager.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
@@ -119,7 +119,7 @@ bool CGUIWindowMusicPlayList::OnMessage(CGUIMessage& message)
         SET_CONTROL_FOCUS(m_iLastControl, 0);
       }
 
-      if (g_application.IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
+      if (g_application.m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
       {
         int iSong = g_playlistPlayer.GetCurrentSong();
         if (iSong >= 0 && iSong <= m_vecItems->Size())
@@ -252,7 +252,7 @@ bool CGUIWindowMusicPlayList::MoveCurrentPlayListItem(int iItem, int iAction, bo
 
   // is the currently playing item affected?
   bool bFixCurrentSong = false;
-  if ((g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC) && (g_application.IsPlayingAudio()) &&
+  if ((g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC) && (g_application.m_pPlayer->IsPlayingAudio()) &&
     ((g_playlistPlayer.GetCurrentSong() == iSelected) || (g_playlistPlayer.GetCurrentSong() == iNew)))
     bFixCurrentSong = true;
 
@@ -340,7 +340,7 @@ void CGUIWindowMusicPlayList::RemovePlayListItem(int iItem)
   if (iItem < 0 || iItem > m_vecItems->Size()) return;
 
   // The current playing song can't be removed
-  if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC && g_application.IsPlayingAudio()
+  if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC && g_application.m_pPlayer->IsPlayingAudio()
       && g_playlistPlayer.GetCurrentSong() == iItem)
     return ;
 
@@ -373,7 +373,7 @@ void CGUIWindowMusicPlayList::UpdateButtons()
     CONTROL_ENABLE(CONTROL_BTNREPEAT);
     CONTROL_ENABLE(CONTROL_BTNPLAY);
 
-    if (g_application.IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
+    if (g_application.m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
     {
       CONTROL_ENABLE(CONTROL_BTNNEXT);
       CONTROL_ENABLE(CONTROL_BTNPREVIOUS);
@@ -521,7 +521,7 @@ void CGUIWindowMusicPlayList::GetContextButtons(int itemNumber, CContextButtons 
         buttons.Add(CONTEXT_BUTTON_PLAY_WITH, 15213); // Play With...
 
       buttons.Add(CONTEXT_BUTTON_SONG_INFO, 658); // Song Info
-      if (CFavourites::IsFavourite(item.get(), GetID()))
+      if (XFILE::CFavouritesDirectory::IsFavourite(item.get(), GetID()))
         buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14077);     // Remove Favourite
       else
         buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14076);     // Add To Favourites;
@@ -590,7 +590,7 @@ bool CGUIWindowMusicPlayList::OnContextButton(int itemNumber, CONTEXT_BUTTON but
   case CONTEXT_BUTTON_ADD_FAVOURITE:
     {
       CFileItemPtr item = m_vecItems->Get(itemNumber);
-      CFavourites::AddOrRemove(item.get(), GetID());
+      XFILE::CFavouritesDirectory::AddOrRemove(item.get(), GetID());
       return true;
     }
 
@@ -675,7 +675,7 @@ void CGUIWindowMusicPlayList::MarkPlaying()
     m_vecItems->Get(i)->Select(false);
 
   // mark the currently playing item
-  if ((g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC) && (g_application.IsPlayingAudio()))
+  if ((g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC) && (g_application.m_pPlayer->IsPlayingAudio()))
   {
     int iSong = g_playlistPlayer.GetCurrentSong();
     if (iSong >= 0 && iSong <= m_vecItems->Size())

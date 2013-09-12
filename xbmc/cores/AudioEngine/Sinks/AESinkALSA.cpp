@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 #include "utils/MathUtils.h"
 #include "threads/SingleLock.h"
 #if defined(HAS_AMLPLAYER)
-#include "cores/amlplayer/AMLUtils.h"
+#include "utils/AMLUtils.h"
 #endif
 
 #define ALSA_OPTIONS (SND_PCM_NONBLOCK | SND_PCM_NO_AUTO_FORMAT | SND_PCM_NO_AUTO_CHANNELS | SND_PCM_NO_AUTO_RESAMPLE)
@@ -131,19 +131,20 @@ void CAESinkALSA::GetAESParams(AEAudioFormat format, std::string& params)
 
 bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
 {
+  CAEChannelInfo channelLayout;
   m_initDevice = device;
   m_initFormat = format;
 
   /* if we are raw, correct the data format */
   if (AE_IS_RAW(format.m_dataFormat))
   {
-    m_channelLayout     = GetChannelLayout(format);
+    channelLayout     = GetChannelLayout(format);
     format.m_dataFormat = AE_FMT_S16NE;
     m_passthrough       = true;
   }
   else
   {
-    m_channelLayout = GetChannelLayout(format);
+    channelLayout = GetChannelLayout(format);
     m_passthrough   = false;
   }
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
@@ -154,13 +155,13 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   }
 #endif
 
-  if (m_channelLayout.Count() == 0)
+  if (channelLayout.Count() == 0)
   {
     CLog::Log(LOGERROR, "CAESinkALSA::Initialize - Unable to open the requested channel layout");
     return false;
   }
 
-  format.m_channelLayout = m_channelLayout;
+  format.m_channelLayout = channelLayout;
 
   AEDeviceType devType = AEDeviceTypeFromName(device);
 
@@ -176,7 +177,7 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   snd_config_t *config;
   snd_config_copy(&config, snd_config);
 
-  if (!OpenPCMDevice(device, AESParams, m_channelLayout.Count(), &m_pcm, config))
+  if (!OpenPCMDevice(device, AESParams, channelLayout.Count(), &m_pcm, config))
   {
     CLog::Log(LOGERROR, "CAESinkALSA::Initialize - failed to initialize device \"%s\"", device.c_str());
     snd_config_delete(config);
@@ -204,7 +205,7 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   return true;
 }
 
-bool CAESinkALSA::IsCompatible(const AEAudioFormat format, const std::string &device)
+bool CAESinkALSA::IsCompatible(const AEAudioFormat &format, const std::string &device)
 {
   return (
       /* compare against the requested format and the real format */
@@ -345,6 +346,14 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   snd_pcm_hw_params_t *hw_params_copy;
   snd_pcm_hw_params_alloca(&hw_params_copy);
   snd_pcm_hw_params_copy(hw_params_copy, hw_params); // copy what we have and is already working
+
+  // Make sure to not initialize too large to not cause underruns
+  snd_pcm_uframes_t periodSizeMax = bufferSize / 3;
+  if(snd_pcm_hw_params_set_period_size_max(m_pcm, hw_params_copy, &periodSizeMax, NULL) != 0)
+  {
+    snd_pcm_hw_params_copy(hw_params_copy, hw_params); // restore working copy
+    CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Request: Failed to limit periodSize to %lu", periodSizeMax);
+  }
   
   // first trying bufferSize, PeriodSize
   // for more info see here:
@@ -435,10 +444,10 @@ bool CAESinkALSA::InitializeSW(AEAudioFormat &format)
 
 void CAESinkALSA::Deinitialize()
 {
-  Stop();
-
   if (m_pcm)
   {
+    snd_pcm_nonblock(m_pcm, 0);
+    Stop();
     snd_pcm_close(m_pcm);
     m_pcm = NULL;
   }
@@ -496,7 +505,7 @@ double CAESinkALSA::GetCacheTotal()
   return (double)m_bufferSize * m_formatSampleRateMul;
 }
 
-unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio)
+unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
 {
   if (!m_pcm)
   {
@@ -518,9 +527,14 @@ unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool ha
 
   if ((unsigned int)ret < frames)
   {
-    ret = snd_pcm_wait(m_pcm, m_timeout);
-    if (ret < 0)
-      HandleError("snd_pcm_wait", ret);
+    if(blocking)
+    {
+      ret = snd_pcm_wait(m_pcm, m_timeout);
+      if (ret < 0)
+        HandleError("snd_pcm_wait", ret);
+    }
+    else
+      return 0;
   }
 
   ret = snd_pcm_writei(m_pcm, (void*)data, frames);
@@ -577,6 +591,7 @@ void CAESinkALSA::Drain()
 
   snd_pcm_nonblock(m_pcm, 0);
   snd_pcm_drain(m_pcm);
+  snd_pcm_prepare(m_pcm);
   snd_pcm_nonblock(m_pcm, 1);
 }
 
@@ -1173,16 +1188,17 @@ bool CAESinkALSA::SoftSuspend()
 bool CAESinkALSA::SoftResume()
 {
     // reinit all the clibber
-    bool ret = true; // all fine
     if(!m_pcm)
     {
       if (!snd_config)
         snd_config_update();
 
-      ret = Initialize(m_initFormat, m_initDevice);
+    // Initialize what we had before again, SoftAE might keep it
+    // but ignore ret value to give the chance to do reopening
+    Initialize(m_initFormat, m_initDevice);
     }
-   //we want that AE loves us again - reinit when initialize failed
-   return ret; // force reinit if false
+   // make sure that OpenInternalSink is done again
+   return false;
 }
 
 void CAESinkALSA::sndLibErrorHandler(const char *file, int line, const char *function, int err, const char *fmt, ...)

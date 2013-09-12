@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
   #include "config.h"
 #endif
 extern "C" {
-#if defined(WIN32)
+#if defined(TARGET_WINDOWS)
   #include "lib/libass/libass/ass.h"
 #else
   #include <ass/ass.h>
@@ -50,6 +50,7 @@ public:
   virtual ASS_Library* ass_library_init(void)=0;
   virtual ASS_Renderer* ass_renderer_init(ASS_Library* library)=0;
   virtual void ass_set_frame_size(ASS_Renderer* priv, int w, int h)=0;
+  virtual void ass_set_aspect_ratio(ASS_Renderer* priv, double dar, double sar)=0;
   virtual void ass_set_margins(ASS_Renderer* priv, int t, int b, int l, int r)=0;
   virtual void ass_set_use_margins(ASS_Renderer* priv, int use)=0;
   virtual void ass_set_font_scale(ASS_Renderer* priv, double font_scale)=0;
@@ -76,6 +77,7 @@ class DllLibass : public DllDynamic, DllLibassInterface
   DEFINE_METHOD0(ASS_Library *, ass_library_init)
   DEFINE_METHOD1(ASS_Renderer *, ass_renderer_init, (ASS_Library * p1))
   DEFINE_METHOD3(void, ass_set_frame_size, (ASS_Renderer * p1, int p2, int p3))
+  DEFINE_METHOD3(void, ass_set_aspect_ratio, (ASS_Renderer * p1, double p2, double p3))
   DEFINE_METHOD5(void, ass_set_margins, (ASS_Renderer * p1, int p2, int p3, int p4, int p5))
   DEFINE_METHOD2(void, ass_set_use_margins, (ASS_Renderer * p1, int p2))
   DEFINE_METHOD2(void, ass_set_font_scale, (ASS_Renderer * p1, double p2))
@@ -97,6 +99,7 @@ class DllLibass : public DllDynamic, DllLibassInterface
     RESOLVE_METHOD(ass_library_init)
     RESOLVE_METHOD(ass_renderer_init)
     RESOLVE_METHOD(ass_set_frame_size)
+    RESOLVE_METHOD(ass_set_aspect_ratio)
     RESOLVE_METHOD(ass_set_margins)
     RESOLVE_METHOD(ass_set_use_margins)
     RESOLVE_METHOD(ass_set_font_scale)

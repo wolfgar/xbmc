@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "threads/SystemClock.h"
 #include "system.h"
 #include "SystemInfo.h"
-#ifndef _LINUX
+#ifndef TARGET_POSIX
 #include <conio.h>
 #else
 #include <sys/utsname.h>
@@ -37,7 +37,7 @@
 #include "CPUInfo.h"
 #include "utils/TimeUtils.h"
 #include "utils/log.h"
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "dwmapi.h"
 #endif
 #if defined(TARGET_DARWIN)
@@ -47,6 +47,17 @@
 #include "powermanagement/PowerManager.h"
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
+
+/* Target identification */
+#if defined(TARGET_DARWIN)
+#include <Availability.h>
+#elif defined(TARGET_ANDROID)
+#include <android/api-level.h>
+#elif defined(TARGET_FREEBSD)
+#include <sys/param.h>
+#elif defined(TARGET_LINUX)
+#include <linux/version.h>
+#endif
 
 CSysInfo g_sysinfo;
 
@@ -115,7 +126,7 @@ CStdString CSysInfoJob::GetBatteryLevel()
 
 double CSysInfoJob::GetCPUFrequency()
 {
-#if defined (_LINUX) || defined(_WIN32)
+#if defined (TARGET_POSIX) || defined(TARGET_WINDOWS)
   return double (g_cpuInfo.getCPUFrequency());
 #else
   return 0;
@@ -260,7 +271,7 @@ bool CSysInfo::GetDiskSpace(const CStdString drive,int& iTotal, int& iTotalFree,
 
   if( !drive.IsEmpty() && !drive.Equals("*") )
   {
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
     UINT uidriveType = GetDriveType(( drive + ":\\" ));
     if(uidriveType != DRIVE_UNKNOWN && uidriveType != DRIVE_NO_ROOT_DIR)
 #endif
@@ -270,7 +281,7 @@ bool CSysInfo::GetDiskSpace(const CStdString drive,int& iTotal, int& iTotalFree,
   {
     ULARGE_INTEGER ULTotalTmp= { { 0 } };
     ULARGE_INTEGER ULTotalFreeTmp= { { 0 } };
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
     char* pcBuffer= NULL;
     DWORD dwStrLength= GetLogicalDriveStrings( 0, pcBuffer );
     if( dwStrLength != 0 )
@@ -355,8 +366,8 @@ CStdString CSysInfo::GetCPUSerial()
 
 bool CSysInfo::IsAeroDisabled()
 {
-#ifdef _WIN32
-  if (IsVistaOrHigher())
+#ifdef TARGET_WINDOWS
+  if (IsWindowsVersionAtLeast(CSysInfo::WindowsVersionVista))
   {
     BOOL aeroEnabled = FALSE;
     HRESULT res = DwmIsCompositionEnabled(&aeroEnabled);
@@ -369,24 +380,6 @@ bool CSysInfo::IsAeroDisabled()
   }
 #endif
   return false;
-}
-
-bool CSysInfo::IsVistaOrHigher()
-{
-#ifdef TARGET_WINDOWS
-  return IsWindowsVersionAtLeast(WindowsVersionVista);
-#else // TARGET_WINDOWS
-  return false;
-#endif // TARGET_WINDOWS
-}
-
-bool CSysInfo::IsWindows8OrHigher()
-{
-#ifdef TARGET_WINDOWS
-  return IsWindowsVersionAtLeast(WindowsVersionWin8);
-#else // TARGET_WINDOWS
-  return false;
-#endif // TARGET_WINDOWS
 }
 
 CSysInfo::WindowsVersion CSysInfo::m_WinVer = WindowsVersionUnknown;
@@ -457,7 +450,9 @@ bool CSysInfo::IsOS64bit()
 
 CStdString CSysInfo::GetKernelVersion()
 {
-#if defined (_LINUX)
+#if defined(TARGET_DARWIN)
+  return g_sysinfo.GetUnameVersion();
+#elif defined (TARGET_POSIX)
   struct utsname un;
   if (uname(&un)==0)
   {
@@ -613,7 +608,7 @@ CStdString CSysInfo::GetHddSpaceInfo(int& percent, int drive, bool shortText)
   return strRet;
 }
 
-#if defined(_LINUX) && !defined(TARGET_DARWIN) && !defined(__FreeBSD__)
+#if defined(TARGET_LINUX)
 CStdString CSysInfo::GetLinuxDistro()
 {
 #if defined(TARGET_ANDROID)
@@ -630,11 +625,51 @@ CStdString CSysInfo::GetLinuxDistro()
                                         "/etc/buildroot-release",
                                         NULL };
   CStdString result("");
+  char buffer[256] = {'\0'};
+
+  /* Try reading PRETTY_NAME from /etc/os-release first.
+   * If this fails, fall back to lsb_release or distro-specific release-file. */
+
+  FILE *os_release = fopen("/etc/os-release", "r");
+
+  if (os_release)
+  {
+    char *key = NULL;
+    char *val = NULL;
+
+    while (fgets(buffer, sizeof(buffer), os_release))
+    {
+      key = val = buffer;
+      strsep(&val, "=");
+
+      if (strcmp(key, "PRETTY_NAME") == 0)
+      {
+        char *pretty_name = val;
+
+        // remove newline and enclosing quotes
+        if (pretty_name[strlen(pretty_name) - 1] == '\n')
+          pretty_name[strlen(pretty_name) - 1] = '\0';
+
+        if (pretty_name[0] == '\'' || pretty_name[0] == '\"')
+        {
+          pretty_name++;
+          pretty_name[strlen(pretty_name) - 1] = '\0';
+        }
+
+        result = pretty_name;
+        break;
+      }
+    }
+
+    fclose(os_release);
+
+    if (!result.IsEmpty())
+      return result;
+  }
 
   FILE* pipe = popen("unset PYTHONHOME; unset PYTHONPATH; lsb_release -d  2>/dev/null | cut -f2", "r");
   if (pipe)
   {
-    char buffer[256] = {'\0'};
     if (fread(buffer, sizeof(char), sizeof(buffer), pipe) > 0 && !ferror(pipe))
       result = buffer;
     pclose(pipe);
@@ -648,7 +683,6 @@ CStdString CSysInfo::GetLinuxDistro()
     file = fopen(release_file[i], "r");
     if (file)
     {
-      char buffer[256] = {'\0'};
       if (fgets(buffer, sizeof(buffer), file))
       {
         result = buffer;
@@ -664,7 +698,7 @@ CStdString CSysInfo::GetLinuxDistro()
 }
 #endif
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 CStdString CSysInfo::GetUnameVersion()
 {
   CStdString result = "";
@@ -684,8 +718,8 @@ CStdString CSysInfo::GetUnameVersion()
   FILE* pipe = popen("uname -rm", "r");
   if (pipe)
   {
-    char buffer[256] = {'\0'};
-    if (fread(buffer, sizeof(char), sizeof(buffer), pipe) > 0 && !ferror(pipe))
+    char buffer[256];
+    if (fgets(buffer, sizeof(buffer), pipe))
     {
       result = buffer;
 #if defined(TARGET_DARWIN)
@@ -744,7 +778,7 @@ CStdString CSysInfo::GetUserAgent()
 {
   CStdString result;
   result = "XBMC/" + g_infoManager.GetLabel(SYSTEM_BUILD_VERSION) + " (";
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
   result += GetUAWindowsVersion();
 #elif defined(TARGET_DARWIN)
 #if defined(TARGET_DARWIN_IOS)
@@ -753,16 +787,16 @@ CStdString CSysInfo::GetUserAgent()
   result += "Mac OS X; ";
 #endif
   result += GetUnameVersion();
-#elif defined(__FreeBSD__)
+#elif defined(TARGET_FREEBSD)
   result += "FreeBSD; ";
   result += GetUnameVersion();
-#elif defined(_LINUX)
+#elif defined(TARGET_POSIX)
   result += "Linux; ";
   result += GetLinuxDistro();
   result += "; ";
   result += GetUnameVersion();
 #endif
-  result += "; http://www.xbmc.org)";
+  result += "; http://xbmc.org)";
 
   return result;
 }
@@ -786,15 +820,51 @@ bool CSysInfo::HasVideoToolBoxDecoder()
   return result;
 }
 
-bool CSysInfo::HasVDADecoder()
+std::string CSysInfo::GetBuildTargetPlatformName(void)
 {
-  bool        result = false;
+#if defined(TARGET_DARWIN_OSX)
+  return "Darwin OSX";
+#elif defined(TARGET_DARWIN_IOS_ATV2)
+  return "Darwin iOS ATV2";
+#elif defined(TARGET_DARWIN_IOS)
+  return "Darwin iOS";
+#elif defined(TARGET_FREEBSD)
+  return "FreeBSD";
+#elif defined(TARGET_ANDROID)
+  return "Android";
+#elif defined(TARGET_LINUX)
+  return "Linux";
+#elif defined(TARGET_WINDOWS)
+  return "Win32";
+#else
+  return "unknown platform";
+#endif
+}
+
+std::string CSysInfo::GetBuildTargetPlatformVersion(void)
+{
+/* Expand macro before stringify */
+#define STR_MACRO(x) #x
+#define XSTR_MACRO(x) STR_MACRO(x)
 
 #if defined(TARGET_DARWIN_OSX)
-  result = Cocoa_HasVDADecoder();
+  return "version " XSTR_MACRO(__MAC_OS_X_VERSION_MIN_REQUIRED);
+#elif defined(TARGET_DARWIN_IOS)
+  return "version " XSTR_MACRO(__IPHONE_OS_VERSION_MIN_REQUIRED);
+#elif defined(TARGET_FREEBSD)
+  return "version " XSTR_MACRO(__FreeBSD_version);
+#elif defined(TARGET_ANDROID)
+  return "API level " XSTR_MACRO(__ANDROID_API__);
+#elif defined(TARGET_LINUX)
+  std::string ver = StringUtils::Format("%i.%i.%i", LINUX_VERSION_CODE >> 16, (LINUX_VERSION_CODE >> 8) & 0xff, LINUX_VERSION_CODE & 0xff);
+  return ver;
+#elif defined(TARGET_WINDOWS)
+  return "version " XSTR_MACRO(NTDDI_VERSION);
+#else
+  return "(unknown platform)";
 #endif
-  return result;
 }
+
 
 CJob *CSysInfo::GetJob() const
 {

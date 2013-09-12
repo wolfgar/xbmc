@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -174,7 +174,8 @@ bool CGUISliderControl::OnAction(const CAction &action)
 
   case ACTION_SELECT_ITEM:
     // switch between the two sliders
-    SwitchRangeSelector();
+    if (m_rangeSelection)
+      SwitchRangeSelector();
     return true;
 
   default:

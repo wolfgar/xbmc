@@ -1,23 +1,25 @@
-
 /*
- * XBMC Media Center
- * Copyright (c) 2002 Frodo
- * Portions Copyright (c) by the authors of ffmpeg and xvid
+ *      Copyright (c) 2002 Frodo
+ *      Portions Copyright (c) by the authors of ffmpeg and xvid
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ *      Copyright (C) 2002-2013 Team XBMC
+ *      http://xbmc.org
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 #include "WINFileSMB.h"
 #include "URL.h"
 #include "settings/Settings.h"
@@ -56,7 +58,7 @@ CStdString CWINFileSMB::GetLocal(const CURL &url)
 
     if(host.size() > 0)
     {
-      path = "//" + host + "/" + path;
+      path = "\\\\?\\UNC\\" + host + "\\" + path;
     }
   }
 
@@ -146,6 +148,8 @@ int CWINFileSMB::Stat(struct __stat64* buffer)
 int CWINFileSMB::Stat(const CURL& url, struct __stat64* buffer)
 {
   CStdString strFile = GetLocal(url);
+  /* _wstat64 can't handle long paths therefore we remove the \\?\UNC\ */
+  strFile.Replace("\\\\?\\UNC\\", "\\\\");
   /* _wstat64 calls FindFirstFileEx. According to MSDN, the path should not end in a trailing backslash.
     Remove it before calling _wstat64 */
   if (strFile.length() > 3 && URIUtils::HasSlashAtEnd(strFile))

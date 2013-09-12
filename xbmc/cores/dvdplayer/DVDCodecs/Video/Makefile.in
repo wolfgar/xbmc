@@ -14,7 +14,7 @@ ifeq (@USE_CRYSTALHD@,1)
 SRCS += CrystalHD.cpp
 SRCS += DVDVideoCodecCrystalHD.cpp
 endif
-ifeq (@USE_VDA@,1)
+ifeq ($(findstring osx,@ARCH@),osx)
 SRCS += DVDVideoCodecVDA.cpp
 endif
 ifeq (@USE_OPENMAX@,1)
@@ -26,15 +26,31 @@ ifeq (@USE_IMXVPU@,1)
 SRCS += DVDVideoCodecIMX.cpp mfw_gst_ts.c
 endif
 
+ifeq (@USE_LIBSTAGEFRIGHT@,1)
+SRCS += StageFrightVideo.cpp
+SRCS += StageFrightVideoPrivate.cpp
+SRCS += DVDVideoCodecStageFright.cpp
+INCLUDES += -I${prefix}/opt/android-source/frameworks/base/include
+INCLUDES += -I${prefix}/opt/android-source/frameworks/base/native/include
+INCLUDES += -I${prefix}/opt/android-source/frameworks/base/include/media/stagefright
+INCLUDES += -I${prefix}/opt/android-source/frameworks/base/include/media/stagefright/openmax
+INCLUDES += -I${prefix}/opt/android-source/system/core/include
+INCLUDES += -I${prefix}/opt/android-source/libhardware/include
+endif
 
 ifeq (@USE_LIBAMCODEC@,1)
 SRCS += AMLCodec.cpp
 SRCS += DVDVideoCodecAmlogic.cpp
-INCLUDES += -I$(prefix)/include/amlplayer
+INCLUDES += -I$(prefix)/include/amcodec
+INCLUDES += -I$(prefix)/include/amplayer
 endif
 
 LIB=Video.a
 
 include @abs_top_srcdir@/Makefile.include
 -include $(patsubst %.cpp,%.P,$(patsubst %.c,%.P,$(SRCS)))
+
+ifeq (@USE_LIBSTAGEFRIGHT@,1)
+CXXFLAGS += -Wno-multichar -fno-rtti
+endif
 

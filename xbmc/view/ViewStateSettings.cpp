@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #define XML_VIEWMODE          "viewmode"
 #define XML_SORTMETHOD        "sortmethod"
 #define XML_SORTORDER         "sortorder"
+#define XML_SORTATTRIBUTES    "sortattributes"
 #define XML_GENERAL           "general"
 #define XML_SETTINGLEVEL      "settinglevel"
 
@@ -46,7 +47,7 @@ CViewStateSettings::CViewStateSettings()
   AddViewState("videonavyears");
   AddViewState("videonavgenres");
   AddViewState("videonavtitles");
-  AddViewState("videonavepisodes", DEFAULT_VIEW_AUTO, SORT_METHOD_EPISODE);
+  AddViewState("videonavepisodes", DEFAULT_VIEW_AUTO, SortByEpisodeNumber);
   AddViewState("videonavtvshows");
   AddViewState("videonavseasons");
   AddViewState("videonavmusicvideos");
@@ -93,13 +94,25 @@ bool CViewStateSettings::Load(const TiXmlNode *settings)
 
     XMLUtils::GetInt(pViewState, XML_VIEWMODE, viewState->second->m_viewMode, DEFAULT_VIEW_LIST, DEFAULT_VIEW_MAX);
 
-    int sortMethod;
-    if (XMLUtils::GetInt(pViewState, XML_SORTMETHOD, sortMethod, SORT_METHOD_NONE, SORT_METHOD_MAX))
-      viewState->second->m_sortMethod = (SORT_METHOD)sortMethod;
+    // keep backwards compatibility to the old sorting methods
+    if (pViewState->FirstChild(XML_SORTATTRIBUTES) == NULL)
+    {
+      int sortMethod;
+      if (XMLUtils::GetInt(pViewState, XML_SORTMETHOD, sortMethod, SORT_METHOD_NONE, SORT_METHOD_MAX))
+        viewState->second->m_sortDescription = SortUtils::TranslateOldSortMethod((SORT_METHOD)sortMethod);
+    }
+    else
+    {
+      int sortMethod;
+      if (XMLUtils::GetInt(pViewState, XML_SORTMETHOD, sortMethod, SortByNone, SortByRandom))
+        viewState->second->m_sortDescription.sortBy = (SortBy)sortMethod;
+      if (XMLUtils::GetInt(pViewState, XML_SORTATTRIBUTES, sortMethod, SortAttributeNone, SortAttributeIgnoreFolders))
+        viewState->second->m_sortDescription.sortAttributes = (SortAttribute)sortMethod;
+    }
 
     int sortOrder;
     if (XMLUtils::GetInt(pViewState, XML_SORTORDER, sortOrder, SortOrderNone, SortOrderDescending))
-      viewState->second->m_sortOrder = (SortOrder)sortOrder;
+      viewState->second->m_sortDescription.sortOrder = (SortOrder)sortOrder;
   }
 
   pElement = settings->FirstChild(XML_GENERAL);
@@ -138,8 +151,9 @@ bool CViewStateSettings::Save(TiXmlNode *settings) const
       continue;
 
     XMLUtils::SetInt(pNewNode, XML_VIEWMODE, viewState->second->m_viewMode);
-    XMLUtils::SetInt(pNewNode, XML_SORTMETHOD, (int)viewState->second->m_sortMethod);
-    XMLUtils::SetInt(pNewNode, XML_SORTORDER, (int)viewState->second->m_sortOrder);
+    XMLUtils::SetInt(pNewNode, XML_SORTMETHOD, (int)viewState->second->m_sortDescription.sortBy);
+    XMLUtils::SetInt(pNewNode, XML_SORTORDER, (int)viewState->second->m_sortDescription.sortOrder);
+    XMLUtils::SetInt(pNewNode, XML_SORTATTRIBUTES, (int)viewState->second->m_sortDescription.sortAttributes);
   }
 
   TiXmlNode *generalNode = settings->FirstChild(XML_GENERAL);
@@ -193,12 +207,18 @@ void CViewStateSettings::SetSettingLevel(SettingLevel settingLevel)
 
 void CViewStateSettings::CycleSettingLevel()
 {
-  m_settingLevel = (SettingLevel)((int)m_settingLevel + 1);
-  if (m_settingLevel > SettingLevelExpert)
-    m_settingLevel = SettingLevelBasic;
+  m_settingLevel = GetNextSettingLevel();
 }
 
-void CViewStateSettings::AddViewState(const std::string& strTagName, int defaultView /* = DEFAULT_VIEW_LIST */, SORT_METHOD defaultSort /* = SORT_METHOD_LABEL */)
+SettingLevel CViewStateSettings::GetNextSettingLevel() const
+{
+  SettingLevel level = (SettingLevel)((int)m_settingLevel + 1);
+  if (level > SettingLevelExpert)
+    level = SettingLevelBasic;
+  return level;
+}
+
+void CViewStateSettings::AddViewState(const std::string& strTagName, int defaultView /* = DEFAULT_VIEW_LIST */, SortBy defaultSort /* = SortByLabel */)
 {
   if (strTagName.empty() || m_viewStates.find(strTagName) != m_viewStates.end())
     return;

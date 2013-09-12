@@ -2,10 +2,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.4], [http://trac.xbmc.org])
+AC_INIT([xbmc], [12.9.8], [http://trac.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
+m4_include([m4/ax_prog_cc_for_build.m4])
+m4_include([m4/ax_prog_cxx_for_build.m4])
 m4_include([m4/ax_python_devel.m4])
+m4_include([m4/xbmc_arch.m4])
 
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign])
@@ -59,7 +62,7 @@ AC_DEFUN([XB_FIND_SONAME],
     $1_FILENAME=$($CC -nostdlib -o /dev/null $LDFLAGS -l$2 -Wl,-M 2>/dev/null | grep "^LOAD.*$2" | awk '{V=2; print $V}')
     if [[ -z $$1_FILENAME ]]; then
       #try gold linker syntax
-      $1_FILENAME=$($CC -nostdlib -o /dev/null $LDFLAGS -l$2 -Wl,-t 3>&1 1>&2 2>&3 | grep "$2")
+      $1_FILENAME=$($CC -nostdlib -o /dev/null $LDFLAGS -l$2 -Wl,-t 3>&1 1>&2 2>&3 | grep "lib$2")
     fi
     if [[ ! -z $$1_FILENAME ]]; then
       $1_SONAME=$($OBJDUMP -p $$1_FILENAME | grep "SONAME.*$2" | awk '{V=2; print $V}')
@@ -115,6 +118,10 @@ missing_headers="Could not find some required headers. Please see the README for
 missing_program="Could not find a required program. Please see the README for your platform."
 xrandr_not_found="== Could not find libXRandR. SDL will be used for resolution support. =="
 xrandr_disabled="== XRandR support disabled. SDL will be used for resolution support. =="
+waveform_enabled="== WAVEFORM enabled =="
+waveform_disabled="== WAVEFORM disabled =="
+spectrum_enabled="== SPECTRUM enabled =="
+spectrum_disabled="== SPECTRUM disabled =="
 goom_enabled="== GOOM enabled. =="
 goom_disabled="== GOOM disabled. =="
 alsa_disabled="== ALSA support disabled. =="
@@ -135,14 +142,14 @@ halstorage_not_found="== Could not find hal-storage. HAL support disabled. =="
 hal_disabled="== HAL support disabled. =="
 avahi_not_found="== Could not find libavahi-common or libavahi-client. Avahi support disabled. =="
 avahi_disabled="== Avahi support disabled. =="
+mdnsembedded_not_found="== Could not find mDNSEmbedded. Might prevent zeroconf support. =="
+mdnsembedded_disabled="== mDNSEmbedded support disabled. =="
 vdpau_not_found="== Could not find libvdpau. VDPAU support disabled. =="
 vdpau_disabled="== VDPAU support manually disabled. =="
 vaapi_not_found="== Could not find libva. VAAPI support disabled. =="
 vaapi_disabled="== VAAPI support manually disabled. =="
 crystalhd_not_found="== Could not find libcrystalhd. CrystalHD support disabled. =="
 crystalhd_disabled="== CrystalHD support manually disabled. =="
-vdadecoder_enabled="== VDADecoder support enabled. =="
-vdadecoder_disabled="== VDADecoder support manually disabled. =="
 vtbdecoder_enabled="== VTBDecoder support enabled. =="
 vtbdecoder_disabled="== VTBDecoder support manually disabled. =="
 openmax_disabled="== OpenMax support manually disabled. =="
@@ -263,12 +270,6 @@ AC_ARG_ENABLE([crystalhd],
   [use_crystalhd=$enableval],
   [use_crystalhd=auto])
 
-AC_ARG_ENABLE([vdadecoder],
-  [AS_HELP_STRING([--enable-vdadecoder],
-  [enable VDADecoder decoding (default is auto)])],
-  [use_vdadecoder=$enableval],
-  [use_vdadecoder=auto])
-
 AC_ARG_ENABLE([vtbdecoder],
   [AS_HELP_STRING([--enable-vtbdecoder],
   [enable VTBDecoder decoding (default is auto)])],
@@ -304,6 +305,18 @@ AC_ARG_ENABLE([xrandr],
   [enable XRandR support (default is yes)])],
   [use_xrandr=$enableval],
   [use_xrandr=yes])
+
+AC_ARG_ENABLE([waveform],
+  [AS_HELP_STRING([--enable-waveform],
+  [enable Waveform visualisation (default is yes)])],
+  [use_waveform=$enableval],
+  [use_waveform=yes])
+
+AC_ARG_ENABLE([spectrum],
+  [AS_HELP_STRING([--enable-spectrum],
+  [enable Spectrum visualisation (default is yes)])],
+  [use_spectrum=$enableval],
+  [use_spectrum=yes])
 
 AC_ARG_ENABLE([goom],
   [AS_HELP_STRING([--enable-goom],
@@ -430,6 +443,12 @@ AC_ARG_ENABLE([avahi],
   [disable Avahi support (default is enabled if libavahi-common and libavahi-client is found)])],
   [use_avahi=$enableval],
   [use_avahi=yes])
+  
+  AC_ARG_ENABLE([mdnsembedded],
+  [AS_HELP_STRING([--disable-mdnsembedded],
+  [disable mDNSEmbedded support (default is auto)])],
+  [use_mdnsembedded=$enableval],
+  [use_mdnsembedded=auto])
 
 AC_ARG_ENABLE([non-free],
   [AS_HELP_STRING([--disable-non-free],
@@ -530,7 +549,7 @@ AC_ARG_ENABLE([gtest],
 
 AC_ARG_ENABLE([codec],
   [AS_HELP_STRING([--enable-codec],
-  [enable additional codecs from a list of comma separated names, (default is none, choices are amcodec and imxvpu)])],
+  [enable additional codecs from a list of comma separated names, (default is none, choices are amcodec, libstagefright and imxvpu)])],
   [add_codecs=$enableval],
   [add_codecs=no])
 
@@ -547,6 +566,13 @@ AC_ARG_ENABLE([external-ffmpeg],
   [use_external_ffmpeg=$enableval],
   [use_external_ffmpeg=$use_external_libraries])
 
+AC_ARG_ENABLE([libav-compat],
+  [AS_HELP_STRING([--enable-libav-compat],
+  [build a wrapper around libav to provide the functions needed by XBMC. This is
+   *not* supported by XBMC developers and is provided only for convenience. (default is no) 'Linux only'])],
+  [use_libav_hacks=$enableval],
+  [use_libav_hacks=no])
+
 ### End of external library options
 
 if test "x$host_vendor" != "xapple"; then
@@ -555,13 +581,15 @@ if test "x$host_vendor" != "xapple"; then
 fi
 
 # Checks for programs.
-PASSED_CXXFLAGS=$CXXFLAGS # Hack to override autoconf default values
-AC_PROG_CXX
-CXXFLAGS="$PASSED_CXXFLAGS $DEFAULT_COMPILE_FLAGS"
 PASSED_CFLAGS=$CFLAGS # Hack to override autoconf default values
 AC_PROG_CC
-AC_PROG_LIBTOOL
+AX_PROG_CC_FOR_BUILD
 CFLAGS="$PASSED_CFLAGS $DEFAULT_COMPILE_FLAGS"
+PASSED_CXXFLAGS=$CXXFLAGS # Hack to override autoconf default values
+AC_PROG_CXX
+AX_PROG_CXX_FOR_BUILD
+CXXFLAGS="$PASSED_CXXFLAGS $DEFAULT_COMPILE_FLAGS"
+AC_PROG_LIBTOOL
 AC_PROG_AWK
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -587,34 +615,28 @@ case $host in
      ;;
   i*86*-linux-gnu*)
      ARCH="i486-linux"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX")
      ;;
   x86_64-*-linux-gnu*)
      ARCH="x86_64-linux"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX")
      ;;
   i386-*-freebsd*)
      ARCH="x86-freebsd"
      MAKE="gmake"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_FREEBSD -D_LINUX")
      ;;
   amd64-*-freebsd*)
      ARCH="x86_64-freebsd"
      MAKE="gmake"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_FREEBSD -D_LINUX")
      ;;
   arm-apple-darwin*)
      use_joystick=no
      use_neon=yes
      use_libcec=no
      use_crystalhd=no
-     use_vdadecoder=no
      use_vtbdecoder=yes
      use_optical_drive=no
      use_dvdcss=no
      use_gles=yes
      use_cpu=cortex-a8
-     use_texturepacker_native=yes
      ARCH="arm-osx"
      use_arch="arm"
      PYTHON_VERSION="2.6"
@@ -622,37 +644,28 @@ case $host in
      PYTHON_CPPFLAGS="-I${prefix}/include/python2.6"
      PYTHON_SITE_PKG="${prefix}/lib/python2.6/site-packages"
      PYTHON_NOVERSIONCHECK="no-check"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_DARWIN -DTARGET_DARWIN_IOS -D_LINUX")
      ;;
   *86*-apple-darwin*)
      use_joystick=no
      use_vtbdecoder=no
-     use_texturepacker_native=yes
      ARCH="x86-osx"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_DARWIN -DTARGET_DARWIN_OSX -D_LINUX")
      ;;
   powerpc-apple-darwin*)
      use_joystick=no
-     use_vdadecoder=no
      use_vtbdecoder=no
      use_crystalhd=no
      ARCH="powerpc-osx"
      use_arch="ppc"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_DARWIN -DTARGET_DARWIN_OSX -D_LINUX")
      ;;
   powerpc-*-linux-gnu*)
      ARCH="powerpc-linux"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_POWERPC")
      ;;
   powerpc64-*-linux-gnu*)
      ARCH="powerpc64-linux"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_POWERPC64")
      ;;
   arm*-*-linux-gnu*)
-     use_texturepacker=no
      ARCH="arm"
      use_arch="arm"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX")
      ffmpeg_target_os=linux
      use_joystick=no
      use_neon=yes
@@ -679,8 +692,7 @@ case $host in
 esac
 AC_SUBST([ARCH])
 
-
-check_sdl_arch=[`file $USE_TEXTUREPACKER_NATIVE_ROOT/lib/libSDL_image.dylib | awk '{print $NF}'`]
+check_sdl_arch=[`file $NATIVE_ROOT/lib/libSDL_image.dylib | awk '{print $NF}'`]
 if test "x$check_sdl_arch" = "xi386" ; then
   DARWIN_NATIVE_ARCH=-m32
 elif test "x$check_sdl_arch" = "xx86_64" ; then
@@ -690,9 +702,7 @@ AC_SUBST([DARWIN_NATIVE_ARCH])
 
 if test "$target_platform" = "target_android" ; then
   USE_ANDROID=1
-  use_texturepacker_native=yes
   webserver_checkdepends=yes
-  AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -DTARGET_ANDROID")
   CFLAGS="$CFLAGS -Wno-psabi"
   CXXFLAGS="$CXXFLAGS -Wno-psabi"
   AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
@@ -702,15 +712,11 @@ case $use_platform in
   raspberry-pi)
      target_platform=target_raspberry_pi
      use_neon=no
-     use_texturepacker=yes
-     use_texturepacker_native=yes
      use_arch="arm"
      use_cpu=arm1176jzf-s
      use_hardcoded_tables="yes"
      use_alsa="no"
-     USE_TEXTUREPACKER_NATIVE_ROOT="$TEXTUREPACKER_NATIVE_ROOT"
      ARCH="arm"
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL -DTARGET_RASPBERRY_PI")
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
      USE_OMXLIB=1; AC_DEFINE([HAVE_OMXLIB],[1],["Define to 1 if OMX libs is enabled"])
      CFLAGS="$CFLAGS"
@@ -718,6 +724,8 @@ case $use_platform in
      ffmpeg_target_os=linux
      ;;
 esac
+
+XBMC_SETUP_ARCH_DEFINES()
 
 # check for GIT_REV
 AC_CHECK_PROG(HAVE_GIT,git,"yes","no",)
@@ -863,7 +871,7 @@ AC_FUNC_STRFTIME
 AC_FUNC_STRTOD
 AC_FUNC_UTIME_NULL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([atexit dup2 fdatasync floor fs_stat_dev ftime ftruncate getcwd gethostbyaddr gethostbyname gethostname getpagesize getpass gettimeofday inet_ntoa lchown localeconv memchr memmove memset mkdir modf munmap pow rmdir select setenv setlocale socket sqrt strcasecmp strchr strcspn strdup strerror strncasecmp strpbrk strrchr strspn strstr strtol strtoul sysinfo tzset utime])
+AC_CHECK_FUNCS([atexit dup2 fdatasync floor fs_stat_dev ftime ftruncate getcwd gethostbyaddr gethostbyname gethostname getpagesize getpass gettimeofday inet_ntoa lchown localeconv memchr memmove memset mkdir modf munmap pow rmdir select setenv setlocale socket sqrt strcasecmp strchr strcspn strdup strerror strncasecmp strpbrk strrchr strspn strstr strtol strtoul sysinfo tzset utime posix_fadvise])
 
 # Check for various sizes
 AC_CHECK_SIZEOF([int])
@@ -1032,6 +1040,7 @@ AC_CHECK_LIB([tinyxml],     [main],, AC_MSG_ERROR($missing_library))
 if test "$target_platform" = "target_android" ; then
   AC_CHECK_LIB([android],     [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([log],         [__android_log_vprint],, AC_MSG_ERROR($missing_library))
+  AC_CHECK_LIB([jnigraphics],     [main],, AC_MSG_ERROR($missing_library))
 fi
 PKG_CHECK_MODULES([FRIBIDI],    [fribidi],
   [INCLUDES="$INCLUDES $FRIBIDI_CFLAGS"; LIBS="$LIBS $FRIBIDI_LIBS"],
@@ -1261,6 +1270,27 @@ else
   fi
 fi
 
+# mdnsembedded
+if test "$use_mdnsembedded" != "no"; then
+  AC_CHECK_LIB([mDNSEmbedded], [embedded_mDNSInit],,
+    [if test "$use_mdnsembedded" = "yes"; then
+      AC_MSG_ERROR($mdnsembedded_not_found)
+      USE_MDNSEMBEDDED=0
+    elif test "$use_mdnsembedded" != "no"; then
+      AC_MSG_NOTICE($mdnsembedded_not_found)
+      use_mdnsembedded="no"
+      USE_MDNSEMBEDDED=0
+    fi
+   ])
+  if test $use_mdnsembedded != "no"; then
+    USE_MDNSEMBEDDED=1
+  fi
+else
+  AC_MSG_RESULT($mdnsembedded_disabled)
+  USE_MDNSEMBEDDED=0
+fi
+AC_SUBST(USE_MDNSEMBEDDED)
+
 # X11
 if test "$use_x11" = "yes" && test "$host_vendor" != "apple"; then
   AC_MSG_NOTICE($x11_enabled)
@@ -1286,6 +1316,24 @@ else
   else
     AC_MSG_RESULT($xrandr_disabled)
   fi
+fi
+
+# WAVEFORM
+if test "$use_waveform" = "yes"; then
+  AC_MSG_NOTICE($waveform_enabled)
+    DISABLE_WAVEFORM=0
+else
+  AC_MSG_NOTICE($waveform_disabled)
+  DISABLE_WAVEFORM=1
+fi
+
+# SPECTRUM
+if test "$use_spectrum" = "yes"; then
+  AC_MSG_NOTICE($spectrum_enabled)
+    DISABLE_SPECTRUM=0
+else
+  AC_MSG_NOTICE($spectrum_disabled)
+  DISABLE_SPECTRUM=1
 fi
 
 # GOOM
@@ -1598,98 +1646,38 @@ fi
 
 ### External libraries checks
 
+# Hacks for supporting libav
+
+USE_LIBAV_HACKS=0
+if test "$use_libav_hacks" = "yes"; then
+    export PKG_CONFIG_PATH="${srcdir}/lib/xbmc-libav-hacks/pkgconfig/:$PKG_CONFIG_PATH"
+    USE_LIBAV_HACKS=1
+    AC_DEFINE([USE_LIBAV_HACKS], [1], [Whether to use libav compatibility hacks.])
+fi
+
 # External FFmpeg
 if test "$use_external_ffmpeg" = "yes"; then
-  FFMPEG_LIBNAMES="libavcodec libavfilter libavformat libavutil libpostproc libswscale"
-
-  # libavcore is optional
-  PKG_CHECK_EXISTS([libavcore], FFMPEG_LIBNAMES="$FFMPEG_LIBNAMES libavcore")
-
-  # one of libswresample or libavresample is needed
-  PKG_CHECK_EXISTS([libswresample], FFMPEG_LIBNAMES="$FFMPEG_LIBNAMES libswresample",
-                   [PKG_CHECK_EXISTS([libavresample],
-                                     FFMPEG_LIBNAMES="$FFMPEG_LIBNAMES libavresample",
-                                     AC_MSG_ERROR([You need either libswresample
-                                                   or libavresample.]))])
+  FFMPEG_LIBNAMES="libavcodec libavfilter libavformat libavutil libpostproc libswscale libswresample"
 
   PKG_CHECK_MODULES([FFMPEG], [$FFMPEG_LIBNAMES],
                     [INCLUDES="$INCLUDES $FFMPEG_CFLAGS"; LIBS="$LIBS $FFMPEG_LIBS"],
                     AC_MSG_ERROR($missing_library))
 
-  # Determine whether AVPacket and relevant functions are defined in libavformat
-  # or libavcodec
-  AC_CHECK_LIB([avcodec], [av_free_packet],
-  [AC_MSG_NOTICE(== AVPacket and relevant functions defined in libavcodec. ==)],
-  [AC_MSG_NOTICE(== AVPacket and relevant functions defined in libavformat. ==)
-   AC_DEFINE([AVPACKET_IN_AVFORMAT], [1], [Whether AVPacket is in libavformat.])])
-
   # in case the headers are in a custom directory
   SAVE_CPPFLAGS="$CPPFLAGS"
   CPPFLAGS="$CPPFLAGS $FFMPEG_CFLAGS"
 
-  # Possible places the ffmpeg headers may be
   AC_CHECK_HEADERS([libavcodec/avcodec.h libavfilter/avfilter.h libavformat/avformat.h libavutil/avutil.h libpostproc/postprocess.h libswscale/swscale.h],,
-  [AC_CHECK_HEADERS([ffmpeg/avcodec.h ffmpeg/avfilter.h ffmpeg/avformat.h ffmpeg/avutil.h postproc/postprocess.h ffmpeg/swscale.h],,
-  [AC_MSG_ERROR($missing_headers)])])
-
-  # optional
-  AC_CHECK_HEADERS([libavcore/avcore.h libavcore/samplefmt.h libavutil/mem.h libavutil/samplefmt.h])
-
-  # old FFmpeg have this in libavcodec/opt.h instead:
-  AC_CHECK_HEADERS([libavutil/opt.h])
-
-  # new FFmpeg have math headers
-  AC_CHECK_HEADERS([libavutil/mathematics.h],,)
-
-  # We'll support the use of rgb2rgb.h if it exists.
-  AC_CHECK_HEADERS([libswscale/rgb2rgb.h],,)
-  AC_CHECK_HEADERS([ffmpeg/rgb2rgb.h],,)
-
-  # Check for libswresample or libavresample headers.
-  AC_CHECK_HEADERS([libswresample/swresample.h libavresample/avresample.h])
-
-  # Check if AVFilterBufferRefVideoProps AVRational member is named
-  # 'pixel_aspect' or 'sample_aspect_ratio'.
-  AC_CHECK_MEMBER([AVFilterBufferRefVideoProps.sample_aspect_ratio],
-    [AC_DEFINE([HAVE_AVFILTERBUFFERREFVIDEOPROPS_SAMPLE_ASPECT_RATIO],
-    [1],
-    [Define to 1 if AVFilterBufferRefVideoProps has member sample_aspect_ratio.])],
-      [AC_CHECK_MEMBER([AVFilterBufferRefVideoProps.sample_aspect_ratio],
-      [AC_DEFINE([HAVE_AVFILTERBUFFERREFVIDEOPROPS_SAMPLE_ASPECT_RATIO],
-      [1],
-      [Define to 1 if AVFilterBufferRefVideoProps has member sample_aspect_ratio.])],
-      ,
-      [[#include <ffmpeg/avfilter.h>]])],
-    [[#include <libavfilter/avfilter.h>]])
+  [AC_MSG_ERROR($missing_headers)])
 
   AC_MSG_NOTICE($external_ffmpeg_enabled)
   USE_EXTERNAL_FFMPEG=1
   AC_DEFINE([USE_EXTERNAL_FFMPEG], [1], [Whether to use external FFmpeg libraries.])
 
-  # Disable vdpau support if external libavcodec doesn't have it
-  AC_CHECK_LIB([avcodec], [ff_vdpau_vc1_decode_picture],,
-    [if test "x$use_vdpau" = "xyes"; then
-      AC_MSG_ERROR($ffmpeg_vdpau_not_supported)
-    else
-      use_vdpau=no
-      AC_MSG_RESULT($ffmpeg_vdpau_not_supported)
-    fi])
-
-  # Check for 'PIX_FMT_VDPAU_MPEG4' from libavutil
-  if test "x$use_vdpau" != "xno"; then
-    AC_LANG_PUSH([C++])
-    AC_LINK_IFELSE(
-      [AC_LANG_SOURCE([ #include <libavutil/pixfmt.h>
-        int main() { PixelFormat format = PIX_FMT_VDPAU_MPEG4; }])],
-      [AC_DEFINE([PIX_FMT_VDPAU_MPEG4_IN_AVUTIL], [1],
-      [Whether AVUtil defines PIX_FMT_VDPAU_MPEG4.])],)
-    AC_LANG_POP([C++])
-  fi
   CPPFLAGS="$SAVE_CPPFLAGS"
 else
   AC_MSG_NOTICE($external_ffmpeg_disabled)
   USE_EXTERNAL_FFMPEG=0
-  AC_DEFINE([PIX_FMT_VDPAU_MPEG4_IN_AVUTIL], [1], [Whether AVUtil defines PIX_FMT_VDPAU_MPEG4.])
 fi
 
 echo "Checking for SWIG installation"
@@ -1820,26 +1808,6 @@ else
   USE_CRYSTALHD=0
 fi
 
-# VDADecoder
-if test "x$use_vdadecoder" != "xno"; then
-  if test "$host_vendor" = "apple" ; then
-    HAVE_LIBVDADECODER=1
-    AC_DEFINE([HAVE_LIBVDADECODER], [1], [Define to 1 if you have the 'VDADecoder' library.])
-    AC_MSG_NOTICE($vdadecoder_enabled)
-    USE_VDA=1
-  else
-    if test "x$use_vdadecoder" = "xyes"; then
-      AC_MSG_ERROR([VDA Decoder not supported on this platform])
-    else
-      use_vdadecoder="no"
-      AC_MSG_NOTICE($vdadecoder_disabled)
-    fi
-    USE_VDA=0
-  fi
-else
-  AC_MSG_NOTICE($vdadecoder_disabled)
-fi
-
 # VTBDecoder
 if test "x$use_vtbdecoder" != "xno"; then
   if test "$host_vendor" = "apple" ; then
@@ -1891,7 +1859,7 @@ AC_DEFINE(YAJL_MAJOR, 1, [yajl version 1])
 # additional internal players
 case $add_players in
   *amlplayer*)
-      AC_CHECK_HEADER([amlplayer/amports/amstream.h],, AC_MSG_ERROR($missing_headers))
+      AC_CHECK_HEADER([amplayer/player_error.h],, AC_MSG_ERROR($missing_headers))
       XB_ADD_PLAYER([AMLPLAYER], [amlplayer])
       ;;
   *omxplayer*)
@@ -1902,7 +1870,7 @@ esac
 # additional internal codecs
 case $add_codecs in
   *amcodec*)
-      AC_CHECK_HEADER([amlplayer/codec_error.h],, AC_MSG_ERROR($missing_headers))
+      AC_CHECK_HEADER([amcodec/codec_error.h],, AC_MSG_ERROR($missing_headers))
       XB_ADD_CODEC([LIBAMCODEC], [amcodec])
       ;;
   *imxvpu*)
@@ -1916,6 +1884,11 @@ case $add_codecs in
         CFLAGS="$CFLAGS -DEGL_API_FB"
       fi
       ;;
+  *libstagefright*)
+      LIBS+="-L${prefix}/opt/android-libs -lstdc++ -lutils -lcutils -lstagefright -lbinder -lui -lgui"
+      XB_ADD_CODEC([LIBSTAGEFRIGHT], [libstagefright])
+      ;;
+  *)
 esac
 
 # platform specific bin utilities
@@ -1992,6 +1965,15 @@ AC_C_BIGENDIAN
 
 if test "$cross_compiling" = "yes"; then
   final_message="$final_message\n  Crosscomp.:\tYes"
+  if [[ -d "$NATIVE_ROOT" ]]; then
+    CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -I$NATIVE_ROOT/include"
+    CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -I$NATIVE_ROOT/include"
+    LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_ROOT/lib"
+    if test "$host_vendor" != "apple" ; then
+      LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-rpath=$NATIVE_ROOT/lib"
+    fi
+    final_message="$final_message\n  Native Root:\t$NATIVE_ROOT"
+  fi
 else
   final_message="$final_message\n  Crosscomp.:\tNo"
 fi
@@ -2048,12 +2030,6 @@ else
   final_message="$final_message\n  CrystalHD:\tNo"
 fi
 
-if test "x$use_vdadecoder" != "xno"; then
-  final_message="$final_message\n  VDADecoder:\tYes"
-else
-  final_message="$final_message\n  VDADecoder:\tNo"
-fi
-
 if test "x$use_vtbdecoder" != "xno"; then
   final_message="$final_message\n  VTBDecoder:\tYes"
 else
@@ -2079,6 +2055,18 @@ if test "$use_xrandr" = "yes"; then
 else
   final_message="$final_message\n  XRandR:\tNo"
   USE_XRANDR=0
+fi
+
+if test "$use_waveform" = "yes"; then
+  final_message="$final_message\n  Waveform:\tYes"
+else
+  final_message="$final_message\n  Waveform:\tNo"
+fi
+
+if test "$use_spectrum" = "yes"; then
+  final_message="$final_message\n  Spectrum:\tYes"
+else
+  final_message="$final_message\n  Spectrum:\tNo"
 fi
 
 if test "$use_goom" = "yes"; then
@@ -2123,16 +2111,9 @@ else
   final_message="$final_message\n  Bluray:\tNo"
 fi
 
-USE_TEXTUREPACKER_NATIVE=0
 if test "x$use_texturepacker" != "xno"; then
   final_message="$final_message\n  TexturePacker:Yes"
   USE_TEXTUREPACKER=1
-  if test "x$use_texturepacker_native" = "xyes"; then
-    USE_TEXTUREPACKER_NATIVE=1
-    if [[ ! -d "$USE_TEXTUREPACKER_NATIVE_ROOT" ]]; then 
-      USE_TEXTUREPACKER_NATIVE_ROOT= 
-    fi
-  fi
 else
   final_message="$final_message\n  TexturePacker:No"
   USE_TEXTUREPACKER=0
@@ -2221,6 +2202,12 @@ if test "$use_avahi" = "yes"; then
   final_message="$final_message\n  Avahi:\tYes"
 else
   final_message="$final_message\n  Avahi:\tNo"
+fi
+
+if test "$use_mdnsembedded" != "no"; then
+  final_message="$final_message\n  mDNSEmbedded:\tYes"
+else
+  final_message="$final_message\n  mDNSEmbedded:\tNo"
 fi
 
 if test "$use_nonfree" = "yes"; then
@@ -2455,6 +2442,7 @@ OUTPUT_FILES="Makefile \
     xbmc/visualizations/fishBMC/Makefile \
     xbmc/visualizations/WaveForm/Makefile \
     lib/addons/library.xbmc.addon/Makefile \
+    lib/addons/library.xbmc.codec/Makefile \
     lib/addons/library.xbmc.gui/Makefile \
     lib/addons/library.xbmc.pvr/Makefile \
     xbmc/visualizations/EGLHelpers/Makefile \
@@ -2466,8 +2454,10 @@ OUTPUT_FILES="Makefile \
     xbmc/peripherals/devices/Makefile \
     xbmc/android/activity/Makefile \
     xbmc/android/loader/Makefile \
+    xbmc/android/jni/Makefile \
     xbmc/utils/Makefile \
-    xbmc/main/Makefile"
+    xbmc/main/Makefile \
+    project/cmake/xbmc-config.cmake"
 
 if test "$use_skin_touched" = "yes"; then
 OUTPUT_FILES="$OUTPUT_FILES addons/skin.touched/media/Makefile"
@@ -2488,14 +2478,22 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CXXFLAGS)
 AC_SUBST(INCLUDES)
 AC_SUBST(LDFLAGS)
+AC_SUBST(CXX_FOR_BUILD)
+AC_SUBST(CC_FOR_BUILD)
+AC_SUBST(CFLAGS_FOR_BUILD)
+AC_SUBST(CXXFLAGS_FOR_BUILD)
+AC_SUBST(LDFLAGS_FOR_BUILD)
 AC_SUBST(SDL_DEFINES)
 AC_SUBST(BUILD_DVDCSS)
+AC_SUBST(DISABLE_WAVEFORM)
+AC_SUBST(DISABLE_SPECTRUM)
 AC_SUBST(DISABLE_GOOM)
 AC_SUBST(DISABLE_RSXS)
 AC_SUBST(DISABLE_FISHBMC)
 AC_SUBST(DISABLE_PROJECTM)
 AC_SUBST(USE_SKIN_TOUCHED)
 AC_SUBST(USE_EXTERNAL_FFMPEG)
+AC_SUBST(USE_LIBAV_HACKS)
 AC_SUBST(PYTHON_VERSION)
 AC_SUBST(OUTPUT_FILES)
 AC_SUBST(HAVE_XBMC_NONFREE)
@@ -2520,14 +2518,11 @@ AC_SUBST(USE_LIBSMBCLIENT)
 AC_SUBST(USE_LIBNFS)
 AC_SUBST(USE_LIBAFPCLIENT)
 AC_SUBST(USE_AIRPLAY)
-AC_SUBST(USE_VDA)
 AC_SUBST(USE_OPENMAX)
 AC_SUBST(USE_PULSE)
 AC_SUBST(USE_XRANDR)
 AC_SUBST(USE_ALSA)
 AC_SUBST(USE_TEXTUREPACKER)
-AC_SUBST(USE_TEXTUREPACKER_NATIVE)
-AC_SUBST(USE_TEXTUREPACKER_NATIVE_ROOT)
 AC_SUBST(USE_AIRTUNES)
 AC_SUBST(USE_LIBUDEV)
 AC_SUBST(USE_LIBUSB)
@@ -2600,7 +2595,7 @@ XB_CONFIG_MODULE([lib/ffmpeg], [
     ffmpg_config="$ffmpg_config --disable-devices  --disable-doc"
     ffmpg_config="$ffmpg_config --disable-ffplay   --disable-ffmpeg"
     ffmpg_config="$ffmpg_config --disable-ffprobe  --disable-ffserver"
-    ffmpg_config="$ffmpg_config --disable-vda      --disable-crystalhd"
+    ffmpg_config="$ffmpg_config --enable-vda       --disable-crystalhd"
     ffmpg_config="$ffmpg_config --disable-decoder=mpeg_xvmc"
 
     # handle conditional enables/disables
@@ -2634,8 +2629,8 @@ XB_CONFIG_MODULE([lib/ffmpeg], [
     ffmpg_config="$ffmpg_config --enable-gpl"
     ffmpg_config="$ffmpg_config --enable-postproc"
     ffmpg_config="$ffmpg_config --enable-static      --enable-pthreads"
-    ffmpg_config="$ffmpg_config --enable-muxer=spdif --enable-muxer=adts"
-    ffmpg_config="$ffmpg_config --enable-encoder=ac3 --enable-encoder=aac"
+    ffmpg_config="$ffmpg_config --enable-muxer=spdif --enable-muxer=adts --enable-muxer=asf --enable-muxer=ipod"
+    ffmpg_config="$ffmpg_config --enable-encoder=ac3 --enable-encoder=aac --enable-encoder=wmav2"
     ffmpg_config="$ffmpg_config --enable-protocol=http"
     ffmpg_config="$ffmpg_config --enable-runtime-cpudetect"
 
@@ -2681,9 +2676,12 @@ XB_CONFIG_MODULE([lib/ffmpeg], [
       --disable-muxers \
       --enable-muxer=spdif \
       --enable-muxer=adts \
+      --enable-muxer=asf \
+      --enable-muxer=ipod \
       --disable-encoders \
       --enable-encoder=ac3 \
       --enable-encoder=aac \
+      --enable-encoder=wmav2 \
       `if test "$use_ffmpeg_libvorbis" = "yes"; then echo --enable-libvorbis --enable-muxer=ogg --enable-encoder=libvorbis; else echo --disable-libvorbis; fi` \
       --disable-decoder=mpeg_xvmc \
       --disable-devices \
@@ -2849,15 +2847,11 @@ XB_CONFIG_MODULE([lib/gtest], [
 ], [$SKIP_CONFIG_GTEST])
 
 XB_CONFIG_MODULE([pvr-addons], [
-   if test "$USE_EXTERNAL_FFMPEG" = 1; then
-      PVR_EXT_FFMPEG="--enable-external-ffmpeg"
-   fi
   ./configure \
     --prefix="${prefix}" \
     --host=$host_alias \
     --build=$build_alias \
     --target=$target_alias \
-    $PVR_EXT_FFMPEG \
     CC="$CC" \
     CXX="$CXX" \
     CFLAGS="$CFLAGS" \

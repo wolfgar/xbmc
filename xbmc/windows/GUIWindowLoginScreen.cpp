@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,9 +28,6 @@
 #include "profiles/windows/GUIWindowSettingsProfile.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "GUIPassword.h"
-#ifdef HAS_PYTHON
-#include "interfaces/python/XBPython.h"
-#endif
 #ifdef HAS_JSONRPC
 #include "interfaces/json-rpc/JSONRPC.h"
 #endif
@@ -41,6 +38,7 @@
 #include "guilib/GUIMessage.h"
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/StereoscopicsManager.h"
 #include "dialogs/GUIDialogOK.h"
 #include "settings/Settings.h"
 #include "FileItem.h"
@@ -106,7 +104,8 @@ bool CGUIWindowLoginScreen::OnMessage(CGUIMessage& message)
 
           if (bOkay)
           {
-            LoadProfile(iItem);
+            if (iItem >= 0)
+              LoadProfile((unsigned int)iItem);
           }
           else
           {
@@ -250,7 +249,8 @@ bool CGUIWindowLoginScreen::OnPopupMenu(int iItem)
   {
     int iDelete = m_viewControl.GetSelectedItem();
     m_viewControl.Clear();
-    CProfilesManager::Get().DeleteProfile(iDelete);
+    if (iDelete >= 0)
+      CProfilesManager::Get().DeleteProfile((size_t)iDelete);
     Update();
     m_viewControl.SetSelectedItem(0);
   }
@@ -306,9 +306,7 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   ADDON::CAddonMgr::Get().ReInit();
 
   g_weatherManager.Refresh();
-#ifdef HAS_PYTHON
-  g_pythonParser.m_bLogin = true;
-#endif
+  g_application.SetLoggingIn(true);
 
 #ifdef HAS_JSONRPC
   JSONRPC::CJSONRPC::Initialize();
@@ -323,4 +321,5 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   g_windowManager.ChangeActiveWindow(g_SkinInfo->GetFirstWindow());
 
   g_application.UpdateLibraries();
+  CStereoscopicsManager::Get().Initialize();
 }

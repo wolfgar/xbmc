@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -586,7 +586,7 @@ void CVideoInfoTag::ParseNative(const TiXmlElement* movie, bool prioritise)
   XMLUtils::GetString(movie, "plot", m_strPlot);
   XMLUtils::GetString(movie, "tagline", m_strTagLine);
   CStdString runtime;
-  if (XMLUtils::GetString(movie, "runtime", runtime))
+  if (XMLUtils::GetString(movie, "runtime", runtime) && !runtime.empty())
     m_duration = GetDurationFromMinuteString(runtime);
   XMLUtils::GetString(movie, "mpaa", m_strMPAARating);
   XMLUtils::GetInt(movie, "playcount", m_playCount);

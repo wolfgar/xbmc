@@ -1,3 +1,22 @@
+/*
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 #include "network/Network.h"
 #include "UPnPRenderer.h"
 #include "UPnP.h"
@@ -286,7 +305,7 @@ CUPnPRenderer::UpdateState()
 
     avt->SetStateVariable("TransportStatus", "OK");
 
-    if (g_application.IsPlaying() || g_application.IsPaused()) {
+    if (g_application.m_pPlayer->IsPlaying() || g_application.m_pPlayer->IsPausedPlayback()) {
         avt->SetStateVariable("NumberOfTracks", "1");
         avt->SetStateVariable("CurrentTrack", "1");
 
@@ -392,8 +411,7 @@ CUPnPRenderer::GetMetadata(NPT_String& meta)
             "/thumb",
             query.ToString()).ToString();
         // Set DLNA profileID by extension, defaulting to JPEG.
-        NPT_String ext = URIUtils::GetExtension(item.GetArt("thumb")).c_str();
-        if (strcmp(ext, ".png") == 0) {
+        if (URIUtils::HasExtension(item.GetArt("thumb"), ".png")) {
             art.dlna_profile = "PNG_TN";
         } else {
             art.dlna_profile = "JPEG_TN";
@@ -431,7 +449,7 @@ CUPnPRenderer::OnPause(PLT_ActionReference& action)
     if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         CAction action(ACTION_PAUSE);
         CApplicationMessenger::Get().SendAction(action, WINDOW_SLIDESHOW);
-    } else if (!g_application.IsPaused())
+    } else if (!g_application.m_pPlayer->IsPausedPlayback())
       CApplicationMessenger::Get().MediaPause();
     return NPT_SUCCESS;
 }
@@ -444,9 +462,9 @@ CUPnPRenderer::OnPlay(PLT_ActionReference& action)
 {
     if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         return NPT_SUCCESS;
-    } else if (g_application.IsPaused()) {
+    } else if (g_application.m_pPlayer->IsPausedPlayback()) {
       CApplicationMessenger::Get().MediaPause();
-    } else if (!g_application.IsPlaying()) {
+    } else if (!g_application.m_pPlayer->IsPlaying()) {
         NPT_String uri, meta;
         PLT_Service* service;
         // look for value set previously by SetAVTransportURI
@@ -505,7 +523,7 @@ CUPnPRenderer::OnSetAVTransportURI(PLT_ActionReference& action)
 
     // if not playing already, just keep around uri & metadata
     // and wait for play command
-    if (!g_application.IsPlaying() && g_windowManager.GetActiveWindow() != WINDOW_SLIDESHOW) {
+    if (!g_application.m_pPlayer->IsPlaying() && g_windowManager.GetActiveWindow() != WINDOW_SLIDESHOW) {
         service->SetStateVariable("TransportState", "STOPPED");
         service->SetStateVariable("TransportStatus", "OK");
         service->SetStateVariable("TransportPlaySpeed", "1");
@@ -539,7 +557,7 @@ CUPnPRenderer::OnSetNextAVTransportURI(PLT_ActionReference& action)
         return NPT_FAILURE;
     }
 
-    if (g_application.IsPlaying()) {
+    if (g_application.m_pPlayer->IsPlaying()) {
 
         int playlist = PLAYLIST_MUSIC;
         if(item->IsVideo())
@@ -596,7 +614,7 @@ CUPnPRenderer::PlayMedia(const NPT_String& uri, const NPT_String& meta, PLT_Acti
         CApplicationMessenger::Get().MediaPlay(*item);
     }
 
-    if (g_application.IsPlaying() || g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
+    if (g_application.m_pPlayer->IsPlaying() || g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         NPT_AutoLock lock(m_state);
         service->SetStateVariable("TransportState", "PLAYING");
         service->SetStateVariable("TransportStatus", "OK");
@@ -648,7 +666,7 @@ CUPnPRenderer::OnSetMute(PLT_ActionReference& action)
 NPT_Result
 CUPnPRenderer::OnSeek(PLT_ActionReference& action)
 {
-    if (!g_application.IsPlaying()) return NPT_ERROR_INVALID_STATE;
+    if (!g_application.m_pPlayer->IsPlaying()) return NPT_ERROR_INVALID_STATE;
 
     NPT_String unit, target;
     NPT_CHECK_SEVERE(action->GetArgumentValue("Unit", unit));

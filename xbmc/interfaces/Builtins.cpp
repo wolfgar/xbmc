@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@
 #include "addons/AddonInstaller.h"
 #include "addons/AddonManager.h"
 #include "addons/PluginSource.h"
+#include "interfaces/generic/ScriptInvocationManager.h"
 #include "network/NetworkServices.h"
 #include "utils/log.h"
 #include "storage/MediaManager.h"
@@ -78,10 +79,6 @@
 
   #include "input/windows/IRServerSuite.h"
 
-#endif
-
-#ifdef HAS_PYTHON
-#include "interfaces/python/XBPython.h"
 #endif
 
 #if defined(TARGET_DARWIN)
@@ -123,10 +120,12 @@ const BUILT_IN commands[] = {
   { "Suspend",                    false,  "Suspends the system" },
   { "InhibitIdleShutdown",        false,  "Inhibit idle shutdown" },
   { "AllowIdleShutdown",          false,  "Allow idle shutdown" },
+  { "ActivateScreensaver",        false,  "Activate Screensaver" },
   { "RestartApp",                 false,  "Restart XBMC" },
   { "Minimize",                   false,  "Minimize XBMC" },
   { "Reset",                      false,  "Reset the system (same as reboot)" },
   { "Mastermode",                 false,  "Control master mode" },
+  { "SetGUILanguage",             true,   "Set GUI Language" },
   { "ActivateWindow",             true,   "Activate the specified window" },
   { "ActivateWindowAndFocus",     true,   "Activate the specified window and sets focus to the specified id" },
   { "ReplaceWindowAndFocus",      true,   "Replaces the current window with the new one and sets focus to the specified id" },
@@ -205,6 +204,9 @@ const BUILT_IN commands[] = {
   { "UpdateAddonRepos",           false,  "Check add-on repositories for updates" },
   { "UpdateLocalAddons",          false,  "Check for local add-on changes" },
   { "ToggleDPMS",                 false,  "Toggle DPMS mode manually"},
+  { "CECToggleState",             false,  "Toggle state of playing device via a CEC peripheral"},
+  { "CECActivateSource",          false,  "Wake up playing device via a CEC peripheral"},
+  { "CECStandby",                 false,  "Put playing device on standby via a CEC peripheral"},
   { "Weather.Refresh",            false,  "Force weather data refresh"},
   { "Weather.LocationNext",       false,  "Switch to next weather location"},
   { "Weather.LocationPrevious",   false,  "Switch to previous weather location"},
@@ -291,6 +293,10 @@ int CBuiltins::Execute(const CStdString& execString)
     bool inhibit = (params.size() == 1 && params[0].Equals("true"));
     CApplicationMessenger::Get().InhibitIdleShutdown(inhibit);
   }
+  else if (execute.Equals("activatescreensaver"))
+  {
+    CApplicationMessenger::Get().ActivateScreensaver();
+  }
   else if (execute.Equals("minimize"))
   {
     CApplicationMessenger::Get().Minimize();
@@ -326,9 +332,44 @@ int CBuiltins::Execute(const CStdString& execString)
     CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE);
     g_windowManager.SendMessage(msg);
   }
+  else if (execute.Equals("setguilanguage"))
+  {
+    if (params.size())
+    {
+      CApplicationMessenger::Get().SetGUILanguage(params[0]);
+    }
+  }
   else if (execute.Equals("takescreenshot"))
   {
-    CScreenShot::TakeScreenshot();
+    if (params.size())
+    {
+      // get the parameters
+      CStdString strSaveToPath = params[0];
+      bool sync = false;
+      if (params.size() >= 2)
+        sync = params[1].Equals("sync");
+
+      if (!strSaveToPath.IsEmpty())
+      {
+        if (CDirectory::Exists(strSaveToPath))
+        {
+          CStdString file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(strSaveToPath, "screenshot%03d.png"), 999);
+
+          if (!file.IsEmpty())
+          {
+            CScreenShot::TakeScreenshot(file, sync);
+          }
+          else
+          {
+            CLog::Log(LOGWARNING, "Too many screen shots or invalid folder %s", strSaveToPath.c_str());
+          }
+        }
+        else
+          CScreenShot::TakeScreenshot(strSaveToPath, sync);
+      }
+    }
+    else
+      CScreenShot::TakeScreenshot();
   }
   else if (execute.Equals("activatewindow") || execute.Equals("replacewindow"))
   {
@@ -375,7 +416,7 @@ int CBuiltins::Execute(const CStdString& execString)
     {
       // disable the screensaver
       g_application.WakeUpScreenSaverAndDPMS();
-#if defined(__APPLE__) && defined(__arm__)
+#if defined(TARGET_DARWIN_IOS)
       if (params[0].Equals("shutdownmenu"))
         CBuiltins::Execute("Quit");
 #endif
@@ -401,8 +442,7 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("runscript") && params.size())
   {
 #if defined(TARGET_DARWIN_OSX)
-    if (URIUtils::GetExtension(strParameterCaseIntact) == ".applescript" ||
-        URIUtils::GetExtension(strParameterCaseIntact) == ".scpt")
+    if (URIUtils::HasExtension(strParameterCaseIntact, ".applescript|.scpt"))
     {
       CStdString osxPath = CSpecialProtocol::TranslatePath(strParameterCaseIntact);
       Cocoa_DoAppleScriptFile(osxPath.c_str());
@@ -410,8 +450,9 @@ int CBuiltins::Execute(const CStdString& execString)
     else
 #endif
     {
-#ifdef HAS_PYTHON
-      vector<CStdString> argv = params;
+      vector<string> argv;
+      for (vector<CStdString>::const_iterator param = params.begin(); param != params.end(); ++param)
+        argv.push_back(*param);
 
       vector<CStdString> path;
       //split the path up to find the filename
@@ -424,8 +465,7 @@ int CBuiltins::Execute(const CStdString& execString)
       if (CAddonMgr::Get().GetAddon(params[0], script))
         scriptpath = script->LibPath();
 
-      g_pythonParser.evalFile(scriptpath, argv,script);
-#endif
+      CScriptInvocationManager::Get().Execute(scriptpath, script, argv);
     }
   }
 #if defined(TARGET_DARWIN_OSX)
@@ -436,7 +476,6 @@ int CBuiltins::Execute(const CStdString& execString)
 #endif
   else if (execute.Equals("stopscript"))
   {
-#ifdef HAS_PYTHON
     CStdString scriptpath(params[0]);
 
     // Test to see if the param is an addon ID
@@ -444,8 +483,7 @@ int CBuiltins::Execute(const CStdString& execString)
     if (CAddonMgr::Get().GetAddon(params[0], script))
       scriptpath = script->LibPath();
 
-    g_pythonParser.StopScript(scriptpath);
-#endif
+    CScriptInvocationManager::Get().Stop(scriptpath);
   }
   else if (execute.Equals("system.exec"))
   {
@@ -473,16 +511,15 @@ int CBuiltins::Execute(const CStdString& execString)
     if (g_graphicsContext.IsValidResolution(res))
     {
       CDisplaySettings::Get().SetCurrentResolution(res, true);
-      g_graphicsContext.SetVideoResolution(res);
       g_application.ReloadSkin();
     }
   }
   else if (execute.Equals("extract") && params.size())
   {
-    // Detects if file is zip or zip then extracts
-    CStdString strDestDirect = "";
+    // Detects if file is zip or rar then extracts
+    CStdString strDestDirect;
     if (params.size() < 2)
-      URIUtils::GetDirectory(params[0],strDestDirect);
+      strDestDirect = URIUtils::GetDirectory(params[0]);
     else
       strDestDirect = params[1];
 
@@ -609,16 +646,30 @@ int CBuiltins::Execute(const CStdString& execString)
     if (item.m_bIsFolder)
     {
       CFileItemList items;
-      CDirectory::GetDirectory(item.GetPath(),items,g_advancedSettings.m_videoExtensions);
-      int playlist = PLAYLIST_MUSIC;
+      CStdString extensions = g_advancedSettings.m_videoExtensions + "|" + g_advancedSettings.m_musicExtensions;
+      CDirectory::GetDirectory(item.GetPath(),items,extensions);
+      
+      bool containsMusic = false, containsVideo = false;
       for (int i = 0; i < items.Size(); i++)
       {
-        if (items[i]->IsVideo())
-        {
-          playlist = PLAYLIST_VIDEO;
+        bool isVideo = items[i]->IsVideo();
+        containsMusic |= !isVideo;
+        containsVideo |= isVideo;
+        
+        if (containsMusic && containsVideo)
           break;
+      }
+      
+      int playlist = containsVideo? PLAYLIST_VIDEO : PLAYLIST_MUSIC;;
+      if (containsMusic && containsVideo) //mixed content found in the folder
+      {
+        for (int i = items.Size() - 1; i >= 0; i--) //remove music entries
+        {
+          if (!items[i]->IsVideo())
+            items.Remove(i);
         }
       }
+      
       g_playlistPlayer.ClearPlaylist(playlist);
       g_playlistPlayer.Add(playlist, items);
       g_playlistPlayer.SetCurrentPlaylist(playlist);
@@ -716,10 +767,10 @@ int CBuiltins::Execute(const CStdString& execString)
     if (parameter.Equals("play"))
     { // play/pause
       // either resume playing, or pause
-      if (g_application.IsPlaying())
+      if (g_application.m_pPlayer->IsPlaying())
       {
-        if (g_application.GetPlaySpeed() != 1)
-          g_application.SetPlaySpeed(1);
+        if (g_application.m_pPlayer->GetPlaySpeed() != 1)
+          g_application.m_pPlayer->SetPlaySpeed(1, g_application.IsMutedInternal());
         else
           g_application.m_pPlayer->Pause();
       }
@@ -730,9 +781,9 @@ int CBuiltins::Execute(const CStdString& execString)
     }
     else if (parameter.Equals("rewind") || parameter.Equals("forward"))
     {
-      if (g_application.IsPlaying() && !g_application.m_pPlayer->IsPaused())
+      if (g_application.m_pPlayer->IsPlaying() && !g_application.m_pPlayer->IsPaused())
       {
-        int iPlaySpeed = g_application.GetPlaySpeed();
+        int iPlaySpeed = g_application.m_pPlayer->GetPlaySpeed();
         if (parameter.Equals("rewind") && iPlaySpeed == 1) // Enables Rewinding
           iPlaySpeed *= -2;
         else if (parameter.Equals("rewind") && iPlaySpeed > 1) //goes down a notch if you're FFing
@@ -748,7 +799,7 @@ int CBuiltins::Execute(const CStdString& execString)
         if (iPlaySpeed > 32 || iPlaySpeed < -32)
           iPlaySpeed = 1;
 
-        g_application.SetPlaySpeed(iPlaySpeed);
+        g_application.m_pPlayer->SetPlaySpeed(iPlaySpeed, g_application.IsMutedInternal());
       }
     }
     else if (parameter.Equals("next"))
@@ -761,22 +812,22 @@ int CBuiltins::Execute(const CStdString& execString)
     }
     else if (parameter.Equals("bigskipbackward"))
     {
-      if (g_application.IsPlaying())
+      if (g_application.m_pPlayer->IsPlaying())
         g_application.m_pPlayer->Seek(false, true);
     }
     else if (parameter.Equals("bigskipforward"))
     {
-      if (g_application.IsPlaying())
+      if (g_application.m_pPlayer->IsPlaying())
         g_application.m_pPlayer->Seek(true, true);
     }
     else if (parameter.Equals("smallskipbackward"))
     {
-      if (g_application.IsPlaying())
+      if (g_application.m_pPlayer->IsPlaying())
         g_application.m_pPlayer->Seek(false, false);
     }
     else if (parameter.Equals("smallskipforward"))
     {
-      if (g_application.IsPlaying())
+      if (g_application.m_pPlayer->IsPlaying())
         g_application.m_pPlayer->Seek(true, false);
     }
     else if (parameter.Left(14).Equals("seekpercentage"))
@@ -793,18 +844,18 @@ int CBuiltins::Execute(const CStdString& execString)
         float offsetpercent = (float) atof(offset.c_str());
         if (offsetpercent < 0 || offsetpercent > 100)
           CLog::Log(LOGERROR,"PlayerControl(seekpercentage(n)) argument, %f, must be 0-100", offsetpercent);
-        else if (g_application.IsPlaying())
+        else if (g_application.m_pPlayer->IsPlaying())
           g_application.SeekPercentage(offsetpercent);
       }
     }
     else if( parameter.Equals("showvideomenu") )
     {
-      if( g_application.IsPlaying() && g_application.m_pPlayer )
+      if( g_application.m_pPlayer->IsPlaying() )
         g_application.m_pPlayer->OnAction(CAction(ACTION_SHOW_VIDEOMENU));
     }
     else if( parameter.Equals("record") )
     {
-      if( g_application.IsPlaying() && g_application.m_pPlayer && g_application.m_pPlayer->CanRecord())
+      if( g_application.m_pPlayer->IsPlaying() && g_application.m_pPlayer->CanRecord())
         g_application.m_pPlayer->Record(!g_application.m_pPlayer->IsRecording());
     }
     else if (parameter.Left(9).Equals("partymode"))
@@ -962,7 +1013,7 @@ int CBuiltins::Execute(const CStdString& execString)
     // play the desired offset
     int pos = atol(strPos.c_str());
     // playlist is already playing
-    if (g_application.IsPlaying())
+    if (g_application.m_pPlayer->IsPlaying())
       g_playlistPlayer.PlayNext(pos);
     // we start playing the 'other' playlist so we need to use play to initialize the player state
     else
@@ -1584,6 +1635,18 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("toggledpms"))
   {
     g_application.ToggleDPMS(true);
+  }
+  else if (execute.Equals("cectogglestate"))
+  {
+    CApplicationMessenger::Get().CECToggleState();
+  }
+  else if (execute.Equals("cecactivatesource"))
+  {
+    CApplicationMessenger::Get().CECActivateSource();
+  }
+  else if (execute.Equals("cecstandby"))
+  {
+    CApplicationMessenger::Get().CECStandby();
   }
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
   else if (execute.Equals("lirc.stop"))

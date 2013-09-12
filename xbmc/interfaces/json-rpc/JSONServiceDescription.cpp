@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "XBMCOperations.h"
 #include "ApplicationOperations.h"
 #include "PVROperations.h"
+#include "ProfilesOperations.h"
 #include "FavouritesOperations.h"
 
 using namespace std;
@@ -162,6 +163,11 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
   { "PVR.GetChannelDetails",                        CPVROperations::GetChannelDetails },
   { "PVR.Record",                                   CPVROperations::Record },
   { "PVR.Scan",                                     CPVROperations::Scan },
+
+// Profiles operations
+  { "Profiles.GetProfiles",                         CProfilesOperations::GetProfiles},
+  { "Profiles.GetCurrentProfile",                   CProfilesOperations::GetCurrentProfile},
+  { "Profiles.LoadProfile",                         CProfilesOperations::LoadProfile},
 
 // System operations
   { "System.GetProperties",                         CSystemOperations::GetProperties },

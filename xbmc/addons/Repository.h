@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ namespace ADDON
   class CRepository : public CAddon
   {
   public:
-    AddonPtr Clone(const AddonPtr &self) const;
+    virtual AddonPtr Clone() const;
     CRepository(const AddonProps& props);
     CRepository(const cp_extension_t *props);
     virtual ~CRepository();
@@ -48,7 +48,7 @@ namespace ADDON
     VECADDONS Parse();
   private:
     CStdString FetchChecksum(const CStdString& url);
-    CRepository(const CRepository&, const AddonPtr&);
+    CRepository(const CRepository &rhs);
     CStdString m_info;
     CStdString m_checksum;
     CStdString m_datadir;

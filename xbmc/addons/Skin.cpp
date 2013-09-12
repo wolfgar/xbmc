@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/WindowIDs.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 #include "utils/URIUtils.h"
 #include "utils/log.h"
@@ -101,9 +102,9 @@ CSkinInfo::~CSkinInfo()
 {
 }
 
-bool CSkinInfo::HasSettings()
+AddonPtr CSkinInfo::Clone() const
 {
-  return HasSkinFile("SkinSettings.xml");
+  return AddonPtr(new CSkinInfo(*this));
 }
 
 struct closestRes
@@ -308,7 +309,7 @@ void CSkinInfo::SettingOptionsSkinColorsFiller(const CSetting *setting, std::vec
 
   CStdString settingValue = ((const CSettingString*)setting)->GetValue();
   // Remove the .xml extension from the Themes
-  if (URIUtils::GetExtension(settingValue) == ".xml")
+  if (URIUtils::HasExtension(settingValue, ".xml"))
     URIUtils::RemoveExtension(settingValue);
   
   // Set the choosen theme

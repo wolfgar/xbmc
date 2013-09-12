@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,16 +41,14 @@ bool CMusicInfoTagLoaderASAP::Load(const CStdString &strFile, CMusicInfoTag &tag
 
   CStdString strFileToLoad = strFile;
   int song = -1;
-  CStdString strExtension;
-  URIUtils::GetExtension(strFile, strExtension);
+  CStdString strExtension = URIUtils::GetExtension(strFile);
   strExtension.MakeLower();
   if (strExtension == ".asapstream")
   {
     CStdString strFileName = URIUtils::GetFileName(strFile);
     int iStart = strFileName.ReverseFind('-') + 1;
     song = atoi(strFileName.substr(iStart, strFileName.size() - iStart - 11).c_str()) - 1;
-    CStdString strPath = strFile;
-    URIUtils::GetDirectory(strPath, strFileToLoad);
+    strFileToLoad = URIUtils::GetDirectory(strFile);
     URIUtils::RemoveSlashAtEnd(strFileToLoad);
   }
 

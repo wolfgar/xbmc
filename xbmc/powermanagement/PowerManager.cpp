@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "Application.h"
 #include "cores/AudioEngine/AEFactory.h"
 #include "input/KeyboardStat.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/log.h"
@@ -39,15 +40,18 @@
 #include "osx/CocoaPowerSyscall.h"
 #elif defined(TARGET_ANDROID)
 #include "android/AndroidPowerSyscall.h"
-#elif defined(_LINUX) && defined(HAS_DBUS)
+#elif defined(TARGET_POSIX)
+#include "linux/FallbackPowerSyscall.h"
+#if defined(HAS_DBUS)
 #include "linux/ConsoleUPowerSyscall.h"
 #include "linux/ConsoleDeviceKitPowerSyscall.h"
-#include "linux/SystemdUPowerSyscall.h"
+#include "linux/LogindUPowerSyscall.h"
 #include "linux/UPowerSyscall.h"
-#ifdef HAS_HAL
+#if defined(HAS_HAL)
 #include "linux/HALPowerSyscall.h"
-#endif
-#elif defined(_WIN32)
+#endif // HAS_HAL
+#endif // HAS_DBUS
+#elif defined(TARGET_WINDOWS)
 #include "powermanagement/windows/Win32PowerSyscall.h"
 extern HWND g_hWnd;
 #endif
@@ -72,14 +76,18 @@ void CPowerManager::Initialize()
   m_instance = new CCocoaPowerSyscall();
 #elif defined(TARGET_ANDROID)
   m_instance = new CAndroidPowerSyscall();
-#elif defined(_LINUX) && defined(HAS_DBUS)
+#elif defined(TARGET_POSIX)
+#if defined(HAS_DBUS)
   if (CUPowerSyscall::HasUPower())
     m_instance = new CUPowerSyscall();
-#ifdef HAS_HAL
-  else
+#if defined(HAS_HAL)
+  else if(1)
     m_instance = new CHALPowerSyscall();
-#endif
-#elif defined(_WIN32)
+#endif // HAS_HAL
+  else
+#endif // HAS_DBUS
+    m_instance = new CFallbackPowerSyscall();
+#elif defined(TARGET_WINDOWS)
   m_instance = new CWin32PowerSyscall();
 #endif
 
@@ -210,7 +218,12 @@ int CPowerManager::BatteryLevel()
 }
 void CPowerManager::ProcessEvents()
 {
-  m_instance->PumpPowerEvents(this);
+  static int nesting = 0;
+
+  if (++nesting == 1)
+    m_instance->PumpPowerEvents(this);
+
+  nesting--;
 }
 
 void CPowerManager::OnSleep()
@@ -228,6 +241,7 @@ void CPowerManager::OnSleep()
   g_application.StopPlaying();
   g_application.StopShutdownTimer();
   g_application.StopScreenSaverTimer();
+  g_application.CloseNetworkShares();
   CAEFactory::Suspend();
 }
 
@@ -245,7 +259,7 @@ void CPowerManager::OnWake()
 #if defined(HAS_SDL) || defined(TARGET_WINDOWS)
   if (g_Windowing.IsFullScreen())
   {
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
     ShowWindow(g_hWnd,SW_RESTORE);
     SetForegroundWindow(g_hWnd);
 #elif !defined(TARGET_DARWIN_OSX)

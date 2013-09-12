@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@
 #include "utils/URIUtils.h"
 #include "GUIInfoManager.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/StereoscopicsManager.h"
 #include "Application.h"
 #include "ApplicationMessenger.h"
 #include "DVDPerformanceCounter.h"
@@ -622,7 +623,7 @@ bool CDVDPlayer::OpenInputStream()
     for(unsigned int i=0;i<filenames.size();i++)
     {
       // if vobsub subtitle:
-      if (URIUtils::GetExtension(filenames[i]) == ".idx")
+      if (URIUtils::HasExtension(filenames[i], ".idx"))
       {
         CStdString strSubFile;
         if ( CUtil::FindVobSubPair( filenames, filenames[i], strSubFile ) )
@@ -695,7 +696,7 @@ bool CDVDPlayer::OpenDemuxStream()
   int64_t len = m_pInputStream->GetLength();
   int64_t tim = m_pDemuxer->GetStreamLength();
   if(len > 0 && tim > 0)
-    m_pInputStream->SetReadRate(len * 1000 / tim);
+    m_pInputStream->SetReadRate(g_advancedSettings.m_readBufferFactor * len * 1000 / tim);
 
   return true;
 }
@@ -770,10 +771,9 @@ bool CDVDPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
 {
 
   // check if we should read from subtitle demuxer
-  if(m_dvdPlayerSubtitle.AcceptsData() && m_pSubtitleDemuxer )
+  if( m_pSubtitleDemuxer && m_dvdPlayerSubtitle.AcceptsData() )
   {
-    if(m_pSubtitleDemuxer)
-      packet = m_pSubtitleDemuxer->Read();
+    packet = m_pSubtitleDemuxer->Read();
 
     if(packet)
     {
@@ -819,11 +819,6 @@ bool CDVDPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
     }
 
     UpdateCorrection(packet, m_offset_pts);
-    // this groupId stuff is getting a bit messy, need to find a better way
-    // currently it is used to determine if a menu overlay is associated with a picture
-    // for dvd's we use as a group id, the current cell and the current title
-    // to be a bit more precise we alse count the number of disc's in case of a pts wrap back in the same cell / title
-    packet->iGroupId = m_pInputStream->GetCurrentGroupId();
 
     if(packet->iStreamId < 0)
       return true;
@@ -971,10 +966,9 @@ void CDVDPlayer::Process()
   // look for any EDL files
   m_Edl.Clear();
   m_EdlAutoSkipMarkers.Clear();
-  float fFramesPerSecond;
   if (m_CurrentVideo.id >= 0 && m_CurrentVideo.hint.fpsrate > 0 && m_CurrentVideo.hint.fpsscale > 0)
   {
-    fFramesPerSecond = (float)m_CurrentVideo.hint.fpsrate / (float)m_CurrentVideo.hint.fpsscale;
+    float fFramesPerSecond = (float)m_CurrentVideo.hint.fpsrate / (float)m_CurrentVideo.hint.fpsscale;
     m_Edl.ReadEditDecisionLists(m_filename, fFramesPerSecond, m_CurrentVideo.hint.height);
   }
 
@@ -1292,6 +1286,7 @@ void CDVDPlayer::ProcessAudioData(CDemuxStream* pStream, DemuxPacket* pPacket)
       OpenAudioStream( pPacket->iStreamId, pStream->source );
 
     m_CurrentAudio.stream = (void*)pStream;
+    m_CurrentAudio.changes = pStream->changes;
   }
 
   // check if we are too slow and need to recache
@@ -1341,6 +1336,7 @@ void CDVDPlayer::ProcessVideoData(CDemuxStream* pStream, DemuxPacket* pPacket)
       OpenVideoStream(pPacket->iStreamId, pStream->source);
 
     m_CurrentVideo.stream = (void*)pStream;
+    m_CurrentVideo.changes = pStream->changes;
   }
 
   // check if we are too slow and need to recache
@@ -1374,6 +1370,7 @@ void CDVDPlayer::ProcessSubData(CDemuxStream* pStream, DemuxPacket* pPacket)
       OpenSubtitleStream(pPacket->iStreamId, pStream->source);
 
     m_CurrentSubtitle.stream = (void*)pStream;
+    m_CurrentSubtitle.changes = pStream->changes;
   }
 
   UpdateTimestamps(m_CurrentSubtitle, pPacket);
@@ -1402,6 +1399,7 @@ void CDVDPlayer::ProcessTeletextData(CDemuxStream* pStream, DemuxPacket* pPacket
       OpenTeletextStream( pPacket->iStreamId, pStream->source );
 
     m_CurrentTeletext.stream = (void*)pStream;
+    m_CurrentTeletext.changes = pStream->changes;
   }
   UpdateTimestamps(m_CurrentTeletext, pPacket);
 
@@ -2924,6 +2922,9 @@ bool CDVDPlayer::OpenVideoStream(int iStream, int source, bool reset)
   if(pMenus && pMenus->IsInMenu())
     hint.stills = true;
 
+  if (hint.stereo_mode.empty())
+    hint.stereo_mode = CStereoscopicsManager::Get().DetectStereoModeByString(m_filename);
+
   if(m_CurrentVideo.id    < 0
   || m_CurrentVideo.hint != hint)
   {
@@ -3061,6 +3062,7 @@ bool CDVDPlayer::OpenSubtitleStream(int iStream, int source)
   m_CurrentSubtitle.stream = (void*)pStream;
   m_CurrentSubtitle.started = false;
 
+  CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleStream = m_SelectionStreams.IndexOf(STREAM_SUBTITLE, source, iStream);
   return true;
 }
 
@@ -3319,10 +3321,10 @@ int CDVDPlayer::OnDVDNavResult(void* pData, int iMessage)
           m_dvd.iDVDStillStartTime = XbmcThreads::SystemClockMillis();
 
           /* adjust for the output delay in the video queue */
-          DWORD time = 0;
+          unsigned int time = 0;
           if( m_CurrentVideo.stream && m_dvd.iDVDStillTime > 0 )
           {
-            time = (DWORD)(m_dvdPlayerVideo.GetOutputDelay() / ( DVD_TIME_BASE / 1000 ));
+            time = (unsigned int)(m_dvdPlayerVideo.GetOutputDelay() / ( DVD_TIME_BASE / 1000 ));
             if( time < 10000 && time > 0 )
               m_dvd.iDVDStillTime += time;
           }
@@ -3336,7 +3338,7 @@ int CDVDPlayer::OnDVDNavResult(void* pData, int iMessage)
       break;
     case DVDNAV_SPU_CLUT_CHANGE:
       {
-        m_dvdPlayerSubtitle.SendMessage(new CDVDMsgSubtitleClutChange((BYTE*)pData));
+        m_dvdPlayerSubtitle.SendMessage(new CDVDMsgSubtitleClutChange((uint8_t*)pData));
       }
       break;
     case DVDNAV_SPU_STREAM_CHANGE:
@@ -3525,6 +3527,11 @@ bool CDVDPlayer::OnAction(const CAction &action)
         THREAD_ACTION(action);
         CLog::Log(LOGDEBUG, " - go to menu");
         pMenus->OnMenu();
+        if (m_playSpeed == DVD_PLAYSPEED_PAUSE)
+        {
+          SetPlaySpeed(DVD_PLAYSPEED_NORMAL);
+          m_callback.OnPlayBackResumed();
+        }
         // send a message to everyone that we've gone to the menu
         CGUIMessage msg(GUI_MSG_VIDEO_MENU_STARTED, 0, 0);
         g_windowManager.SendThreadMessage(msg);
@@ -3825,6 +3832,9 @@ void CDVDPlayer::GetVideoStreamInfo(SPlayerVideoStreamInfo &info)
   info.videoCodecName = retVal;
   info.videoAspectRatio = m_dvdPlayerVideo.GetAspectRatio();
   m_dvdPlayerVideo.GetVideoRect(info.SrcRect, info.DestRect);
+  info.stereoMode = m_dvdPlayerVideo.GetStereoMode();
+  if (info.stereoMode == "mono")
+    info.stereoMode = "";
 }
 
 int CDVDPlayer::GetSourceBitrate()

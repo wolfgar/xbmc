@@ -4,7 +4,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -132,3 +132,7 @@
 
 // Message sent to CGUIWindowSlideshow to show picture
 #define GUI_MSG_SHOW_PICTURE          GUI_MSG_USER + 36
+
+// Sent to text field to support 'input method'
+#define GUI_MSG_INPUT_TEXT            GUI_MSG_USER + 37
+#define GUI_MSG_INPUT_TEXT_EDIT       GUI_MSG_USER + 38

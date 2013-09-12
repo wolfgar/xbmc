@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ bool CDVDDemuxVobsub::Open(const string& filename, const string& subfilename)
 
   CDVDStreamInfo hints;
   CDVDCodecOptions options;
-  hints.codec = CODEC_ID_DVD_SUBTITLE;
+  hints.codec = AV_CODEC_ID_DVD_SUBTITLE;
 
   char line[2048];
   DECLARE_UNUSED(bool,res)
@@ -133,14 +133,14 @@ bool CDVDDemuxVobsub::SeekTime(int time, bool backwords, double* startpts)
 {
   double pts = DVD_MSEC_TO_TIME(time);
   m_Timestamp = m_Timestamps.begin();
-  for(;m_Timestamp != m_Timestamps.end();m_Timestamp++)
+  for(;m_Timestamp != m_Timestamps.end();++m_Timestamp)
   {
     if(m_Timestamp->pts > pts)
       break;
   }
   for(unsigned i=0;i<m_Streams.size() && m_Timestamps.begin() != m_Timestamp;i++)
   {
-    m_Timestamp--;
+    --m_Timestamp;
   }
   return true;
 }
@@ -212,7 +212,7 @@ bool CDVDDemuxVobsub::ParseId(SState& state, char* line)
   else
     stream->iPhysicalId = -1;
 
-  stream->codec = CODEC_ID_DVD_SUBTITLE;
+  stream->codec = AV_CODEC_ID_DVD_SUBTITLE;
   stream->iId = m_Streams.size();
 
   state.id = stream->iId;

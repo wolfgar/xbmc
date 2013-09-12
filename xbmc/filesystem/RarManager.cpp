@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -117,7 +117,7 @@ bool CRarManager::CacheRarredFile(CStdString& strPathInCache, const CStdString& 
     {
       CFileItemList items;
       CDirectory::GetDirectory(g_advancedSettings.m_cachePath,items);
-      items.Sort(SORT_METHOD_SIZE, SortOrderDescending);
+      items.Sort(SortBySize, SortOrderDescending);
       while (items.Size() && CheckFreeSpace(strDir) < iSize)
       {
         if (!items[0]->m_bIsFolder)
@@ -132,7 +132,7 @@ bool CRarManager::CacheRarredFile(CStdString& strPathInCache, const CStdString& 
   }
 
   CStdString strPath = strPathInRar;
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   strPath.Replace('/', '\\');
 #endif
   //g_charsetConverter.unknownToUTF8(strPath);
@@ -145,8 +145,6 @@ bool CRarManager::CacheRarredFile(CStdString& strPathInCache, const CStdString& 
     return false;
   }
   strCachedPath = CUtil::MakeLegalPath(strCachedPath);
-  CStdString strCachedDir;
-  URIUtils::GetDirectory(strCachedPath, strCachedDir);
   int64_t iOffset = -1;
   if (iRes != 2)
   {
@@ -179,7 +177,7 @@ bool CRarManager::CacheRarredFile(CStdString& strPathInCache, const CStdString& 
     if (iSize > 1024*1024 || iSize == -2) // 1MB
       bShowProgress=true;
 
-    CStdString strDir2(strCachedDir);
+    CStdString strDir2 = URIUtils::GetDirectory(strCachedPath);
     URIUtils::RemoveSlashAtEnd(strDir2);
     if (!CDirectory::Exists(strDir2))
       CDirectory::Create(strDir2);

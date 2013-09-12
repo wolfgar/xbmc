@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ CGUIStaticItem::CGUIStaticItem(const TiXmlElement *item, int parentID) : CFileIt
     
 void CGUIStaticItem::UpdateProperties(int contextWindow)
 {
-  for (InfoVector::const_iterator i = m_info.begin(); i != m_info.end(); i++)
+  for (InfoVector::const_iterator i = m_info.begin(); i != m_info.end(); ++i)
   {
     const CGUIInfoLabel &info = i->first;
     const CStdString &name = i->second;

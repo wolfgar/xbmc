@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ bool CPVRChannelGroupInternal::Load(void)
   if (CPVRChannelGroup::Load())
   {
     UpdateChannelPaths();
-    CreateChannelEpgs();
+    g_PVRManager.TriggerEpgsCreate();
     return true;
   }
 
@@ -369,6 +369,8 @@ void CPVRChannelGroupInternal::CreateChannelEpg(CPVRChannelPtr channel, bool bFo
 
 bool CPVRChannelGroupInternal::CreateChannelEpgs(bool bForce /* = false */)
 {
+  if (!g_EpgContainer.IsStarted())
+    return false;
   {
     CSingleLock lock(m_critSection);
     for (unsigned int iChannelPtr = 0; iChannelPtr < m_members.size(); iChannelPtr++)

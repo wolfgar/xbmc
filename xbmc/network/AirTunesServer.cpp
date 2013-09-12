@@ -2,19 +2,23 @@
  * Many concepts and protocol specification in this code are taken
  * from Shairport, by James Laird.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2.1, or (at your option)
+ *  any later version.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include "network/Network.h"
@@ -44,6 +48,7 @@
 #include "guilib/GUIWindowManager.h"
 #include "utils/Variant.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
 #include "utils/EndianSwap.h"
 #include "URL.h"
 #include "interfaces/AnnouncementManager.h"
@@ -206,7 +211,8 @@ void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *s
 #ifdef HAS_AIRPLAY
   CAirPlayServer::backupVolume();
 #endif
-  g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
+  if (CSettings::Get().GetBool("services.airplayvolumecontrol"))
+    g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen)
@@ -309,7 +315,8 @@ void  CAirTunesServer::AudioOutputFunctions::ao_set_volume(float volume)
 #ifdef HAS_AIRPLAY
   CAirPlayServer::backupVolume();
 #endif
-  g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
+  if (CSettings::Get().GetBool("services.airplayvolumecontrol"))
+    g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
 }
 
 
@@ -318,7 +325,7 @@ int CAirTunesServer::AudioOutputFunctions::ao_play(ao_device *device, char *outp
   if (!device)
     return 0;
 
-  /*if (num_bytes && g_application.m_pPlayer)
+  /*if (num_bytes && g_application.m_pPlayer->HasPlayer())
     g_application.m_pPlayer->SetCaching(CACHESTATE_NONE);*///TODO
 
   ao_device_xbmc* device_xbmc = (ao_device_xbmc*) device;

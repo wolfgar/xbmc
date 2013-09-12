@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -151,6 +150,33 @@ namespace XBMCAddon
     virtual ~CallbackFunction() { deallocating(); }
 
     virtual void executeCallback() { TRACE; ((*obj).*(meth))(param1,param2); }
+  };
+
+
+  /**
+   * This is the template to carry a callback to a member function
+   *  that returns 'void' (has no return) and takes three parameters.
+   */
+  template<class M, typename P1, typename P2, typename P3> class CallbackFunction<M,P1,P2,P3, cb_null_type, cb_null_type> : public Callback
+  {
+  public:
+    typedef void (M::*MemberFunction)(P1,P2,P3);
+
+  protected:
+    MemberFunction meth;
+    M* obj;
+    P1 param1;
+    P2 param2;
+    P3 param3;
+
+  public:
+    CallbackFunction(M* object, MemberFunction method, P1 parameter, P2 parameter2, P3 parameter3) : 
+      Callback(object, "CallbackFunction<M,P1,P2,P3>"), meth(method), obj(object),
+      param1(parameter), param2(parameter2), param3(parameter3) {}
+
+    virtual ~CallbackFunction() { deallocating(); }
+
+    virtual void executeCallback() { TRACE; ((*obj).*(meth))(param1,param2,param3); }
   };
 
 

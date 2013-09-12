@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -207,6 +207,7 @@ protected:
   int m_itemCount;
   bool m_bRunning;
   bool m_bCanInterrupt;
+  bool m_bClean;
   bool m_needsCleanup;
   int m_scanType; // 0 - load from files, 1 - albums, 2 - artists
   CMusicDatabase m_musicDatabase;

@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,10 @@
  */
 
 #include "utils/StdString.h"
+
+// Reserved 0 - 255
+//  XBIRRemote.h
+//  XINPUT_IR_REMOTE-*
 
 // Analogue - don't change order
 #define KEY_BUTTON_A                        256
@@ -315,6 +319,12 @@
 
 #define ACTION_SWITCH_PLAYER          234
 
+#define ACTION_STEREOMODE_NEXT        235
+#define ACTION_STEREOMODE_PREVIOUS    236
+#define ACTION_STEREOMODE_TOGGLE      237 // turns 3d mode on/off
+#define ACTION_STEREOMODE_SELECT      238
+#define ACTION_STEREOMODE_TOMONO      239
+
 #define ACTION_SETTINGS_RESET         240
 #define ACTION_SETTINGS_LEVEL_CHANGE  241
 
@@ -460,7 +470,7 @@ public:
   CKey(const CKey& key);
 
   virtual ~CKey(void);
-  const CKey& operator=(const CKey& key);
+  CKey& operator=(const CKey& key);
   uint8_t GetLeftTrigger() const;
   uint8_t GetRightTrigger() const;
   float GetLeftThumbX() const;
@@ -486,7 +496,8 @@ public:
     MODIFIER_SHIFT = 0x00020000,
     MODIFIER_ALT   = 0x00040000,
     MODIFIER_RALT  = 0x00080000,
-    MODIFIER_SUPER = 0x00100000
+    MODIFIER_SUPER = 0x00100000,
+    MODIFIER_META  = 0X00200000
   };
 
 private:

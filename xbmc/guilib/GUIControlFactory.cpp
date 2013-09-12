@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -255,6 +255,7 @@ bool CGUIControlFactory::GetTexture(const TiXmlNode* pRootNode, const char* strT
   const char *flipY = pNode->Attribute("flipy");
   if (flipY && strcmpi(flipY, "true") == 0) image.orientation = 3 - image.orientation;  // either 3 or 2
   image.diffuse = pNode->Attribute("diffuse");
+  image.diffuseColor.Parse(pNode->Attribute("colordiffuse"), 0);
   const char *background = pNode->Attribute("background");
   if (background && strnicmp(background, "true", 4) == 0)
     image.useLarge = true;
@@ -756,6 +757,7 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   GetInfoColor(pControlNode, "disabledcolor", labelInfo.disabledColor, parentID);
   GetInfoColor(pControlNode, "shadowcolor", labelInfo.shadowColor, parentID);
   GetInfoColor(pControlNode, "selectedcolor", labelInfo.selectedColor, parentID);
+  GetInfoColor(pControlNode, "invalidcolor", labelInfo.invalidColor, parentID);
   XMLUtils::GetFloat(pControlNode, "textoffsetx", labelInfo.offsetX);
   XMLUtils::GetFloat(pControlNode, "textoffsety", labelInfo.offsetY);
   int angle = 0;  // use the negative angle to compensate for our vertically flipped cartesian plane
@@ -1065,15 +1067,9 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
     control = new CGUIRSSControl(
       parentID, id, posX, posY, width, height,
       labelInfo, textColor3, headlineColor, strRSSTags);
-
     RssUrls::const_iterator iter = CRssManager::Get().GetUrls().find(iUrlSet);
     if (iter != CRssManager::Get().GetUrls().end())
-    {
-      ((CGUIRSSControl *)control)->SetUrls(iter->second.url,iter->second.rtl);
-      ((CGUIRSSControl *)control)->SetIntervals(iter->second.interval);
-    }
-    else
-      CLog::Log(LOGERROR,"invalid rss url set referenced in skin");
+      ((CGUIRSSControl *)control)->SetUrlSet(iUrlSet);
   }
   else if (type == CGUIControl::GUICONTROL_BUTTON)
   {

@@ -1,24 +1,26 @@
 /*
-* UPnP Support for XBMC
-* Copyright (c) 2006 c0diq (Sylvain Rebaud)
-* Portions Copyright (c) by the authors of libPlatinum
-*
-* http://www.plutinosoft.com/blog/category/platinum/
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ * UPnP Support for XBMC
+ *      Copyright (c) 2006 c0diq (Sylvain Rebaud)
+ *      Portions Copyright (c) by the authors of libPlatinum
+ *      http://www.plutinosoft.com/blog/category/platinum/
+ *      Copyright (C) 2006-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "threads/SystemClock.h"
 #include "UPnP.h"
@@ -216,7 +218,7 @@ public:
 
         if (item.GetVideoInfoTag()->m_resumePoint.timeInSeconds != bookmark.timeInSeconds) {
             CLog::Log(LOGDEBUG, "UPNP: Updating resume point for item %s", path.c_str());
-            long time = bookmark.timeInSeconds;
+            long time = (long)bookmark.timeInSeconds;
             if (time < 0) time = 0;
             curr_value.Append(NPT_String::Format("<upnp:lastPlaybackPosition>%ld</upnp:lastPlaybackPosition>",
                                                  (long)item.GetVideoInfoTag()->m_resumePoint.timeInSeconds));
@@ -510,9 +512,9 @@ CUPnP::CreateServer(int port /* = 0 */)
     device->m_ModelName        = "XBMC Media Center";
     device->m_ModelNumber      = g_infoManager.GetVersion().c_str();
     device->m_ModelDescription = "XBMC Media Center - Media Server";
-    device->m_ModelURL         = "http://www.xbmc.org/";
+    device->m_ModelURL         = "http://xbmc.org/";
     device->m_Manufacturer     = "Team XBMC";
-    device->m_ManufacturerURL  = "http://www.xbmc.org/";
+    device->m_ManufacturerURL  = "http://xbmc.org/";
 
     device->SetDelegate(device);
     return device;
@@ -592,9 +594,9 @@ CUPnP::CreateRenderer(int port /* = 0 */)
     device->m_ModelName        = "XBMC Media Center";
     device->m_ModelNumber      = g_infoManager.GetVersion().c_str();
     device->m_ModelDescription = "XBMC Media Center - Media Renderer";
-    device->m_ModelURL         = "http://www.xbmc.org/";
+    device->m_ModelURL         = "http://xbmc.org/";
     device->m_Manufacturer     = "Team XBMC";
-    device->m_ManufacturerURL  = "http://www.xbmc.org/";
+    device->m_ManufacturerURL  = "http://xbmc.org/";
 
     return device;
 }

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ GUIFontManager::~GUIFontManager(void)
   Clear();
 }
 
-void GUIFontManager::RescaleFontSizeAndAspect(float *size, float *aspect, const RESOLUTION_INFO &sourceRes, bool preserveAspect) const
+void GUIFontManager::RescaleFontSizeAndAspect(float *size, float *aspect, const RESOLUTION_INFO &sourceRes, bool preserveAspect)
 {
   // set scaling resolution so that we can scale our font sizes correctly
   // as fonts aren't scaled at render time (due to aliasing) we must scale
@@ -61,7 +61,7 @@ void GUIFontManager::RescaleFontSizeAndAspect(float *size, float *aspect, const 
   if (preserveAspect)
   {
     // font always displayed in the aspect specified by the aspect parameter
-    *aspect /= g_graphicsContext.GetPixelRatio(g_graphicsContext.GetVideoResolution());
+    *aspect /= g_graphicsContext.GetResInfo().fPixelRatio;
   }
   else
   {
@@ -82,7 +82,7 @@ static bool CheckFont(CStdString& strPath, const CStdString& newPath,
   if (!XFILE::CFile::Exists(strPath))
   {
     strPath = URIUtils::AddFileToFolder(newPath,filename);
-#ifdef _LINUX
+#ifdef TARGET_POSIX
     strPath = CSpecialProtocol::TranslatePathConvertCase(strPath);
 #endif
     return false;
@@ -116,7 +116,7 @@ CGUIFont* GUIFontManager::LoadTTF(const CStdString& strFontName, const CStdStrin
   else
     strPath = strFilename;
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   strPath = CSpecialProtocol::TranslatePathConvertCase(strPath);
 #endif
 
@@ -243,12 +243,12 @@ void GUIFontManager::ReloadTTFFonts(void)
 
 void GUIFontManager::UnloadTTFFonts()
 {
-  for (vector<CGUIFontTTFBase*>::iterator i = m_vecFontFiles.begin(); i != m_vecFontFiles.end(); i++)
+  for (vector<CGUIFontTTFBase*>::iterator i = m_vecFontFiles.begin(); i != m_vecFontFiles.end(); ++i)
     delete (*i);
 
   m_vecFontFiles.clear();
 
-  for (vector<CGUIFont*>::iterator i = m_vecFonts.begin(); i != m_vecFonts.end(); i++)
+  for (vector<CGUIFont*>::iterator i = m_vecFonts.begin(); i != m_vecFonts.end(); ++i)
     (*i)->SetFont(NULL);
 }
 
@@ -596,11 +596,9 @@ void GUIFontManager::SettingOptionsFontsFiller(const CSetting *setting, std::vec
     {
       CFileItemPtr pItem = items[i];
 
-      if (!pItem->m_bIsFolder)
+      if (!pItem->m_bIsFolder
+          && URIUtils::HasExtension(pItem->GetLabel(), ".ttf"))
       {
-        if (!URIUtils::GetExtension(pItem->GetLabel()).Equals(".ttf"))
-          continue;
-
         list.push_back(make_pair(pItem->GetLabel(), pItem->GetLabel()));
       }
     }

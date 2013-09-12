@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -245,6 +245,8 @@ bool CSettingDependency::setType(const std::string &type)
     m_type = SettingDependencyTypeEnable;
   else if (StringUtils::EqualsNoCase(type, "update"))
     m_type = SettingDependencyTypeUpdate;
+  else if (StringUtils::EqualsNoCase(type, "visible"))
+    m_type = SettingDependencyTypeVisible;
   else
     return false;
 

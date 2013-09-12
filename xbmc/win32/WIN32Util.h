@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,9 +21,7 @@
  */
 
 #include "URL.h"
-#if _MSC_VER > 1400
 #include "Cfgmgr32.h"
-#endif
 #include "MediaSource.h"
 #include "guilib/Geometry.h"
 #include "powermanagement/PowerManager.h"
@@ -57,10 +55,12 @@ public:
   static CStdString GetResInfoString();
   static int GetDesktopColorDepth();
   static CStdString GetSpecialFolder(int csidl);
-  static CStdString CWIN32Util::GetSystemPath();
+  static CStdString GetSystemPath();
   static CStdString GetProfilePath();
   static CStdString UncToSmb(const CStdString &strPath);
   static CStdString SmbToUnc(const CStdString &strPath);
+  static bool AddExtraLongPathPrefix(std::wstring& path);
+  static bool RemoveExtraLongPathPrefix(std::wstring& path);
   static void ExtendDllPath();
   static HRESULT ToggleTray(const char cDriveLetter='\0');
   static HRESULT EjectTray(const char cDriveLetter='\0');
@@ -89,9 +89,7 @@ public:
   static bool IsUsbDevice(const CStdStringW &strWdrive);
 
 private:
-#if _MSC_VER > 1400
   static DEVINST GetDrivesDevInstByDiskNumber(long DiskNumber);
-#endif
 };
 
 

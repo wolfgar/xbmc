@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,3 +24,11 @@
  //Additional defines from android.view.KeyEvent (http://developer.android.com/reference/android/view/KeyEvent.html)
 #define AKEYCODE_ESCAPE 111
 #define AKEYCODE_FORWARD_DEL 112
+#define AKEYCODE_CTRL_LEFT 113
+#define AKEYCODE_CTRL_RIGHT 114
+#define AKEYCODE_CAPS_LOCK 115
+#define AKEYCODE_SCROLL_LOCK 116
+#define AKEYCODE_INSERT 124
+#define AKEYCODE_FORWARD 125
+#define AKEYCODE_MEDIA_PLAY 126
+#define AKEYCODE_MEDIA_EJECT 129

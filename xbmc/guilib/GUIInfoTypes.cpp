@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -67,14 +67,14 @@ CGUIInfoColor::CGUIInfoColor(uint32_t color)
   m_info = 0;
 }
 
-const CGUIInfoColor &CGUIInfoColor::operator=(color_t color)
+CGUIInfoColor &CGUIInfoColor::operator=(color_t color)
 {
   m_color = color;
   m_info = 0;
   return *this;
 }
 
-const CGUIInfoColor &CGUIInfoColor::operator=(const CGUIInfoColor &color)
+CGUIInfoColor &CGUIInfoColor::operator=(const CGUIInfoColor &color)
 {
   m_color = color.m_color;
   m_info = color.m_info;

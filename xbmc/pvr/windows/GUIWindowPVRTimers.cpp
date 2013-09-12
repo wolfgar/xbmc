@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -111,7 +111,7 @@ void CGUIWindowPVRTimers::UpdateData(bool bUpdateSelectedFile /* = true */)
   m_parent->m_vecItems->Clear();
   m_parent->m_vecItems->SetPath("pvr://timers/");
   m_parent->Update(m_parent->m_vecItems->GetPath());
-  m_parent->m_vecItems->Sort(m_iSortMethod, m_iSortOrder);
+  m_parent->m_vecItems->Sort(m_iSortMethod, m_iSortOrder, m_iSortAttributes);
   m_parent->m_viewControl.SetItems(*m_parent->m_vecItems);
 
   if (bUpdateSelectedFile)

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ bool CGUIDialogSeekBar::OnMessage(CGUIMessage& message)
 
 void CGUIDialogSeekBar::FrameMove()
 {
-  if (!g_application.m_pPlayer)
+  if (!g_application.m_pPlayer->HasPlayer())
   {
     Close(true);
     return;

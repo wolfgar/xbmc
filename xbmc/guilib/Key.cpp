@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -87,7 +87,7 @@ void CKey::Reset()
   m_held = 0;
 }
 
-const CKey& CKey::operator=(const CKey& key)
+CKey& CKey::operator=(const CKey& key)
 {
   if (&key == this) return * this;
   m_leftTrigger  = key.m_leftTrigger;

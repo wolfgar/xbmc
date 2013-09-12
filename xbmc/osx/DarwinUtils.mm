@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -362,7 +362,7 @@ int DarwinBatteryLevel(void)
     powerSourceVal = CFDictionaryGetValue(powerSource, CFSTR(kIOPSMaxCapacityKey));
     CFNumberGetValue((CFNumberRef)powerSourceVal, kCFNumberSInt32Type, &maxLevel);
 
-    batteryLevel = (int)((double)curLevel/(double)maxLevel);
+    batteryLevel = (double)curLevel/(double)maxLevel;
   }
 #endif
   return batteryLevel * 100;  
@@ -379,7 +379,7 @@ void DarwinSetScheduling(int message)
   policy = SCHED_OTHER;
   thread_extended_policy_data_t theFixedPolicy={true};
 
-  if (message == GUI_MSG_PLAYBACK_STARTED && g_application.IsPlayingVideo())
+  if (message == GUI_MSG_PLAYBACK_STARTED && g_application.m_pPlayer->IsPlayingVideo())
   {
     policy = SCHED_RR;
     theFixedPolicy.timeshare = false;

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -244,7 +244,8 @@ double CDVDClock::SystemToPlaying(int64_t system)
   {
     m_startClock = system;
     m_systemUsed = m_systemFrequency;
-    m_pauseClock = 0;
+    if(m_pauseClock)
+      m_pauseClock = m_startClock;
     m_iDisc = 0;
     m_bReset = false;
   }

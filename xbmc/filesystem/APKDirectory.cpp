@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,9 +41,6 @@ bool CAPKDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   CStdString path = url.GetFileName();
   CStdString host = url.GetHostName();
   URIUtils::AddSlashAtEnd(path);
-
-  // host name might be encoded rfc1738.txt, decode it.
-  CURL::Decode(host);
 
   int zip_flags = 0, zip_error = 0, dir_marker = 0;
   struct zip *zip_archive;

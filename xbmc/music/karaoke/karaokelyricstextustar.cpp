@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -157,9 +157,8 @@ bool CKaraokeLyricsTextUStar::Load()
       m_artist = value;
     else if ( key == "VIDEO" )
     {
-      CStdString videopath;
-      URIUtils::GetDirectory( m_lyricsFile, videopath );
-      m_videoFile = videopath + value;
+      m_videoFile = URIUtils::GetDirectory(m_lyricsFile);
+      m_videoFile = URIUtils::AddFileToFolder(m_videoFile, value);
 
       if ( !XFILE::CFile::Exists( m_videoFile ) )
       {

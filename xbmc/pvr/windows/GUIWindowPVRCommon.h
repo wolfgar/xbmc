@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -139,7 +139,8 @@ namespace PVR
     bool             m_bUpdateRequired;
     int              m_iSelected;
     SortOrder        m_iSortOrder;
-    SORT_METHOD      m_iSortMethod;
+    SortBy           m_iSortMethod;
+    SortAttribute    m_iSortAttributes;
     CCriticalSection m_critSection;
     CDirectoryHistory m_history;
   };

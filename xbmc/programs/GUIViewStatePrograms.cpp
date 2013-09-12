@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,15 +32,13 @@ using namespace XFILE;
 
 CGUIViewStateWindowPrograms::CGUIViewStateWindowPrograms(const CFileItemList& items) : CGUIViewState(items)
 {
-  if (CSettings::Get().GetBool("filelists.ignorethewhensorting"))
-    AddSortMethod(SORT_METHOD_LABEL_IGNORE_THE, 551, LABEL_MASKS("%K", "%I", "%L", ""));  // Titel, Size | Foldername, empty
-  else
-    AddSortMethod(SORT_METHOD_LABEL, 551, LABEL_MASKS("%K", "%I", "%L", ""));  // Titel, Size | Foldername, empty
+  AddSortMethod(SortByLabel, 551, LABEL_MASKS("%K", "%I", "%L", ""),  // Titel, Size | Foldername, empty
+    CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
 
   const CViewState *viewState = CViewStateSettings::Get().Get("programs");
-  SetSortMethod(viewState->m_sortMethod);
+  SetSortMethod(viewState->m_sortDescription);
   SetViewAsControl(viewState->m_viewMode);
-  SetSortOrder(viewState->m_sortOrder);
+  SetSortOrder(viewState->m_sortDescription.sortOrder);
 
   LoadViewState(items.GetPath(), WINDOW_PROGRAMS);
 }

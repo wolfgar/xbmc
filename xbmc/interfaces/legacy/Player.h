@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -50,12 +49,13 @@ namespace XBMCAddon
      *          - xbmc.PLAYER_CORE_DVDPLAYER
      *          - xbmc.PLAYER_CORE_MPLAYER
      *          - xbmc.PLAYER_CORE_PAPLAYER
-     *
-     * This class is a merge of what was previously in xbmcmodule/player.h
-     *  and xbmcmodule/PythonPlayer.h without the python references. The
-     *  queuing and handling of asynchronous callbacks is done internal to
-     *  this class.
      */
+
+    // This class is a merge of what was previously in xbmcmodule/player.h
+    //  and xbmcmodule/PythonPlayer.h without the python references. The
+    //  queuing and handling of asynchronous callbacks is done internal to
+    //  this class.
+
     class Player : public AddonCallback, public IPlayerCallback
     {
     private:
@@ -72,39 +72,39 @@ namespace XBMCAddon
       virtual ~Player(void);
 
       /**
-       * playStream([item, listitem, windowed]) -- Play this item.
-       * 
-       * item           : [opt] string - filename or url.
-       * listitem       : [opt] listitem - used with setInfo() to set different infolabels.
-       * windowed       : [opt] bool - true=play video windowed, false=play users preference.(default)
-       * 
-       * *Note, If item is not given then the Player will try to play the current item
-       *        in the current playlist.
-       * 
-       *        You can use the above as keywords for arguments and skip certain optional arguments.
-       *        Once you use a keyword, all following arguments require the keyword.
+       * playStream([item, listitem, windowed]) -- Play this item.\n
+       * \n
+       * item           : [opt] string - filename or url.\n
+       * listitem       : [opt] listitem - used with setInfo() to set different infolabels.\n
+       * windowed       : [opt] bool - true=play video windowed, false=play users preference.(default)\n
+       * \n
+       * *Note, If item is not given then the Player will try to play the current item\n
+       *        in the current playlist.\n
+       * \n
+       *        You can use the above as keywords for arguments and skip certain optional arguments.\n
+       *        Once you use a keyword, all following arguments require the keyword.\n
        * 
        * example:
        *   - listitem = xbmcgui.ListItem('Ironman')
        *   - listitem.setInfo('video', {'Title': 'Ironman', 'Genre': 'Science Fiction'})
-       *   - xbmc.Player( xbmc.PLAYER_CORE_MPLAYER ).play(url, listitem, windowed)\n
+       *   - xbmc.Player( xbmc.PLAYER_CORE_MPLAYER ).play(url, listitem, windowed)
        */
       void playStream(const String& item = emptyString, const XBMCAddon::xbmcgui::ListItem* listitem = NULL, bool windowed = false);
 
       /**
-       * playPlaylist([playlist, windowed, startpos]) -- Play this item.
-       * 
-       * playlist       : [opt] playlist.
-       * windowed       : [opt] bool - true=play video windowed, false=play users preference.(default)
-       * startpos       : [opt] int - Playlist starting position (0 based). If not given, current position is used
-       * 
-       * *Note, If playlist is not given then the Player will try to play the current item
-       *        in the current playlist.
-       * 
-       *        You can use the above as keywords for arguments and skip certain optional arguments.
-       *        Once you use a keyword, all following arguments require the keyword.
-       * 
-       * example:
+       * playPlaylist([playlist, windowed, startpos]) -- Play this item.\n
+       * \n
+       * playlist       : [opt] playlist.\n
+       * windowed       : [opt] bool - true=play video windowed, false=play users preference.(default)\n
+       * startpos       : [opt] int - Playlist starting position (0 based). If not given, current position is used\n
+       * \n
+       * *Note, If playlist is not given then the Player will try to play the current item\n
+       *        in the current playlist.\n
+       * \n
+       *        You can use the above as keywords for arguments and skip certain optional arguments.\n
+       *        Once you use a keyword, all following arguments require the keyword.\n
+       * \n
+       * example:\n
        */
       void playPlaylist(const PlayList* playlist = NULL,
                         bool windowed = false, int startpos=-1);
@@ -206,7 +206,7 @@ namespace XBMCAddon
       /**
        * onPlayBackSeek(time, seekOffset) -- onPlayBackSeek method.
        * 
-       * time           : integer - time to seek to.
+       * time           : integer - time to seek to.\n
        * seekOffset     : integer - ?.
        * 
        * Will be called when user seeks to a time
@@ -267,7 +267,7 @@ namespace XBMCAddon
       void seekTime(double seekTime) throw(PlayerException);
 
       /**
-       * setSubtitles() -- set subtitle file and enable subtitles\n
+       * setSubtitles() -- set subtitle file and enable subtitlesn
        */
       // Player_SetSubtitles
       void setSubtitles(const char* subtitleFile);
@@ -277,6 +277,7 @@ namespace XBMCAddon
        * showSubtitles(visible) -- enable/disable subtitles
        * 
        * visible        : boolean - True for visible subtitles.
+       *
        * example:
        * - xbmc.Player().showSubtitles(True)
        */
@@ -289,7 +290,7 @@ namespace XBMCAddon
       String getSubtitles();
 
       /**
-       * DisableSubtitles() -- disable subtitles\n
+       * DisableSubtitles() -- disable subtitles
        */
       // Player_DisableSubtitles
       void disableSubtitles();

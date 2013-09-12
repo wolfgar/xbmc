@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -58,7 +58,6 @@ public:
   virtual void GetAudioInfo(CStdString& strAudioInfo);
   virtual void GetVideoInfo(CStdString& strVideoInfo);
   virtual void GetGeneralInfo( CStdString& strVideoInfo);
-  virtual void Update(bool bPauseDrawing)                       {}
   virtual void SwitchToNextAudioLanguage();
   virtual bool CanRecord() { return false; }
   virtual bool IsRecording() { return false; }
@@ -79,12 +78,12 @@ public:
   virtual CStdString GetPlayerState();
   virtual bool SetPlayerState(CStdString state);
   
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
   virtual BOOL ExecuteAppW32(const char* strPath, const char* strSwitches);
   //static void CALLBACK AppFinished(void* closure, BOOLEAN TimerOrWaitFired);
 #elif defined(TARGET_ANDROID)
   virtual BOOL ExecuteAppAndroid(const char* strSwitches,const char* strPath);
-#elif defined(_LINUX)
+#elif defined(TARGET_POSIX)
   virtual BOOL ExecuteAppLinux(const char* strSwitches);
 #endif
 
@@ -101,7 +100,7 @@ private:
   int m_time;
   CStdString m_launchFilename;
   HWND m_hwndXbmc; 
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
   POINT m_ptCursorpos;
   PROCESS_INFORMATION m_processInfo;
 #endif 

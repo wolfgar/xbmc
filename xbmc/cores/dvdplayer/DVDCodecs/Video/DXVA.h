@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ public:
   virtual int  Check     (AVCodecContext* avctx);
   virtual void Close();
   virtual const std::string Name() { return "dxva2"; }
+  virtual unsigned GetAllowedReferences();
 
   bool  OpenTarget(const GUID &guid);
   bool  OpenDecoder();

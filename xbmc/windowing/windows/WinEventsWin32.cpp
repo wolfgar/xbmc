@@ -1,22 +1,22 @@
 /*
 *      Copyright (C) 2005-2013 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
@@ -49,8 +49,10 @@
 #include "utils/JobManager.h"
 #include "network/Zeroconf.h"
 #include "network/ZeroconfBrowser.h"
+#include "GUIUserMessages.h"
+#include "utils/CharsetConverter.h"
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 
 using namespace PERIPHERALS;
 
@@ -485,7 +487,7 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
       switch( wParam&0xFFF0 )
       {
         case SC_MONITORPOWER:
-          if (g_application.IsPlaying() || g_application.IsPaused())
+          if (g_application.m_pPlayer->IsPlaying() || g_application.m_pPlayer->IsPausedPlayback())
             return 0;
           else if(CSettings::Get().GetInt("powermanagement.displaysoff") == 0)
             return 0;

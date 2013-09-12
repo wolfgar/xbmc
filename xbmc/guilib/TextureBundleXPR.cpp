@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include "GraphicContext.h"
 #include "DirectXGraphics.h"
 #include "utils/log.h"
-#ifndef _LINUX
+#ifndef TARGET_POSIX
 #include <sys/stat.h>
 #include "utils/CharsetConverter.h"
 #endif
@@ -35,7 +35,7 @@
 #include "utils/EndianSwap.h"
 #include "utils/URIUtils.h"
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #pragma comment(lib,"liblzo2.lib")
 #endif
 
@@ -58,10 +58,14 @@ public:
   CAutoBuffer() { p = 0; }
   explicit CAutoBuffer(size_t s) { p = (BYTE*)malloc(s); }
   ~CAutoBuffer() { free(p); }
-operator BYTE*() { return p; }
+operator BYTE*() const { return p; }
   void Set(BYTE* buf) { free(p); p = buf; }
   bool Resize(size_t s);
 void Release() { p = 0; }
+
+private:
+  CAutoBuffer(const CAutoBuffer&);
+  CAutoBuffer& operator=(const CAutoBuffer&);
 };
 
 bool CAutoBuffer::Resize(size_t s)
@@ -91,7 +95,7 @@ public:
   CAutoTexBuffer() { p = 0; }
   explicit CAutoTexBuffer(size_t s) { p = (BYTE*)XPhysicalAlloc(s, MAXULONG_PTR, 128, PAGE_READWRITE); }
   ~CAutoTexBuffer() { if (p) XPhysicalFree(p); }
-operator BYTE*() { return p; }
+operator BYTE*() const { return p; }
   BYTE* Set(BYTE* buf) { if (p) XPhysicalFree(p); return p = buf; }
 void Release() { p = 0; }
 };
@@ -140,7 +144,7 @@ bool CTextureBundleXPR::OpenBundle()
 
   strPath = CSpecialProtocol::TranslatePathConvertCase(strPath);
 
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   CStdStringW strPathW;
   g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(strPath), strPathW, false);
   m_hFile = _wfopen(strPathW.c_str(), L"rb");
@@ -257,7 +261,7 @@ void CTextureBundleXPR::GetTexturesFromPath(const CStdString &path, std::vector<
     testPath += "\\";
   int testLength = testPath.GetLength();
   std::map<CStdString, FileHeader_t>::iterator it;
-  for (it = m_FileHeaders.begin(); it != m_FileHeaders.end(); it++)
+  for (it = m_FileHeaders.begin(); it != m_FileHeaders.end(); ++it)
   {
     if (it->first.Left(testLength).Equals(testPath))
       textures.push_back(it->first);
@@ -278,13 +282,13 @@ bool CTextureBundleXPR::LoadFile(const CStdString& Filename, CAutoTexBuffer& Unp
 
   if (!buffer || !UnpackedBuf.Set((BYTE*)XPhysicalAlloc(file->second.UnpackedSize, MAXULONG_PTR, 128, PAGE_READWRITE)))
   { // failed due to lack of memory
-#ifndef _LINUX
+#ifndef TARGET_POSIX
     MEMORYSTATUSEX stat;
     stat.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&stat);
     CLog::Log(LOGERROR, "Out of memory loading texture: %s (need %lu bytes, have %"PRIu64" bytes)", name.c_str(),
               file->second.UnpackedSize + file->second.PackedSize, stat.ullAvailPhys);
-#elif defined(TARGET_DARWIN) || defined(__FreeBSD__)
+#elif defined(TARGET_DARWIN) || defined(TARGET_FREEBSD)
     CLog::Log(LOGERROR, "Out of memory loading texture: %s (need %d bytes)", name.c_str(),
               file->second.UnpackedSize + file->second.PackedSize);
 #else

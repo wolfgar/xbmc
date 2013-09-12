@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "playlists/PlayListFactory.h"
 #include "profiles/ProfilesManager.h"
 #include "video/VideoDatabase.h"
+#include "video/dialogs/GUIDialogVideoInfo.h"
 #include "video/windows/GUIWindowVideoNav.h"
 #include "music/tags/MusicInfoTag.h"
 #include "guilib/GUIWindowManager.h"
@@ -47,6 +48,7 @@
 #include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/LegacyPathTranslation.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "TextureCache.h"
@@ -70,6 +72,8 @@ using namespace MUSICDATABASEDIRECTORY;
 #define CONTROL_BTNMANUALINFO     17
 #define CONTROL_BTN_FILTER        19
 #define CONTROL_LABELEMPTY        18
+
+#define CONTROL_UPDATE_LIBRARY    20
 
 CGUIWindowMusicNav::CGUIWindowMusicNav(void)
     : CGUIWindowMusicBase(WINDOW_MUSIC_NAV, "MyMusicNav.xml")
@@ -164,6 +168,14 @@ bool CGUIWindowMusicNav::OnMessage(CGUIMessage& message)
         SetProperty("search", search);
         return true;
       }
+      else if (iControl == CONTROL_UPDATE_LIBRARY)
+      {
+        if (!g_application.IsMusicScanning())
+          g_application.StartMusicScan("");
+        else
+          g_application.StopMusicScan();
+        return true;
+      }
     }
     break;
   case GUI_MSG_PLAYBACK_STOPPED:
@@ -206,31 +218,32 @@ bool CGUIWindowMusicNav::OnAction(const CAction& action)
 
 CStdString CGUIWindowMusicNav::GetQuickpathName(const CStdString& strPath) const
 {
-  if (strPath.Equals("musicdb://genres/") || strPath.Equals("musicdb://1/"))
+  CStdString path = CLegacyPathTranslation::TranslateMusicDbPath(strPath);
+  if (path.Equals("musicdb://genres/"))
     return "Genres";
-  else if (strPath.Equals("musicdb://artists/") || strPath.Equals("musicdb://2/"))
+  else if (path.Equals("musicdb://artists/"))
     return "Artists";
-  else if (strPath.Equals("musicdb://albums/") || strPath.Equals("musicdb://3/"))
+  else if (path.Equals("musicdb://albums/"))
     return "Albums";
-  else if (strPath.Equals("musicdb://songs/") || strPath.Equals("musicdb://4/"))
+  else if (path.Equals("musicdb://songs/"))
     return "Songs";
-  else if (strPath.Equals("musicdb://top100/") || strPath.Equals("musicdb://5/"))
+  else if (path.Equals("musicdb://top100/"))
     return "Top100";
-  else if (strPath.Equals("musicdb://top100/songs/") || strPath.Equals("musicdb://5/2/"))
+  else if (path.Equals("musicdb://top100/songs/"))
     return "Top100Songs";
-  else if (strPath.Equals("musicdb://top100/albums/") || strPath.Equals("musicdb://5/1/"))
+  else if (path.Equals("musicdb://top100/albums/"))
     return "Top100Albums";
-  else if (strPath.Equals("musicdb://recentlyaddedalbums/") || strPath.Equals("musicdb://6/"))
+  else if (path.Equals("musicdb://recentlyaddedalbums/"))
     return "RecentlyAddedAlbums";
-  else if (strPath.Equals("musicdb://recentlyplayedalbums/") || strPath.Equals("musicdb://7/"))
+  else if (path.Equals("musicdb://recentlyplayedalbums/"))
     return "RecentlyPlayedAlbums";
-  else if (strPath.Equals("musicdb://compilations/") || strPath.Equals("musicdb://8/"))
+  else if (path.Equals("musicdb://compilations/"))
     return "Compilations";
-  else if (strPath.Equals("musicdb://years/") || strPath.Equals("musicdb://9/"))
+  else if (path.Equals("musicdb://years/"))
     return "Years";
-  else if (strPath.Equals("musicdb://singles/") || strPath.Equals("musicdb://10/"))
+  else if (path.Equals("musicdb://singles/"))
     return "Singles";
-  else if (strPath.Equals("special://musicplaylists/"))
+  else if (path.Equals("special://musicplaylists/"))
     return "Playlists";
   else
   {
@@ -379,6 +392,8 @@ void CGUIWindowMusicNav::UpdateButtons()
   SET_CONTROL_LABEL(CONTROL_FILTER, strLabel);
 
   SET_CONTROL_SELECTED(GetID(),CONTROL_BTNPARTYMODE, g_partyModeManager.IsEnabled());
+
+  CONTROL_ENABLE_ON_CONDITION(CONTROL_UPDATE_LIBRARY, !m_vecItems->IsAddonsPath() && !m_vecItems->IsPlugin() && !m_vecItems->IsScript());
 }
 
 void CGUIWindowMusicNav::PlayItem(int iItem)
@@ -533,14 +548,6 @@ void CGUIWindowMusicNav::GetContextButtons(int itemNumber, CContextButtons &butt
   }
   // noncontextual buttons
 
-  if (g_application.IsMusicScanning())
-    buttons.Add(CONTEXT_BUTTON_STOP_SCANNING, 13353);     // Stop Scanning
-  else
-  {
-    if (!m_vecItems->IsPlugin())
-      buttons.Add(CONTEXT_BUTTON_UPDATE_LIBRARY, 653);
-  }
-
   CGUIWindowMusicBase::GetNonContextButtons(buttons);
 }
 
@@ -608,12 +615,6 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     OnInfoAll(itemNumber);
     return true;
 
-  case CONTEXT_BUTTON_UPDATE_LIBRARY:
-    {
-      g_application.StartMusicScan("");
-      return true;
-    }
-
   case CONTEXT_BUTTON_SET_DEFAULT:
     CSettings::Get().SetString("mymusic.defaultlibview", GetQuickpathName(item->GetPath()));
     CSettings::Get().Save();
@@ -645,19 +646,19 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     }
 
   case CONTEXT_BUTTON_MARK_WATCHED:
-    CGUIWindowVideoBase::MarkWatched(item,true);
+    CGUIDialogVideoInfo::MarkWatched(item, true);
     CUtil::DeleteVideoDatabaseDirectoryCache();
     Refresh();
     return true;
 
   case CONTEXT_BUTTON_MARK_UNWATCHED:
-    CGUIWindowVideoBase::MarkWatched(item,false);
+    CGUIDialogVideoInfo::MarkWatched(item, false);
     CUtil::DeleteVideoDatabaseDirectoryCache();
     Refresh();
     return true;
 
   case CONTEXT_BUTTON_RENAME:
-    CGUIWindowVideoBase::UpdateVideoTitle(item.get());
+    CGUIDialogVideoInfo::UpdateVideoItemTitle(item);
     CUtil::DeleteVideoDatabaseDirectoryCache();
     Refresh();
     return true;
@@ -701,7 +702,7 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
         ADDON::AddonPtr defaultScraper;
         if (ADDON::CAddonMgr::Get().GetDefault(ADDON::ScraperTypeFromContent(content), defaultScraper))
         {
-          scraper = boost::dynamic_pointer_cast<ADDON::CScraper>(defaultScraper->Clone(defaultScraper));
+          scraper = boost::dynamic_pointer_cast<ADDON::CScraper>(defaultScraper->Clone());
         }
       }
 
@@ -770,7 +771,7 @@ void CGUIWindowMusicNav::OnSearchUpdate()
   if (!search.IsEmpty())
   {
     CStdString path = "musicsearch://" + search + "/";
-    m_history.ClearPathHistory();
+    m_history.ClearSearchHistory();
     Update(path);
   }
   else if (m_vecItems->IsVirtualDirectoryRoot())

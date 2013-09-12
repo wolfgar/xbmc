@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -691,19 +691,28 @@ JSONRPC_STATUS CVideoLibrary::Clean(const CStdString &method, ITransportLayer *t
 bool CVideoLibrary::FillFileItem(const CStdString &strFilename, CFileItemPtr &item, const CVariant &parameterObject /* = CVariant(CVariant::VariantTypeArray) */)
 {
   CVideoDatabase videodatabase;
-  if (strFilename.empty() || !videodatabase.Open())
+  if (strFilename.empty())
     return false;
+  
+  bool filled = false;
+  if (videodatabase.Open())
+  {
+    CVideoInfoTag details;
+    if (videodatabase.LoadVideoInfo(strFilename, details))
+    {
+      item->SetFromVideoInfoTag(details);
+      filled = true;
+    }
+  }
 
-  CVideoInfoTag details;
-  if (!videodatabase.LoadVideoInfo(strFilename, details))
-    return false;
-
-  item->SetFromVideoInfoTag(details);
   if (item->GetLabel().empty())
+  {
     item->SetLabel(CUtil::GetTitleFromPath(strFilename, false));
-  if (item->GetLabel())
-    item->SetLabel(URIUtils::GetFileName(strFilename));
-  return true;
+    if (item->GetLabel().empty())
+      item->SetLabel(URIUtils::GetFileName(strFilename));
+  }
+
+  return filled;
 }
 
 bool CVideoLibrary::FillFileItemList(const CVariant &parameterObject, CFileItemList &list)
@@ -867,18 +876,21 @@ void CVideoLibrary::UpdateResumePoint(const CVariant &parameterObject, CVideoInf
 {
   if (!parameterObject["resume"].isNull())
   {
-    CBookmark bookmark;
-    videodatabase.GetResumeBookMark(details.m_strFileNameAndPath, bookmark);
     int position = (int)parameterObject["resume"]["position"].asInteger();
-    int total = (int)parameterObject["resume"]["total"].asInteger();
     if (position == 0)
       videodatabase.ClearBookMarksOfFile(details.m_strFileNameAndPath, CBookmark::RESUME);
     else
     {
-      bookmark.timeInSeconds = position;
-      if (total > 0)
-        bookmark.totalTimeInSeconds = total;
-      videodatabase.AddBookMarkToFile(details.m_strFileNameAndPath, bookmark, CBookmark::RESUME);
+      CBookmark bookmark;
+      if (videodatabase.GetResumeBookMark(details.m_strFileNameAndPath, bookmark))
+      {
+        bookmark.timeInSeconds = position;
+      
+        int total = (int)parameterObject["resume"]["total"].asInteger();
+        if (total > 0)
+          bookmark.totalTimeInSeconds = total;
+        videodatabase.AddBookMarkToFile(details.m_strFileNameAndPath, bookmark, CBookmark::RESUME);
+      }
     }
   }
 }

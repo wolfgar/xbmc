@@ -1,22 +1,22 @@
 /*
-*      Copyright (C) 2005-2013 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 
 #include "system.h"
@@ -392,7 +392,7 @@ void CRenderSystemGLES::SetCameraPosition(const CPoint &camera, int screenWidth,
 
   g_matrices.MatrixMode(MM_MODELVIEW);
   g_matrices.LoadIdentity();
-  g_matrices.Translatef(-(viewport[0] + w + offset.x), +(viewport[1] + h + offset.y), 0);
+  g_matrices.Translatef(-(w + offset.x), +(h + offset.y), 0);
   g_matrices.LookAt(0.0, 0.0, -2.0*h, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
   g_matrices.MatrixMode(MM_PROJECTION);
   g_matrices.LoadIdentity();
@@ -415,7 +415,7 @@ void CRenderSystemGLES::Project(float &x, float &y, float &z)
   if (g_matrices.Project(x, y, z, m_view, m_projection, m_viewPort, &coordX, &coordY, &coordZ))
   {
     x = coordX;
-    y = (float)(m_viewPort[3] - coordY);
+    y = (float)(m_viewPort[1] + m_viewPort[3] - coordY);
     z = 0;
   }
 }

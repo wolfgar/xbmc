@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,19 +25,8 @@
 
 extern "C"
 {
-// beware, these will alter the structs
-// in player_type.h.
-#if 1
-  #define HAS_AMLPLAYER_CHAPTERS
-  #define HAS_AMLPLAYER_AUDIO_LANG
-  #define HAS_AMLPLAYER_AUDIO_SETDELAY
-  #define HAS_AMLPLAYER_AUDIO_SETVOLUME
-#else
-  #define HAS_AMLPLAYER_VIDEO_STREAMS10
-#endif
-
-#include <player_type.h>
-#include <player_error.h>
+#include <amplayer/player_type.h>
+#include <amplayer/player_error.h>
 }
 
 struct AML_URLProtocol;

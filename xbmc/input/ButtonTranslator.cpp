@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -223,6 +223,13 @@ static const ActionMapping actions[] =
         {"settingsreset"      , ACTION_SETTINGS_RESET},
         {"settingslevelchange", ACTION_SETTINGS_LEVEL_CHANGE},
 
+        // 3D movie playback/GUI
+        {"stereomode"                , ACTION_STEREOMODE_SELECT}, // cycle 3D modes, for now an alias for next
+        {"nextstereomode"            , ACTION_STEREOMODE_NEXT},
+        {"previousstereomode"        , ACTION_STEREOMODE_PREVIOUS},
+        {"togglestereomode"          , ACTION_STEREOMODE_TOGGLE},
+        {"stereomodetomono"          , ACTION_STEREOMODE_TOMONO},
+
         // PVR actions
         {"channelup"             , ACTION_CHANNEL_UP},
         {"channeldown"           , ACTION_CHANNEL_DOWN},
@@ -405,7 +412,7 @@ static const WindowMapping fallbackWindows[] =
   { WINDOW_DIALOG_FULLSCREEN_INFO,     WINDOW_FULLSCREEN_VIDEO }
 };
 
-#ifdef WIN32
+#ifdef TARGET_WINDOWS
 static const ActionMapping appcommands[] =
 {
   { "browser_back",        APPCOMMAND_BROWSER_BACKWARD },
@@ -522,7 +529,7 @@ bool CButtonTranslator::Load(bool AlwaysLoad)
       CFileItemList files;
       XFILE::CDirectory::GetDirectory(DIRS_TO_CHECK[dirIndex], files, ".xml");
       // Sort the list for filesystem based priorities, e.g. 01-keymap.xml, 02-keymap-overrides.xml
-      files.Sort(SORT_METHOD_FILE, SortOrderAscending);
+      files.Sort(SortByFile, SortOrderAscending);
       for(int fileIndex = 0; fileIndex<files.Size(); ++fileIndex)
       {
         if (!files[fileIndex]->m_bIsFolder)
@@ -541,7 +548,7 @@ bool CButtonTranslator::Load(bool AlwaysLoad)
           CFileItemList files;
           XFILE::CDirectory::GetDirectory(devicedir, files, ".xml");
           // Sort the list for filesystem based priorities, e.g. 01-keymap.xml, 02-keymap-overrides.xml
-          files.Sort(SORT_METHOD_FILE, SortOrderAscending);
+          files.Sort(SortByFile, SortOrderAscending);
           for(int fileIndex = 0; fileIndex<files.Size(); ++fileIndex)
           {
             if (!files[fileIndex]->m_bIsFolder)
@@ -559,7 +566,7 @@ bool CButtonTranslator::Load(bool AlwaysLoad)
   }
 
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #define REMOTEMAP "Lircmap.xml"
 #else
 #define REMOTEMAP "IRSSmap.xml"
@@ -635,7 +642,7 @@ bool CButtonTranslator::LoadKeymap(const CStdString &keymapPath)
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
 bool CButtonTranslator::LoadLircMap(const CStdString &lircmapPath)
 {
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #define REMOTEMAPTAG "lircmap"
 #else
 #define REMOTEMAPTAG "irssmap"
@@ -1015,7 +1022,7 @@ int CButtonTranslator::GetActionCode(int window, const CKey &key, CStdString &st
     strAction = (*it2).second.strID;
     it2 = (*it).second.end();
   }
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   // Some buttoncodes changed in Hardy
   if (action == 0 && (code & KEY_VKEY) == KEY_VKEY && (code & 0x0F00))
   {
@@ -1399,6 +1406,8 @@ uint32_t CButtonTranslator::TranslateKeyboardButton(TiXmlElement *pButton)
         button_id |= CKey::MODIFIER_ALT;
       else if (substr == "super" || substr == "win")
         button_id |= CKey::MODIFIER_SUPER;
+      else if (substr == "meta" || substr == "cmd")
+        button_id |= CKey::MODIFIER_META;
       else
         CLog::Log(LOGERROR, "Keyboard Translator: Unknown key modifier %s in %s", substr.c_str(), strMod.c_str());
      }
@@ -1409,7 +1418,7 @@ uint32_t CButtonTranslator::TranslateKeyboardButton(TiXmlElement *pButton)
 
 uint32_t CButtonTranslator::TranslateAppCommand(const char *szButton)
 {
-#ifdef WIN32
+#ifdef TARGET_WINDOWS
   CStdString strAppCommand = szButton;
   strAppCommand.ToLower();
 

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -334,7 +334,7 @@ void CGUIDialogFileBrowser::ClearFileItems()
 void CGUIDialogFileBrowser::OnSort()
 {
   if (!m_singleList)
-    m_vecItems->Sort(SORT_METHOD_LABEL, SortOrderAscending);
+    m_vecItems->Sort(SortByLabel, SortOrderAscending);
 }
 
 void CGUIDialogFileBrowser::Update(const CStdString &strDirectory)

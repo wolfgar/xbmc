@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ bool CVideoDatabase::CreateTables()
                 "SubtitleDelay float, SubtitlesOn bool, Brightness float, Contrast float, Gamma float,"
                 "VolumeAmplification float, AudioDelay float, OutputToAllSpeakers bool, ResumeTime integer, Crop bool, CropLeft integer,"
                 "CropRight integer, CropTop integer, CropBottom integer, Sharpness float, NoiseReduction float, NonLinStretch bool, PostProcess bool,"
-                "ScalingMethod integer, DeinterlaceMode integer)\n");
+                "ScalingMethod integer, DeinterlaceMode integer, StereoMode integer, StereoInvert bool)\n");
     m_pDS->exec("CREATE UNIQUE INDEX ix_settings ON settings ( idFile )\n");
 
     CLog::Log(LOGINFO, "create stacktimes table");
@@ -3619,6 +3619,8 @@ bool CVideoDatabase::GetVideoSettings(const CStdString &strFilenameAndPath, CVid
       settings.m_VolumeAmplification = m_pDS->fv("VolumeAmplification").get_asFloat();
       settings.m_OutputToAllSpeakers = m_pDS->fv("OutputToAllSpeakers").get_asBool();
       settings.m_ScalingMethod = (ESCALINGMETHOD)m_pDS->fv("ScalingMethod").get_asInt();
+      settings.m_StereoMode = m_pDS->fv("StereoMode").get_asInt();
+      settings.m_StereoInvert = m_pDS->fv("StereoInvert").get_asBool();
       settings.m_SubtitleCached = false;
       m_pDS->close();
       return true;
@@ -3659,7 +3661,7 @@ void CVideoDatabase::SetVideoSettings(const CStdString& strFilenameAndPath, cons
                        setting.m_OutputToAllSpeakers,setting.m_Sharpness,setting.m_NoiseReduction,setting.m_CustomNonLinStretch,setting.m_PostProcess,setting.m_ScalingMethod,
                        setting.m_DeinterlaceMode);
       CStdString strSQL2;
-      strSQL2=PrepareSQL("ResumeTime=%i,Crop=%i,CropLeft=%i,CropRight=%i,CropTop=%i,CropBottom=%i where idFile=%i\n", setting.m_ResumeTime, setting.m_Crop, setting.m_CropLeft, setting.m_CropRight, setting.m_CropTop, setting.m_CropBottom, idFile);
+      strSQL2=PrepareSQL("ResumeTime=%i,Crop=%i,CropLeft=%i,CropRight=%i,CropTop=%i,CropBottom=%i,StereoMode=%i,StereoInvert=%i where idFile=%i\n", setting.m_ResumeTime, setting.m_Crop, setting.m_CropLeft, setting.m_CropRight, setting.m_CropTop, setting.m_CropBottom, setting.m_StereoMode, setting.m_StereoInvert, idFile);
       strSQL += strSQL2;
       m_pDS->exec(strSQL.c_str());
       return ;
@@ -3671,15 +3673,15 @@ void CVideoDatabase::SetVideoSettings(const CStdString& strFilenameAndPath, cons
                 "AudioStream,SubtitleStream,SubtitleDelay,SubtitlesOn,Brightness,"
                 "Contrast,Gamma,VolumeAmplification,AudioDelay,OutputToAllSpeakers,"
                 "ResumeTime,Crop,CropLeft,CropRight,CropTop,CropBottom,"
-                "Sharpness,NoiseReduction,NonLinStretch,PostProcess,ScalingMethod,DeinterlaceMode) "
+                "Sharpness,NoiseReduction,NonLinStretch,PostProcess,ScalingMethod,DeinterlaceMode,StereoMode,StereoInvert) "
               "VALUES ";
-      strSQL += PrepareSQL("(%i,%i,%i,%f,%f,%f,%i,%i,%f,%i,%f,%f,%f,%f,%f,%i,%i,%i,%i,%i,%i,%i,%f,%f,%i,%i,%i,%i)",
+      strSQL += PrepareSQL("(%i,%i,%i,%f,%f,%f,%i,%i,%f,%i,%f,%f,%f,%f,%f,%i,%i,%i,%i,%i,%i,%i,%f,%f,%i,%i,%i,%i,%i,%i)",
                            idFile, setting.m_InterlaceMethod, setting.m_ViewMode, setting.m_CustomZoomAmount, setting.m_CustomPixelRatio, setting.m_CustomVerticalShift,
                            setting.m_AudioStream, setting.m_SubtitleStream, setting.m_SubtitleDelay, setting.m_SubtitleOn, setting.m_Brightness,
                            setting.m_Contrast, setting.m_Gamma, setting.m_VolumeAmplification, setting.m_AudioDelay, setting.m_OutputToAllSpeakers,
                            setting.m_ResumeTime, setting.m_Crop, setting.m_CropLeft, setting.m_CropRight, setting.m_CropTop, setting.m_CropBottom,
                            setting.m_Sharpness, setting.m_NoiseReduction, setting.m_CustomNonLinStretch, setting.m_PostProcess, setting.m_ScalingMethod,
-                           setting.m_DeinterlaceMode);
+                           setting.m_DeinterlaceMode, setting.m_StereoMode, setting.m_StereoInvert);
       m_pDS->exec(strSQL.c_str());
     }
   }
@@ -4418,6 +4420,11 @@ bool CVideoDatabase::UpdateOldVersion(int iVersion)
     m_pDS->exec("CREATE INDEX ix_path ON path ( strPath(255) )");
     m_pDS->exec("CREATE INDEX ix_files ON files ( idPath, strFilename(255) )");
   }
+  if (iVersion < 76)
+  {
+    m_pDS->exec("ALTER TABLE settings ADD StereoMode integer");
+    m_pDS->exec("ALTER TABLE settings ADD StereoInvert bool");
+  }
   // always recreate the view after any table change
   CreateViews();
   return true;
@@ -4425,7 +4432,7 @@ bool CVideoDatabase::UpdateOldVersion(int iVersion)
 
 int CVideoDatabase::GetMinVersion() const
 {
-  return 75;
+  return 76;
 }
 
 bool CVideoDatabase::LookupByFolders(const CStdString &path, bool shows)
@@ -4695,45 +4702,70 @@ void CVideoDatabase::UpdateMovieTitle(int idMovie, const CStdString& strNewMovie
     if (NULL == m_pDB.get()) return ;
     if (NULL == m_pDS.get()) return ;
     CStdString content;
-    CStdString strSQL;
     if (iType == VIDEODB_CONTENT_MOVIES)
     {
       CLog::Log(LOGINFO, "Changing Movie:id:%i New Title:%s", idMovie, strNewMovieTitle.c_str());
-      strSQL = PrepareSQL("UPDATE movie SET c%02d='%s' WHERE idMovie=%i", VIDEODB_ID_TITLE, strNewMovieTitle.c_str(), idMovie );
       content = "movie";
     }
     else if (iType == VIDEODB_CONTENT_EPISODES)
     {
       CLog::Log(LOGINFO, "Changing Episode:id:%i New Title:%s", idMovie, strNewMovieTitle.c_str());
-      strSQL = PrepareSQL("UPDATE episode SET c%02d='%s' WHERE idEpisode=%i", VIDEODB_ID_EPISODE_TITLE, strNewMovieTitle.c_str(), idMovie );
       content = "episode";
     }
     else if (iType == VIDEODB_CONTENT_TVSHOWS)
     {
       CLog::Log(LOGINFO, "Changing TvShow:id:%i New Title:%s", idMovie, strNewMovieTitle.c_str());
-      strSQL = PrepareSQL("UPDATE tvshow SET c%02d='%s' WHERE idShow=%i", VIDEODB_ID_TV_TITLE, strNewMovieTitle.c_str(), idMovie );
       content = "tvshow";
     }
     else if (iType == VIDEODB_CONTENT_MUSICVIDEOS)
     {
       CLog::Log(LOGINFO, "Changing MusicVideo:id:%i New Title:%s", idMovie, strNewMovieTitle.c_str());
-      strSQL = PrepareSQL("UPDATE musicvideo SET c%02d='%s' WHERE idMVideo=%i", VIDEODB_ID_MUSICVIDEO_TITLE, strNewMovieTitle.c_str(), idMovie );
       content = "musicvideo";
     }
     else if (iType == VIDEODB_CONTENT_MOVIE_SETS)
     {
       CLog::Log(LOGINFO, "Changing Movie set:id:%i New Title:%s", idMovie, strNewMovieTitle.c_str());
-      strSQL = PrepareSQL("UPDATE sets SET strSet='%s' WHERE idSet=%i", strNewMovieTitle.c_str(), idMovie );
+      CStdString strSQL = PrepareSQL("UPDATE sets SET strSet='%s' WHERE idSet=%i", strNewMovieTitle.c_str(), idMovie );
+      m_pDS->exec(strSQL.c_str());
     }
-    m_pDS->exec(strSQL.c_str());
 
-    if (content.size() > 0)
+    if (!content.empty())
+    {
+      SetSingleValue(iType, idMovie, FieldTitle, strNewMovieTitle);
       AnnounceUpdate(content, idMovie);
+    }
   }
   catch (...)
   {
     CLog::Log(LOGERROR, "%s (int idMovie, const CStdString& strNewMovieTitle) failed on MovieID:%i and Title:%s", __FUNCTION__, idMovie, strNewMovieTitle.c_str());
   }
+}
+
+bool CVideoDatabase::UpdateVideoSortTitle(int idDb, const CStdString& strNewSortTitle, VIDEODB_CONTENT_TYPE iType /* = VIDEODB_CONTENT_MOVIES */)
+{
+  try
+  {
+    if (NULL == m_pDB.get() || NULL == m_pDS.get())
+      return false;
+    if (iType != VIDEODB_CONTENT_MOVIES && iType != VIDEODB_CONTENT_TVSHOWS)
+      return false;
+
+    CStdString content = "movie";
+    if (iType == VIDEODB_CONTENT_TVSHOWS)
+      content = "tvshow";
+
+    if (SetSingleValue(iType, idDb, FieldSortTitle, strNewSortTitle))
+    {
+      AnnounceUpdate(content, idDb);
+      return true;
+    }
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "%s (int idDb, const CStdString& strNewSortTitle, VIDEODB_CONTENT_TYPE iType) failed on ID: %i and Sort Title: %s", __FUNCTION__, idDb, strNewSortTitle.c_str());
+  }
+
+  return false;
 }
 
 /// \brief EraseVideoSettings() Erases the videoSettings table and reconstructs it
@@ -6213,7 +6245,7 @@ void CVideoDatabase::Stack(CFileItemList& items, VIDEODB_CONTENT_TYPE type, bool
     case VIDEODB_CONTENT_TVSHOWS:
     {
       // sort by Title
-      items.Sort(SORT_METHOD_VIDEO_TITLE, SortOrderAscending);
+      items.Sort(SortBySortTitle, SortOrderAscending);
 
       int i = 0;
       while (i < items.Size())
@@ -6280,7 +6312,7 @@ void CVideoDatabase::Stack(CFileItemList& items, VIDEODB_CONTENT_TYPE type, bool
     case VIDEODB_CONTENT_EPISODES:
     {
       // sort by ShowTitle, Episode, Filename
-      items.Sort(SORT_METHOD_EPISODE, SortOrderAscending);
+      items.Sort(SortByEpisodeNumber, SortOrderAscending);
 
       int i = 0;
       while (i < items.Size())
@@ -6375,7 +6407,7 @@ void CVideoDatabase::Stack(CFileItemList& items, VIDEODB_CONTENT_TYPE type, bool
   if (maintainSortOrder)
   {
     // restore original sort order - essential for smartplaylists
-    items.Sort(SORT_METHOD_PROGRAM_COUNT, SortOrderAscending);
+    items.Sort(SortByProgramCount, SortOrderAscending);
   }
 }
 
@@ -6745,13 +6777,14 @@ ScraperPtr CVideoDatabase::GetScraperForPath(const CStdString& strPath, SScanSet
     if (strPath.IsEmpty() || !m_pDB.get() || !m_pDS.get()) return ScraperPtr();
 
     ScraperPtr scraper;
-    CStdString strPath1;
-    CStdString strPath2(strPath);
+    CStdString strPath2;
 
     if (URIUtils::IsMultiPath(strPath))
       strPath2 = CMultiPathDirectory::GetFirstPath(strPath);
+    else
+      strPath2 = strPath;
 
-    URIUtils::GetDirectory(strPath2,strPath1);
+    CStdString strPath1 = URIUtils::GetDirectory(strPath2);
     int idPath = GetPathId(strPath1);
 
     if (idPath > -1)
@@ -6786,7 +6819,7 @@ ScraperPtr CVideoDatabase::GetScraperForPath(const CStdString& strPath, SScanSet
       if (!scraperID.empty() &&
         CAddonMgr::Get().GetAddon(scraperID, addon))
       {
-        scraper = boost::dynamic_pointer_cast<CScraper>(addon->Clone(addon));
+        scraper = boost::dynamic_pointer_cast<CScraper>(addon->Clone());
         if (!scraper)
           return ScraperPtr();
 
@@ -6829,7 +6862,7 @@ ScraperPtr CVideoDatabase::GetScraperForPath(const CStdString& strPath, SScanSet
           if (content != CONTENT_NONE &&
               CAddonMgr::Get().GetAddon(m_pDS->fv("path.strScraper").get_asString(), addon))
           {
-            scraper = boost::dynamic_pointer_cast<CScraper>(addon->Clone(addon));
+            scraper = boost::dynamic_pointer_cast<CScraper>(addon->Clone());
             scraper->SetPathSettings(content, m_pDS->fv("path.strSettings").get_asString());
             settings.parent_name = m_pDS->fv("path.useFolderNames").get_asBool();
             settings.recurse = m_pDS->fv("path.scanRecursive").get_asInt();
@@ -7411,7 +7444,8 @@ bool CVideoDatabase::GetRandomMusicVideo(CFileItem* item, int& idSong, const CSt
 
     // We don't use PrepareSQL here, as the WHERE clause is already formatted.
     CStdString strSQL;
-    strSQL.Format("select * from musicvideoview where %s order by RANDOM() limit 1",strWhere.c_str());
+    strSQL.Format("select * from musicvideoview where %s",strWhere.c_str());
+    strSQL += PrepareSQL(" order by RANDOM() limit 1");
     CLog::Log(LOGDEBUG, "%s query = %s", __FUNCTION__, strSQL.c_str());
     // run query
     if (!m_pDS->query(strSQL.c_str()))
@@ -7510,7 +7544,7 @@ void CVideoDatabase::GetMoviesByName(const CStdString& strSearch, CFileItemList&
       int setId = m_pDS->fv("movie.idSet").get_asInt();
       CFileItemPtr pItem(new CFileItem(m_pDS->fv(1).get_asString()));
       CStdString path;
-      if (setId <= 0)
+      if (setId <= 0 || !CSettings::Get().GetBool("videolibrary.groupmoviesets"))
         path.Format("videodb://movies/titles/%i", movieId);
       else
         path.Format("videodb://movies/sets/%i/%i", setId, movieId);
@@ -8444,7 +8478,9 @@ void CVideoDatabase::ExportToXML(const CStdString &path, bool singleFiles /* = f
 
           if (item.IsOpticalMediaFile())
           {
-            nfoFile = URIUtils::GetParentFolderURI(nfoFile, true);
+            nfoFile = URIUtils::AddFileToFolder(
+                                    URIUtils::GetParentPath(nfoFile),
+                                    URIUtils::GetFileName(nfoFile));
           }
 
           if (overwrite || !CFile::Exists(nfoFile, false))
@@ -8945,11 +8981,11 @@ void CVideoDatabase::ImportFromXML(const CStdString &path)
     while (path)
     {
       CStdString strPath;
-      if (XMLUtils::GetString(path,"url",strPath))
+      if (XMLUtils::GetString(path,"url",strPath) && !strPath.empty())
         AddPath(strPath);
 
       CStdString content;
-      if (XMLUtils::GetString(path,"content", content))
+      if (XMLUtils::GetString(path,"content", content) && !content.empty())
       { // check the scraper exists, if so store the path
         AddonPtr addon;
         CStdString id;
@@ -9136,42 +9172,84 @@ bool CVideoDatabase::CommitTransaction()
   return false;
 }
 
-void CVideoDatabase::SetDetail(const CStdString& strDetail, int id, int field,
-                               VIDEODB_CONTENT_TYPE type)
+bool CVideoDatabase::SetSingleValue(VIDEODB_CONTENT_TYPE type, int dbId, int dbField, const std::string &strValue)
 {
+  string strSQL;
   try
   {
-    if (NULL == m_pDB.get()) return;
-    if (NULL == m_pDS.get()) return;
+    if (NULL == m_pDB.get() || NULL == m_pDS.get())
+      return false;
 
-    CStdString strTable, strField;
+    string strTable, strField;
     if (type == VIDEODB_CONTENT_MOVIES)
     {
       strTable = "movie";
       strField = "idMovie";
     }
-    if (type == VIDEODB_CONTENT_TVSHOWS)
+    else if (type == VIDEODB_CONTENT_TVSHOWS)
     {
       strTable = "tvshow";
       strField = "idShow";
     }
-    if (type == VIDEODB_CONTENT_MUSICVIDEOS)
+    else if (type == VIDEODB_CONTENT_EPISODES)
+    {
+      strTable = "episode";
+      strField = "idEpisode";
+    }
+    else if (type == VIDEODB_CONTENT_MUSICVIDEOS)
     {
       strTable = "musicvideo";
       strField = "idMVideo";
     }
 
-    if (strTable.IsEmpty())
-      return;
+    if (strTable.empty())
+      return false;
 
-    CStdString strSQL = PrepareSQL("update %s set c%02u='%s' where %s=%u",
-                                  strTable.c_str(), field, strDetail.c_str(), strField.c_str(), id);
-    m_pDS->exec(strSQL.c_str());
+    return SetSingleValue(strTable, StringUtils::Format("c%02u", dbField), strValue, strField, dbId);
   }
   catch (...)
   {
-    CLog::Log(LOGERROR, "%s failed", __FUNCTION__);
+    CLog::Log(LOGERROR, "%s (%s) failed", __FUNCTION__, strSQL.c_str());
   }
+  return false;
+}
+
+bool CVideoDatabase::SetSingleValue(VIDEODB_CONTENT_TYPE type, int dbId, Field dbField, const std::string &strValue)
+{
+  MediaType mediaType = DatabaseUtils::MediaTypeFromVideoContentType(type);
+  if (mediaType == MediaTypeNone)
+    return false;
+
+  int dbFieldIndex = DatabaseUtils::GetField(dbField, mediaType);
+  if (dbFieldIndex < 0)
+    return false;
+
+  return SetSingleValue(type, dbId, dbFieldIndex, strValue);
+}
+
+bool CVideoDatabase::SetSingleValue(const std::string &table, const std::string &fieldName, const std::string &strValue,
+                                    const std::string &conditionName /* = "" */, int conditionValue /* = -1 */)
+{
+  if (table.empty() || fieldName.empty())
+    return false;
+
+  std::string sql;
+  try
+  {
+    if (NULL == m_pDB.get() || NULL == m_pDS.get())
+      return false;
+
+    sql = PrepareSQL("UPDATE %s SET %s='%s'", table.c_str(), fieldName.c_str(), strValue.c_str());
+    if (!conditionName.empty())
+      sql += PrepareSQL(" WHERE %s=%u", conditionName.c_str(), conditionValue);
+    if (m_pDS->exec(sql.c_str()) == 0)
+      return true;
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "%s (%s) failed", __FUNCTION__, sql.c_str());
+  }
+  return false;
 }
 
 CStdString CVideoDatabase::GetSafeFile(const CStdString &dir, const CStdString &name) const

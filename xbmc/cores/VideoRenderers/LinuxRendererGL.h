@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2007-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,8 +44,6 @@ class CBaseTexture;
 namespace Shaders { class BaseYUV2RGBShader; }
 namespace Shaders { class BaseVideoFilterShader; }
 namespace VAAPI   { struct CHolder; }
-
-#define NUM_BUFFERS 3
 
 
 #undef ALIGN
@@ -124,7 +122,7 @@ public:
   CLinuxRendererGL();
   virtual ~CLinuxRendererGL();
 
-  virtual void Update(bool bPauseDrawing);
+  virtual void Update();
   virtual void SetupScreenshot() {};
 
   bool RenderCapture(CRenderCapture* capture);
@@ -139,15 +137,19 @@ public:
   virtual void         UnInit();
   virtual void         Reset(); /* resets renderer after seek for example */
   virtual void         Flush();
+  virtual void         ReleaseBuffer(int idx);
+  virtual void         SetBufferSize(int numBuffers) { m_NumYV12Buffers = numBuffers; }
+  virtual unsigned int GetMaxBufferSize() { return NUM_BUFFERS; }
+  virtual unsigned int GetProcessorSize();
 
 #ifdef HAVE_LIBVDPAU
-  virtual void         AddProcessor(CVDPAU* vdpau);
+  virtual void         AddProcessor(CVDPAU* vdpau, int index);
 #endif
 #ifdef HAVE_LIBVA
-  virtual void         AddProcessor(VAAPI::CHolder& holder);
+  virtual void         AddProcessor(VAAPI::CHolder& holder, int index);
 #endif
 #ifdef TARGET_DARWIN
-  virtual void         AddProcessor(struct __CVBuffer *cvBufferRef);
+  virtual void         AddProcessor(struct __CVBuffer *cvBufferRef, int index);
 #endif
 
   virtual void RenderUpdate(bool clear, DWORD flags = 0, DWORD alpha = 255);
@@ -169,7 +171,6 @@ protected:
   void         DrawBlackBars();
 
   bool ValidateRenderer();
-  virtual void ManageTextures();
   int  NextYV12Texture();
   virtual bool ValidateRenderTarget();
   virtual void LoadShaders(int field=FIELD_FULL);
@@ -299,6 +300,7 @@ protected:
                 , unsigned width,  unsigned height
                 , int stride, int bpp, void* data, GLuint* pbo = NULL );
 
+  void GetPlaneTextureSize(YUVPLANE& plane);
 
   Shaders::BaseYUV2RGBShader     *m_pYUVShader;
   Shaders::BaseVideoFilterShader *m_pVideoFilterShader;
@@ -315,8 +317,6 @@ protected:
   GLuint             m_rgbPbo;
   struct SwsContext *m_context;
 
-  CEvent* m_eventTexturesDone[NUM_BUFFERS];
-
   void BindPbo(YUVBUFFER& buff);
   void UnBindPbo(YUVBUFFER& buff);
   bool m_pboSupported;
@@ -329,9 +329,9 @@ protected:
 
 
 inline int NP2( unsigned x ) {
-#if defined(_LINUX) && !defined(__POWERPC__) && !defined(__PPC__) && !defined(__arm__)
+#if defined(TARGET_POSIX) && !defined(__POWERPC__) && !defined(__PPC__) && !defined(__arm__)
   // If there are any issues compiling this, just append a ' && 0'
-  // to the above to make it '#if defined(_LINUX) && 0'
+  // to the above to make it '#if defined(TARGET_POSIX) && 0'
 
   // Linux assembly is AT&T Unix style, not Intel style
   unsigned y;

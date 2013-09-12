@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,11 @@ class CGUIButtonControl;
 class CGUIRadioButtonControl;
 
 class CSetting;
+class CSettingString;
 class CSettingPath;
+
+class CFileItemList;
+class CVariant;
 
 class CGUIControlBaseSetting
 {
@@ -37,7 +41,7 @@ public:
   CGUIControlBaseSetting(int id, CSetting *pSetting);
   virtual ~CGUIControlBaseSetting() {}
   
-  int GetID() { return m_id; }
+  int GetID() const { return m_id; }
   CSetting* GetSetting() { return m_pSetting; }
 
   /*!
@@ -58,17 +62,6 @@ public:
   bool IsDelayed() const { return m_delayed; }
 
   /*!
-   \brief Specifies that this setting is enabled or disabled
-   This is used for settings which are enabled/disabled based
-   on conditions involving other settings and their values.
-   It must not be confused with a setting spin control being
-   disabled because it contains less than two items.
-   \param enabled Whether the setting is enabled or disabled
-   \sa IsEnabled()
-   */
-  void SetEnabled(bool enabled) { m_enabled = enabled; }
-
-  /*!
    \brief Returns whether this setting is enabled or disabled
    This state is independent of the real enabled state of a
    setting control but represents the enabled state of the
@@ -76,7 +69,7 @@ public:
    \return true if the setting is enabled otherwise false
    \sa SetEnabled()
    */
-  bool IsEnabled() const { return m_enabled; }
+  bool IsEnabled() const;
 
   virtual CGUIControl* GetControl() { return NULL; }
   virtual bool OnClick() { return false; }
@@ -86,7 +79,6 @@ protected:
   int m_id;
   CSetting* m_pSetting;
   bool m_delayed;
-  bool m_enabled;
 };
 
 class CGUIControlRadioButtonSetting : public CGUIControlBaseSetting
@@ -116,7 +108,26 @@ public:
   virtual void Update();
   virtual void Clear() { m_pSpin = NULL; }
 private:
+  void FillControl();
+  void FillIntegerSettingControl();
   CGUISpinControlEx *m_pSpin;
+};
+
+class CGUIControlListSetting : public CGUIControlBaseSetting
+{
+public:
+  CGUIControlListSetting(CGUIButtonControl* pButton, int id, CSetting *pSetting);
+  virtual ~CGUIControlListSetting();
+
+  virtual CGUIControl* GetControl() { return (CGUIControl*)m_pButton; }
+  virtual bool OnClick();
+  virtual void Update();
+  virtual void Clear() { m_pButton = NULL; }
+private:
+  static bool GetItems(CSetting *setting, CFileItemList &items);
+  static bool GetIntegerItems(CSetting *setting, CFileItemList &items);
+
+  CGUIButtonControl *m_pButton;
 };
 
 class CGUIControlButtonSetting : public CGUIControlBaseSetting
@@ -146,6 +157,8 @@ public:
   virtual void Update();
   virtual void Clear() { m_pEdit = NULL; }
 private:
+  static bool InputValidation(const std::string &input, void *data);
+
   CGUIEditControl *m_pEdit;
 };
 

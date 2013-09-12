@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -408,16 +408,16 @@ void CAMLSubTitleThread::Process(void)
 
             /* TODO: handle other subtitle codec types
             // subtitle codecs
-            CODEC_ID_DVD_SUBTITLE= 0x17000,
-            CODEC_ID_DVB_SUBTITLE,
-            CODEC_ID_TEXT,  ///< raw UTF-8 text
-            CODEC_ID_XSUB,
-            CODEC_ID_SSA,
-            CODEC_ID_MOV_TEXT,
-            CODEC_ID_HDMV_PGS_SUBTITLE,
-            CODEC_ID_DVB_TELETEXT,
-            CODEC_ID_SRT,
-            CODEC_ID_MICRODVD,
+            AV_CODEC_ID_DVD_SUBTITLE= 0x17000,
+            AV_CODEC_ID_DVB_SUBTITLE,
+            AV_CODEC_ID_TEXT,  ///< raw UTF-8 text
+            AV_CODEC_ID_XSUB,
+            AV_CODEC_ID_SSA,
+            AV_CODEC_ID_MOV_TEXT,
+            AV_CODEC_ID_HDMV_PGS_SUBTITLE,
+            AV_CODEC_ID_DVB_TELETEXT,
+            AV_CODEC_ID_SRT,
+            AV_CODEC_ID_MICRODVD,
             */
             switch(sub_type)
             {
@@ -426,12 +426,12 @@ void CAMLSubTitleThread::Process(void)
                   "sub_type(0x%x), size(%d), bgntime(%lld), endtime(%lld), string(%s)",
                   sub_type, sub_size-20, subtitle->bgntime, subtitle->endtime, &sub_buffer[20]);
                 break;
-              case CODEC_ID_TEXT:
+              case AV_CODEC_ID_TEXT:
                 subtitle->bgntime = sub_pts/ 90;
                 subtitle->endtime = subtitle->bgntime + 4000;
                 subtitle->string  = &sub_buffer[20];
                 break;
-              case CODEC_ID_SSA:
+              case AV_CODEC_ID_SSA:
                 if (strncmp((const char*)&sub_buffer[20], "Dialogue:", 9) == 0)
                 {
                   int  vars_found, hour1, min1, sec1, hunsec1, hour2, min2, sec2, hunsec2, nothing;
@@ -1047,11 +1047,6 @@ int CAMLPlayer::AddSubtitle(const CStdString& strSubPath)
   CSingleLock lock(m_aml_csection);
 
   return AddSubtitleFile(strSubPath);
-}
-
-void CAMLPlayer::Update(bool bPauseDrawing)
-{
-  g_renderManager.Update(bPauseDrawing);
 }
 
 void CAMLPlayer::GetVideoRect(CRect& SrcRect, CRect& DestRect)
@@ -1805,7 +1800,7 @@ int CAMLPlayer::UpdatePlayerInfo(int pid, player_info_t *info)
   // we get called when status changes or after update time expires.
   // static callback from libamplayer, since it does not pass an opaque,
   // we have to retreve our player class reference the hard way.
-  CAMLPlayer *amlplayer = dynamic_cast<CAMLPlayer*>(g_application.m_pPlayer);
+  boost::shared_ptr<CAMLPlayer> amlplayer = boost::dynamic_pointer_cast<CAMLPlayer>(g_application.m_pPlayer->GetInternal());
   if (amlplayer)
   {
     CSingleLock lock(amlplayer->m_aml_state_csection);
@@ -2168,7 +2163,7 @@ void CAMLPlayer::FindSubtitleFiles()
   for(unsigned int i=0;i<filenames.size();i++)
   {
     // if vobsub subtitle:		
-    if (URIUtils::GetExtension(filenames[i]) == ".idx")
+    if (URIUtils::HasExtension(filenames[i], ".idx"))
     {
       CStdString strSubFile;
       if ( CUtil::FindVobSubPair( filenames, filenames[i], strSubFile ) )

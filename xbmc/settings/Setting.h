@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -56,8 +56,18 @@ typedef enum {
   SettingLevelInternal
 } SettingLevel;
 
-typedef std::pair<int, int> SettingOption;
-typedef std::vector<SettingOption> SettingOptions;
+typedef enum {
+  SettingOptionsTypeNone = 0,
+  SettingOptionsTypeStatic,
+  SettingOptionsTypeDynamic
+} SettingOptionsType;
+
+typedef std::pair<int, int> StaticIntegerSettingOption;
+typedef std::vector<StaticIntegerSettingOption> StaticIntegerSettingOptions;
+typedef std::pair<std::string, int> DynamicIntegerSettingOption;
+typedef std::vector<DynamicIntegerSettingOption> DynamicIntegerSettingOptions;
+typedef std::pair<std::string, std::string> DynamicStringSettingOption;
+typedef std::vector<DynamicStringSettingOption> DynamicStringSettingOptions;
 
 /*!
  \ingroup settings
@@ -83,10 +93,15 @@ public:
 
   int GetLabel() const { return m_label; }
   int GetHelp() const { return m_help; }
+  bool IsEnabled() const;
+  const std::string& GetParent() const { return m_parentSetting; }
   SettingLevel GetLevel() const { return m_level; }
   const CSettingControl& GetControl() const { return m_control; }
   const SettingDependencies& GetDependencies() const { return m_dependencies; }
   const std::set<CSettingUpdate>& GetUpdates() const { return m_updates; }
+
+  // overrides of ISetting
+  virtual bool IsVisible() const;
 
 protected:
   friend class CSettingsManager;
@@ -95,12 +110,14 @@ protected:
   virtual void OnSettingChanged(const CSetting *setting);
   virtual void OnSettingAction(const CSetting *setting);
   virtual bool OnSettingUpdate(CSetting* &setting, const char *oldSettingId, const TiXmlNode *oldSettingNode);
+  virtual void OnSettingPropertyChanged(const CSetting *setting, const char *propertyName);
 
   void Copy(const CSetting &setting);
 
   ISettingCallback *m_callback;
   int m_label;
   int m_help;
+  std::string m_parentSetting;
   SettingLevel m_level;
   CSettingControl m_control;
   SettingDependencies m_dependencies;
@@ -158,7 +175,7 @@ public:
   CSettingInt(const std::string &id, const CSettingInt &setting);
   CSettingInt(const std::string &id, int label, int value, int minimum, int step, int maximum, int format, int minimumLabel, CSettingsManager *settingsManager = NULL);
   CSettingInt(const std::string &id, int label, int value, int minimum, int step, int maximum, const std::string &format, CSettingsManager *settingsManager = NULL);
-  CSettingInt(const std::string &id, int label, int value, const SettingOptions &options, CSettingsManager *settingsManager = NULL);
+  CSettingInt(const std::string &id, int label, int value, const StaticIntegerSettingOptions &options, CSettingsManager *settingsManager = NULL);
   virtual ~CSettingInt() { }
 
   virtual bool Deserialize(const TiXmlNode *node, bool update = false);
@@ -183,12 +200,14 @@ public:
   int GetFormat() const { return m_format; }
   int GetMinimumLabel() const { return m_labelMin; }
   const std::string& GetFormatString() const { return m_strFormat; }
-  const SettingOptions& GetOptions() const { return m_options; }
+  SettingOptionsType GetOptionsType() const;
+  const StaticIntegerSettingOptions& GetOptions() const { return m_options; }
   const std::string& GetOptionsFiller() const { return m_optionsFiller; }
+  DynamicIntegerSettingOptions UpdateDynamicOptions();
 
 private:
   void copy(const CSettingInt &setting);
-  bool fromString(const std::string &strValue, int &value) const;
+  static bool fromString(const std::string &strValue, int &value);
 
   int m_value;
   int m_default;
@@ -198,8 +217,9 @@ private:
   int m_format;
   int m_labelMin;
   std::string m_strFormat;
-  SettingOptions m_options;
+  StaticIntegerSettingOptions m_options;
   std::string m_optionsFiller;
+  DynamicIntegerSettingOptions m_dynamicOptions;
 };
 
 /*!
@@ -236,7 +256,7 @@ public:
 
 private:
   virtual void copy(const CSettingNumber &setting);
-  bool fromString(const std::string &strValue, double &value) const;
+  static bool fromString(const std::string &strValue, double &value);
 
   double m_value;
   double m_default;
@@ -275,7 +295,9 @@ public:
   virtual bool AllowEmpty() const { return m_allowEmpty; }
   virtual int GetHeading() const { return m_heading; }
 
+  SettingOptionsType GetOptionsType() const;
   const std::string& GetOptionsFiller() const { return m_optionsFiller; }
+  DynamicStringSettingOptions UpdateDynamicOptions();
 
 protected:
   virtual void copy(const CSettingString &setting);
@@ -285,6 +307,7 @@ protected:
   bool m_allowEmpty;
   int m_heading;
   std::string m_optionsFiller;
+  DynamicStringSettingOptions m_dynamicOptions;
 };
 
 /*!

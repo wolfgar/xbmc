@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1417,8 +1417,7 @@ bool CGUIAddonWindow::OnMessage(CGUIMessage& message)
 
 void CGUIAddonWindow::AllocResources(bool forceLoad /*= FALSE */)
 {
-  CStdString tmpDir;
-  URIUtils::GetDirectory(GetProperty("xmlfile").asString(), tmpDir);
+  CStdString tmpDir = URIUtils::GetDirectory(GetProperty("xmlfile").asString());
   CStdString fallbackMediaPath;
   URIUtils::GetParentPath(tmpDir, fallbackMediaPath);
   URIUtils::RemoveSlashAtEnd(fallbackMediaPath);

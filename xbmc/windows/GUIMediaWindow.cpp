@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 #include "PartyModeManager.h"
 #include "dialogs/GUIDialogMediaSource.h"
 #include "GUIWindowFileManager.h"
-#include "Favourites.h"
+#include "filesystem/FavouritesDirectory.h"
 #include "utils/LabelFormatter.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "profiles/ProfilesManager.h"
@@ -61,10 +61,8 @@
 #include "utils/FileUtils.h"
 #include "guilib/GUIEditControl.h"
 #include "guilib/GUIKeyboardFactory.h"
-#ifdef HAS_PYTHON
-#include "interfaces/python/XBPython.h"
-#endif
 #include "interfaces/Builtins.h"
+#include "interfaces/generic/ScriptInvocationManager.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogMediaFilter.h"
 #include "filesystem/SmartPlaylistDirectory.h"
@@ -398,9 +396,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
         else if (newItem)
         { // need to remove the disc cache
           CFileItemList items;
-          CStdString path;
-          URIUtils::GetDirectory(newItem->GetPath(), path);
-          items.SetPath(path);
+          items.SetPath(URIUtils::GetDirectory(newItem->GetPath()));
           items.RemoveDiscCache(GetID());
         }
       }
@@ -548,14 +544,11 @@ void CGUIMediaWindow::UpdateButtons()
     m_viewControl.SetCurrentView(m_guiState->GetViewAsControl());
 
     // Update sort by button
-    if (m_guiState->GetSortMethod()==SORT_METHOD_NONE)
-    {
+    if (m_guiState->GetSortMethod().sortBy == SortByNone)
       CONTROL_DISABLE(CONTROL_BTNSORTBY);
-    }
     else
-    {
       CONTROL_ENABLE(CONTROL_BTNSORTBY);
-    }
+
     CStdString sortLabel;
     sortLabel.Format(g_localizeStrings.Get(550).c_str(), g_localizeStrings.Get(m_guiState->GetSortMethodLabel()).c_str());
     SET_CONTROL_LABEL(CONTROL_BTNSORTBY, sortLabel);
@@ -582,35 +575,30 @@ void CGUIMediaWindow::SortItems(CFileItemList &items)
 
   if (guiState.get())
   {
-    bool sorted = false;
-    SORT_METHOD sortMethod = guiState->GetSortMethod();
+    SortDescription sorting = guiState->GetSortMethod();
+    sorting.sortOrder = guiState->GetDisplaySortOrder();
     // If the sort method is "sort by playlist" and we have a specific
     // sort order available we can use the specified sort order to do the sorting
     // We do this as the new SortBy methods are a superset of the SORT_METHOD methods, thus
     // not all are available. This may be removed once SORT_METHOD_* have been replaced by
     // SortBy.
-    if ((sortMethod == SORT_METHOD_PLAYLIST_ORDER) && items.HasProperty(PROPERTY_SORT_ORDER))
+    if ((sorting.sortBy == SortByPlaylistOrder) && items.HasProperty(PROPERTY_SORT_ORDER))
     {
       SortBy sortBy = (SortBy)items.GetProperty(PROPERTY_SORT_ORDER).asInteger();
       if (sortBy != SortByNone && sortBy != SortByPlaylistOrder && sortBy != SortByProgramCount)
       {
-        SortDescription sorting;
         sorting.sortBy = sortBy;
         sorting.sortOrder = items.GetProperty(PROPERTY_SORT_ASCENDING).asBoolean() ? SortOrderAscending : SortOrderDescending;
         sorting.sortAttributes = CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone;
 
         // if the sort order is descending, we need to switch the original sort order, as we assume
-        // in CGUIViewState::AddPlaylistOrder that SORT_METHOD_PLAYLIST_ORDER is ascending.
+        // in CGUIViewState::AddPlaylistOrder that SortByPlaylistOrder is ascending.
         if (guiState->GetDisplaySortOrder() == SortOrderDescending)
           sorting.sortOrder = sorting.sortOrder == SortOrderDescending ? SortOrderAscending : SortOrderDescending;
-
-        items.Sort(sorting);
-        sorted = true;
       }
     }
 
-    if (!sorted)
-      items.Sort(sortMethod, guiState->GetDisplaySortOrder());
+    items.Sort(sorting);
   }
 }
 
@@ -632,8 +620,7 @@ void CGUIMediaWindow::FormatItemLabels(CFileItemList &items, const LABEL_MASKS &
       fileFormatter.FormatLabels(pItem.get());
   }
 
-  if(items.GetSortMethod() == SORT_METHOD_LABEL_IGNORE_THE
-  || items.GetSortMethod() == SORT_METHOD_LABEL)
+  if (items.GetSortMethod() == SortByLabel)
     items.ClearSortState();
 }
 
@@ -648,7 +635,7 @@ void CGUIMediaWindow::FormatAndSort(CFileItemList &items)
     viewState->GetSortMethodLabelMasks(labelMasks);
     FormatItemLabels(items, labelMasks);
 
-    items.Sort(viewState->GetSortMethod(), viewState->GetDisplaySortOrder());
+    items.Sort(viewState->GetSortMethod().sortBy, viewState->GetDisplaySortOrder(), viewState->GetSortMethod().sortAttributes);
   }
 }
 
@@ -980,7 +967,7 @@ bool CGUIMediaWindow::OnClick(int iItem)
     return true;
   }
 
-  if (!pItem->m_bIsFolder && pItem->IsFileFolder())
+  if (!pItem->m_bIsFolder && pItem->IsFileFolder(EFILEFOLDER_MASK_ONCLICK))
   {
     XFILE::IFileDirectory *pFileDirectory = NULL;
     pFileDirectory = XFILE::CFileDirectoryFactory::Create(pItem->GetPath(), pItem.get(), "");
@@ -998,10 +985,8 @@ bool CGUIMediaWindow::OnClick(int iItem)
     AddonPtr addon;
     if (CAddonMgr::Get().GetAddon(url.GetHostName(), addon, ADDON_SCRIPT))
     {
-#ifdef HAS_PYTHON
-      if (!g_pythonParser.StopScript(addon->LibPath()))
-        g_pythonParser.evalFile(addon->LibPath(),addon);
-#endif
+      if (!CScriptInvocationManager::Get().Stop(addon->LibPath()))
+        CScriptInvocationManager::Get().Execute(addon->LibPath(), addon);
       return true;
     }
   }
@@ -1358,7 +1343,7 @@ bool CGUIMediaWindow::OnPlayMedia(int iItem)
   if (pItem->IsInternetStream() || pItem->IsPlayList())
     bResult = g_application.PlayMedia(*pItem, m_guiState->GetPlaylist());
   else
-    bResult = g_application.PlayFile(*pItem);
+    bResult = g_application.PlayFile(*pItem) == PLAYBACK_OK;
 
   if (pItem->m_lStartOffset == STARTOFFSET_RESUME)
     pItem->m_lStartOffset = 0;
@@ -1575,13 +1560,18 @@ void CGUIMediaWindow::GetContextButtons(int itemNumber, CContextButtons &buttons
 
   // TODO: FAVOURITES Conditions on masterlock and localisation
   if (!item->IsParentFolder() && !item->GetPath().Equals("add") && !item->GetPath().Equals("newplaylist://") &&
-      !item->GetPath().Left(19).Equals("newsmartplaylist://") && !item->GetPath().Left(9).Equals("newtag://"))
+      !item->GetPath().Left(19).Equals("newsmartplaylist://") && !item->GetPath().Left(9).Equals("newtag://") &&
+      !item->GetPath().Left(14).Equals("addons://more/") && !item->GetPath().Left(14).Equals("musicsearch://"))
   {
-    if (CFavourites::IsFavourite(item.get(), GetID()))
+    if (XFILE::CFavouritesDirectory::IsFavourite(item.get(), GetID()))
       buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14077);     // Remove Favourite
     else
       buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14076);     // Add To Favourites;
   }
+
+  if (item->IsFileFolder(EFILEFOLDER_MASK_ONBROWSE))
+    buttons.Add(CONTEXT_BUTTON_BROWSE_INTO, 37015);
+
 }
 
 bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
@@ -1591,7 +1581,7 @@ bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
   case CONTEXT_BUTTON_ADD_FAVOURITE:
     {
       CFileItemPtr item = m_vecItems->Get(itemNumber);
-      CFavourites::AddOrRemove(item.get(), GetID());
+      XFILE::CFavouritesDirectory::AddOrRemove(item.get(), GetID());
       return true;
     }
   case CONTEXT_BUTTON_PLUGIN_SETTINGS:
@@ -1605,6 +1595,13 @@ bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       if (CAddonMgr::Get().GetAddon(plugin.GetHostName(), addon))
         if (CGUIDialogAddonSettings::ShowAndGetInput(addon))
           Refresh();
+      return true;
+    }
+  case CONTEXT_BUTTON_BROWSE_INTO:
+    {
+      CFileItemPtr item = m_vecItems->Get(itemNumber);
+      if(Update(item->GetPath()))
+        return true;
       return true;
     }
   case CONTEXT_BUTTON_USER1:

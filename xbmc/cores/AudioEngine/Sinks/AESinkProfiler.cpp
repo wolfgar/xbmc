@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ void CAESinkProfiler::Deinitialize()
 {
 }
 
-bool CAESinkProfiler::IsCompatible(const AEAudioFormat format, const std::string &device)
+bool CAESinkProfiler::IsCompatible(const AEAudioFormat &format, const std::string &device)
 {
   if (AE_IS_RAW(format.m_dataFormat))
     return false;
@@ -71,7 +71,7 @@ double CAESinkProfiler::GetDelay()
   return 0.0f;
 }
 
-unsigned int CAESinkProfiler::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio)
+unsigned int CAESinkProfiler::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
 {
   int64_t ts = CurrentHostCounter();
   CLog::Log(LOGDEBUG, "CAESinkProfiler::AddPackets - latency %f ms", (float)(ts - m_ts) / 1000000.0f);

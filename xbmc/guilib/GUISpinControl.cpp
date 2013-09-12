@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -410,12 +410,12 @@ void CGUISpinControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyr
 
   changed |= m_label.SetText(text);
 
-  const float space = 5;
   float textWidth = m_label.GetTextWidth() + 2 * m_label.GetLabelInfo().offsetX;
   // Position the arrows
   bool arrowsOnRight(0 != (m_label.GetLabelInfo().align & (XBFONT_RIGHT | XBFONT_CENTER_X)));
   if (!arrowsOnRight)
   {
+    const float space = 5;
     changed |= m_imgspinDownFocus.SetPosition(m_posX + textWidth + space, m_posY);
     changed |= m_imgspinDown.SetPosition(m_posX + textWidth + space, m_posY);
     changed |= m_imgspinUpFocus.SetPosition(m_posX + textWidth + space + m_imgspinDown.GetWidth(), m_posY);

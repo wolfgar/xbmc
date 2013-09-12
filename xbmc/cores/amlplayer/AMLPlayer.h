@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -88,7 +88,6 @@ public:
   virtual void  GetAudioInfo(CStdString &strAudioInfo);
   virtual void  GetVideoInfo(CStdString &strVideoInfo);
   virtual void  GetGeneralInfo(CStdString &strVideoInfo) {};
-  virtual void  Update(bool bPauseDrawing);
   virtual void  GetVideoRect(CRect& SrcRect, CRect& DestRect);
   virtual void  GetVideoAspectRatio(float &fAR);
   virtual bool  CanRecord()                                       {return false;};

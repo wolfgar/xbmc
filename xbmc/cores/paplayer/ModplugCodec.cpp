@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2009-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ bool ModplugCodec::Init(const CStdString &strFile, unsigned int filecache)
     return false;
 
   // set correct codec name
-  URIUtils::GetExtension(strFile,m_CodecName);
+  m_CodecName = URIUtils::GetExtension(strFile);
   m_CodecName.erase(0,1);
   m_CodecName.ToUpper();
 

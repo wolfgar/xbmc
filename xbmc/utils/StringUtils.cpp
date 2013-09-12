@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -162,6 +162,33 @@ std::string& StringUtils::TrimLeft(std::string &str)
 std::string& StringUtils::TrimRight(std::string &str)
 {
   str.erase(::find_if(str.rbegin(), str.rend(), ::not1(::ptr_fun<int, int>(::isspace))).base(), str.end());
+  return str;
+}
+
+std::string& StringUtils::RemoveDuplicatedSpacesAndTabs(std::string& str)
+{
+  std::string::iterator it = str.begin();
+  bool onSpace = false;
+  while(it != str.end())
+  {
+    if (*it == '\t')
+      *it = ' ';
+
+    if (*it == ' ')
+    {
+      if (onSpace)
+      {
+        it = str.erase(it);
+        continue;
+      }
+      else
+        onSpace = true;
+    }
+    else
+      onSpace = false;
+
+    ++it;
+  }
   return str;
 }
 
@@ -710,6 +737,16 @@ int StringUtils::FindBestMatch(const CStdString &str, const CStdStringArray &str
     }
   }
   return best;
+}
+
+bool StringUtils::ContainsKeyword(const CStdString &str, const CStdStringArray &keywords)
+{
+  for (CStdStringArray::const_iterator it = keywords.begin(); it != keywords.end(); it++)
+  {
+    if (str.find(*it) != str.npos)
+      return true;
+  }
+  return false;
 }
 
 size_t StringUtils::utf8_strlen(const char *s)

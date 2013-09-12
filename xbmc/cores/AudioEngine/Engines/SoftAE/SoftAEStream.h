@@ -36,7 +36,7 @@ class CSoftAEStream : public IAEStream
 {
 protected:
   friend class CSoftAE;
-  CSoftAEStream(enum AEDataFormat format, unsigned int sampleRate, unsigned int encodedSamplerate, CAEChannelInfo channelLayout, unsigned int options);
+  CSoftAEStream(enum AEDataFormat format, unsigned int sampleRate, unsigned int encodedSamplerate, CAEChannelInfo channelLayout, unsigned int options, CCriticalSection& lock);
   virtual ~CSoftAEStream();
 
   void Initialize();
@@ -59,7 +59,7 @@ public:
 
   virtual void              Pause           ();
   virtual void              Resume          ();
-  virtual void              Drain           ();
+  virtual void              Drain           (bool wait);
   virtual bool              IsDraining      () { return m_draining;    }
   virtual bool              IsDrained       ();
   virtual void              Flush           ();
@@ -71,7 +71,7 @@ public:
   virtual void              SetReplayGain   (float factor) { m_rgain  = std::max( 0.0f, factor); }
   virtual void              SetAmplification(float amplify){ m_limiter.SetAmplification(amplify); }
 
-  virtual float             RunLimiter(float* frame, int channels) { return m_limiter.Run(frame, channels); }
+  virtual float             RunLimiter(float* frame, int channels) { return m_limiter.Run(&frame, channels); }
 
   virtual const unsigned int      GetFrameSize   () const  { return m_format.m_frameSize; }
   virtual const unsigned int      GetChannelCount() const  { return m_initChannelLayout.Count(); }
@@ -91,7 +91,7 @@ private:
   void InternalFlush();
   void CheckResampleBuffers();
 
-  CSharedSection    m_lock;
+  CCriticalSection& m_lock;
   enum AEDataFormat m_initDataFormat;
   unsigned int      m_initSampleRate;
   unsigned int      m_initEncodedSampleRate;

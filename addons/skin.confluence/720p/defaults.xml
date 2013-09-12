@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <includes>
 	<default type="image">
 		<posx>0</posx>
@@ -187,6 +188,7 @@
 		<font>font13</font>
 		<textcolor>white</textcolor>
 		<disabledcolor>grey3</disabledcolor>
+		<invalidcolor>invalid</invalidcolor>
 		<textoffsetx>7</textoffsetx>
 		<aligny>center</aligny>
 		<pulseonselect>no</pulseonselect>

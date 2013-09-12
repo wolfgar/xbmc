@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -124,7 +124,7 @@ bool CWinSystemIOS::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   return true;
 }
 
-UIScreenMode *getModeForResolution(int width, int height, int screenIdx)
+UIScreenMode *getModeForResolution(int width, int height, unsigned int screenIdx)
 {
   if( screenIdx >= [[UIScreen screens] count])
     return NULL;

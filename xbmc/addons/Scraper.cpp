@@ -1,6 +1,6 @@
 /*
 *      Copyright (C) 2005-2013 Team XBMC
-*      http://www.xbmc.org
+*      http://xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -158,13 +158,13 @@ CScraper::CScraper(const cp_extension_t *ext) : CAddon(ext), m_fLoaded(false)
   }
 }
 
-AddonPtr CScraper::Clone(const AddonPtr &self) const
+AddonPtr CScraper::Clone() const
 {
-  return AddonPtr(new CScraper(*this, self));
+  return AddonPtr(new CScraper(*this));
 }
 
-CScraper::CScraper(const CScraper &rhs, const AddonPtr &self)
-  : CAddon(rhs, self), m_fLoaded(false)
+CScraper::CScraper(const CScraper &rhs)
+  : CAddon(rhs), m_fLoaded(false)
 {
   m_pathContent = rhs.m_pathContent;
   m_persistence = rhs.m_persistence;
@@ -663,7 +663,7 @@ std::vector<CScraperUrl> CScraper::FindMovie(XFILE::CCurlFile &fcurl, const CStd
           scurlMovie.strTitle.AppendFormat(" (%s)", sCompareYear.c_str());
 
         CStdString sLanguage;
-        if (XMLUtils::GetString(pxeMovie, "language", sLanguage))
+        if (XMLUtils::GetString(pxeMovie, "language", sLanguage) && !sLanguage.empty())
           scurlMovie.strTitle.AppendFormat(" (%s)", sLanguage.c_str());
 
         // filter for dupes from naughty scrapers
@@ -737,17 +737,17 @@ std::vector<CMusicAlbumInfo> CScraper::FindAlbum(CCurlFile &fcurl, const CStdStr
       pxeAlbum; pxeAlbum = pxeAlbum->NextSiblingElement())
     {
       CStdString sTitle;
-      if (XMLUtils::GetString(pxeAlbum, "title", sTitle))
+      if (XMLUtils::GetString(pxeAlbum, "title", sTitle) && !sTitle.empty())
       {
         CStdString sArtist;
         CStdString sAlbumName;
-        if (XMLUtils::GetString(pxeAlbum, "artist", sArtist))
+        if (XMLUtils::GetString(pxeAlbum, "artist", sArtist) && !sArtist.empty())
           sAlbumName.Format("%s - %s", sArtist.c_str(), sTitle.c_str());
         else
           sAlbumName = sTitle;
 
         CStdString sYear;
-        if (XMLUtils::GetString(pxeAlbum, "year", sYear))
+        if (XMLUtils::GetString(pxeAlbum, "year", sYear) && !sYear.empty())
           sAlbumName.Format("%s (%s)", sAlbumName.c_str(), sYear.c_str());
 
         // if no URL is provided, use the URL we got back from CreateAlbumSearchUrl
@@ -895,13 +895,13 @@ EPISODELIST CScraper::GetEpisodeList(XFILE::CCurlFile &fcurl, const CScraperUrl 
       TiXmlElement *pxeLink = pxeMovie->FirstChildElement("url");
       CStdString strEpNum;
       if (pxeLink && XMLUtils::GetInt(pxeMovie, "season", ep.iSeason) &&
-        XMLUtils::GetString(pxeMovie, "epnum", strEpNum))
+        XMLUtils::GetString(pxeMovie, "epnum", strEpNum) && !strEpNum.empty())
       {
         CScraperUrl &scurlEp(ep.cScraperUrl);
         int dot = strEpNum.Find(".");
         ep.iEpisode = atoi(strEpNum.c_str());
         ep.iSubepisode = (dot > -1) ? atoi(strEpNum.Mid(dot + 1).c_str()) : 0;
-        if (!XMLUtils::GetString(pxeMovie, "title", scurlEp.strTitle))
+        if (!XMLUtils::GetString(pxeMovie, "title", scurlEp.strTitle) || scurlEp.strTitle.empty() )
             scurlEp.strTitle = g_localizeStrings.Get(416);
         XMLUtils::GetString(pxeMovie, "id", scurlEp.strId);
 

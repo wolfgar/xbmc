@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -146,6 +146,7 @@ bool CBlurayDirectory::GetDirectory(const CStdString& path, CFileItemList &items
   CStdString root = m_url.GetHostName();
   CStdString file = m_url.GetFileName();
   URIUtils::RemoveSlashAtEnd(file);
+  URIUtils::RemoveSlashAtEnd(root);
 
   m_dll = new DllLibbluray();
   if (!m_dll->Load())
@@ -174,8 +175,8 @@ bool CBlurayDirectory::GetDirectory(const CStdString& path, CFileItemList &items
   else
     return false;
 
-  items.AddSortMethod(SORT_METHOD_TRACKNUM , 554, LABEL_MASKS("%L", "%D", "%L", ""));    // FileName, Duration | Foldername, empty
-  items.AddSortMethod(SORT_METHOD_SIZE     , 553, LABEL_MASKS("%L", "%I", "%L", "%I"));  // FileName, Size | Foldername, Size
+  items.AddSortMethod(SortByTrackNumber,  554, LABEL_MASKS("%L", "%D", "%L", ""));    // FileName, Duration | Foldername, empty
+  items.AddSortMethod(SortBySize,         553, LABEL_MASKS("%L", "%I", "%L", "%I"));  // FileName, Size | Foldername, Size
 
   return true;
 }

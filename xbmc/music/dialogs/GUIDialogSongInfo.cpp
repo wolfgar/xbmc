@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -167,8 +167,7 @@ void CGUIDialogSongInfo::OnInitWindow()
   // no known db info - check if parent dir is an album
   if (m_song->GetMusicInfoTag()->GetDatabaseId() == -1)
   {
-    CStdString path;
-    URIUtils::GetDirectory(m_song->GetPath(),path);
+    CStdString path = URIUtils::GetDirectory(m_song->GetPath());
     m_albumId = db.GetAlbumIdByPath(path);
   }
   else

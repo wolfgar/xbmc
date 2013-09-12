@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,8 @@ public:
   const SettingList& GetSettings() const { return m_settings; }
   /*!
    \brief Gets the list of settings assigned to the given setting level (or
-   below) belonging to the setting group.
+   below) and that meet the requirements conditions belonging to the setting
+   group.
 
    \param level Level the settings should be assigned to
    \return List of settings belonging to the setting group
@@ -112,7 +113,8 @@ public:
   const SettingGroupList& GetGroups() const { return m_groups; }
   /*!
    \brief Gets the list of setting groups belonging to the setting category
-   that contain settings assigned to the given setting level (or below).
+   that contain settings assigned to the given setting level (or below) and
+   that meet the requirements and visibility conditions.
 
    \param level Level the settings should be assigned to
    \return List of setting groups belonging to the setting category
@@ -177,7 +179,8 @@ public:
   const SettingCategoryList& GetCategories() const { return m_categories; }
   /*!
    \brief Gets the list of setting categories belonging to the setting section
-   that contain settings assigned to the given setting level (or below).
+   that contain settings assigned to the given setting level (or below) and
+   that meet the requirements and visibility conditions.
 
    \param level Level the settings should be assigned to
    \return List of setting categories belonging to the setting section

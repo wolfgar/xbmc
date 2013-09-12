@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,6 +57,9 @@ public:
   virtual void ResetOSScreensaver();
   virtual bool EnableFrameLimiter();
 
+  virtual void EnableTextInput(bool bEnable);
+  virtual bool IsTextInputEnabled();
+
   virtual void Register(IDispResource *resource);
   virtual void Unregister(IDispResource *resource);
   
@@ -65,6 +68,8 @@ public:
   void CheckDisplayChanging(u_int32_t flags);
   
   void* GetCGLContextObj();
+
+  std::string GetClipboardText(void);
 
 protected:
   void* CreateWindowedContext(void* shareCtx);
@@ -75,6 +80,8 @@ protected:
   void  FillInVideoModes();
   bool  FlushBuffer(void);
   bool  IsObscured(void);
+  void  StartTextInput();
+  void  StopTextInput();
 
   void* m_glContext;
   static void* m_lastOwnedContext;

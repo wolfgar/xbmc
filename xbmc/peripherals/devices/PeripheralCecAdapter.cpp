@@ -173,7 +173,7 @@ void CPeripheralCecAdapter::Announce(AnnouncementFlag flag, const char *sender, 
   else if (flag == GUI && !strcmp(sender, "xbmc") && !strcmp(message, "OnScreensaverActivated") && m_bIsReady)
   {
     // Don't put devices to standby if application is currently playing
-    if ((!g_application.IsPlaying() && !g_application.IsPaused()) && m_configuration.bPowerOffScreensaver == 1)
+    if ((!g_application.m_pPlayer->IsPlaying() && !g_application.m_pPlayer->IsPaused()) && m_configuration.bPowerOffScreensaver == 1)
     {
       m_screensaverLastActivated = CDateTime::GetCurrentDateTime();
       // only power off when we're the active source
@@ -1136,9 +1136,9 @@ void CPeripheralCecAdapter::CecSourceActivated(void *cbParam, const CEC::cec_log
     bool bShowingSlideshow = (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW);
     CGUIWindowSlideShow *pSlideShow = bShowingSlideshow ? (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW) : NULL;
     bool bPlayingAndDeactivated = activated == 0 && (
-        (pSlideShow && pSlideShow->IsPlaying()) || g_application.IsPlaying());
+        (pSlideShow && pSlideShow->IsPlaying()) || g_application.m_pPlayer->IsPlaying());
     bool bPausedAndActivated = activated == 1 && adapter->m_bPlaybackPaused && (
-        (pSlideShow && pSlideShow->IsPaused()) || g_application.IsPaused());
+        (pSlideShow && pSlideShow->IsPaused()) || g_application.m_pPlayer->IsPausedPlayback());
     if (bPlayingAndDeactivated)
       adapter->m_bPlaybackPaused = true;
     else if (bPausedAndActivated)
@@ -1676,7 +1676,35 @@ void CPeripheralCecAdapter::ProcessStandbyDevices(void)
   }
 
   if (bStandby)
+  {
     m_cecAdapter->StandbyDevices(CECDEVICE_BROADCAST);
+    if (m_configuration.bSendInactiveSource == 1)
+    {
+      CLog::Log(LOGDEBUG, "%s - sending inactive source commands", __FUNCTION__);
+      m_cecAdapter->SetInactiveView();
+    }
+  }
+}
+
+bool CPeripheralCecAdapter::ToggleDeviceState(CecStateChange mode /*= STATE_SWITCH_TOGGLE */, bool forceType /*= false */)
+{
+  if (!IsRunning())
+    return false;
+  if (m_cecAdapter->IsLibCECActiveSource() && (mode == STATE_SWITCH_TOGGLE || mode == STATE_STANDBY))
+  {
+    CLog::Log(LOGDEBUG, "%s - putting CEC device on standby...", __FUNCTION__);
+    m_screensaverLastActivated = CDateTime::GetCurrentDateTime();
+    StandbyDevices();
+    return false;
+  }
+  else if (mode == STATE_SWITCH_TOGGLE || mode == STATE_ACTIVATE_SOURCE)
+  {
+    CLog::Log(LOGDEBUG, "%s - waking up CEC device...", __FUNCTION__);
+    ActivateSource();
+    return true;
+  }
+
+  return false;
 }
 
 #endif

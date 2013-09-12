@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ CGUITextBox::CGUITextBox(int parentID, int controlID, float posX, float posY, fl
                          const CLabelInfo& labelInfo, int scrollTime)
     : CGUIControl(parentID, controlID, posX, posY, width, height)
     , CGUITextLayout(labelInfo.font, true)
+    , m_label(labelInfo)
 {
   m_offset = 0;
   m_scrollOffset = 0;
@@ -44,7 +45,6 @@ CGUITextBox::CGUITextBox(int parentID, int controlID, float posX, float posY, fl
   m_autoScrollDelay = 3000;
   m_autoScrollDelayTime = 0;
   m_autoScrollRepeatAnim = NULL;
-  m_label = labelInfo;
 }
 
 CGUITextBox::CGUITextBox(const CGUITextBox &from)

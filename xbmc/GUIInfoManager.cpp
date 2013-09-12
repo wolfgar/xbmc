@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "network/Network.h"
 #include "system.h"
+#include "GitRevision.h"
 #include "GUIInfoManager.h"
 #include "windows/GUIMediaWindow.h"
 #include "dialogs/GUIDialogProgress.h"
@@ -37,6 +38,7 @@
 #include "pictures/GUIWindowSlideShow.h"
 #include "pictures/PictureInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
+#include "guilib/IGUIContainer.h"
 #include "guilib/GUIWindowManager.h"
 #include "playlists/PlayList.h"
 #include "profiles/ProfilesManager.h"
@@ -82,6 +84,12 @@
 #include "cores/IPlayer.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/VideoRenderers/BaseRenderer.h"
+
+#if defined(TARGET_DARWIN_OSX)
+#include "osx/smc.h"
+#include "linux/LinuxResourceCounter.h"
+static CLinuxResourceCounter m_resourceCounter;
+#endif
 
 #define SYSHEATUPDATEINTERVAL 60000
 
@@ -278,7 +286,8 @@ const infomap system_labels[] =  {{ "hasnetwork",       SYSTEM_ETHERNET_LINK_ACT
                                   { "isinhibit",        SYSTEM_ISINHIBIT },
                                   { "hasshutdown",      SYSTEM_HAS_SHUTDOWN },
                                   { "haspvr",           SYSTEM_HAS_PVR },
-                                  { "startupwindow",    SYSTEM_STARTUP_WINDOW }};
+                                  { "startupwindow",    SYSTEM_STARTUP_WINDOW },
+                                  { "stereoscopicmode", SYSTEM_STEREOSCOPIC_MODE } };
 
 const infomap system_param[] =   {{ "hasalarm",         SYSTEM_HAS_ALARM },
                                   { "hascoreid",        SYSTEM_HAS_CORE_ID },
@@ -390,7 +399,10 @@ const infomap videoplayer[] =    {{ "title",            VIDEOPLAYER_TITLE },
                                   { "channelnumber",    VIDEOPLAYER_CHANNEL_NUMBER },
                                   { "channelgroup",     VIDEOPLAYER_CHANNEL_GROUP },
                                   { "hasepg",           VIDEOPLAYER_HAS_EPG },
-                                  { "parentalrating",   VIDEOPLAYER_PARENTAL_RATING }};
+                                  { "parentalrating",   VIDEOPLAYER_PARENTAL_RATING },
+                                  { "isstereoscopic",   VIDEOPLAYER_IS_STEREOSCOPIC },
+                                  { "stereoscopicmode", VIDEOPLAYER_STEREOSCOPIC_MODE },
+};
 
 const infomap mediacontainer[] = {{ "hasfiles",         CONTAINER_HASFILES },
                                   { "hasfolders",       CONTAINER_HASFOLDERS },
@@ -1040,10 +1052,8 @@ int CGUIInfoManager::TranslateSingleString(const CStdString &strCondition)
       }
       else if (prop.name == "sort")
       {
-        SORT_METHOD sort = SORT_METHOD_NONE;
-        if (prop.param().Equals("songrating")) sort = SORT_METHOD_SONG_RATING;
-        if (sort != SORT_METHOD_NONE)
-          return AddMultiInfo(GUIInfo(CONTAINER_SORT_METHOD, sort));
+        if (prop.param().Equals("songrating"))
+          return AddMultiInfo(GUIInfo(CONTAINER_SORT_METHOD, SortByRating));
       }
     }
     else if (cat.name == "listitem")
@@ -1359,30 +1369,30 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     strLabel.Format("%2.3f s", CMediaSettings::Get().GetCurrentVideoSettings().m_AudioDelay);
     break;
   case PLAYER_CHAPTER:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
       strLabel.Format("%02d", g_application.m_pPlayer->GetChapter());
     break;
   case PLAYER_CHAPTERCOUNT:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
       strLabel.Format("%02d", g_application.m_pPlayer->GetChapterCount());
     break;
   case PLAYER_CHAPTERNAME:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
       g_application.m_pPlayer->GetChapterName(strLabel);
     break;
   case PLAYER_CACHELEVEL:
     {
       int iLevel = 0;
-      if(g_application.IsPlaying() && GetInt(iLevel, PLAYER_CACHELEVEL) && iLevel >= 0)
+      if(g_application.m_pPlayer->IsPlaying() && GetInt(iLevel, PLAYER_CACHELEVEL) && iLevel >= 0)
         strLabel.Format("%i", iLevel);
     }
     break;
   case PLAYER_TIME:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
       strLabel = GetCurrentPlayTime(TIME_FORMAT_HH_MM);
     break;
   case PLAYER_DURATION:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
       strLabel = GetDuration(TIME_FORMAT_HH_MM);
     break;
   case PLAYER_PATH:
@@ -1425,7 +1435,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
         if (m_currentFile->HasMusicInfoTag() && !m_currentFile->GetMusicInfoTag()->GetTitle().IsEmpty())
           return m_currentFile->GetMusicInfoTag()->GetTitle();
         // don't have the title, so use dvdplayer, label, or drop down to title from path
-        if (g_application.m_pPlayer && !g_application.m_pPlayer->GetPlayingTitle().IsEmpty())
+        if (!g_application.m_pPlayer->GetPlayingTitle().IsEmpty())
           return g_application.m_pPlayer->GetPlayingTitle();
         if (!m_currentFile->GetLabel().IsEmpty())
           return m_currentFile->GetLabel();
@@ -1433,7 +1443,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
       }
       else
       {
-        if (g_application.m_pPlayer && !g_application.m_pPlayer->GetPlayingTitle().IsEmpty())
+        if (!g_application.m_pPlayer->GetPlayingTitle().IsEmpty())
           return g_application.m_pPlayer->GetPlayingTitle();
       }
     }
@@ -1507,35 +1517,42 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     strLabel = GetVideoLabel(info);
   break;
   case VIDEOPLAYER_VIDEO_CODEC:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
     {
       UpdateAVInfo();
       strLabel = m_videoInfo.videoCodecName;
     }
     break;
   case VIDEOPLAYER_VIDEO_RESOLUTION:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
       return CStreamDetails::VideoDimsToResolutionDescription(g_application.m_pPlayer->GetPictureWidth(), g_application.m_pPlayer->GetPictureHeight());
     break;
   case VIDEOPLAYER_AUDIO_CODEC:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
     {
       UpdateAVInfo();
       strLabel = m_audioInfo.audioCodecName;
     }
     break;
   case VIDEOPLAYER_VIDEO_ASPECT:
-    if (g_application.IsPlaying() && g_application.m_pPlayer)
+    if (g_application.m_pPlayer->IsPlaying())
     {
       UpdateAVInfo();
       strLabel = CStreamDetails::VideoAspectToAspectDescription(m_videoInfo.videoAspectRatio);
     }
     break;
   case VIDEOPLAYER_AUDIO_CHANNELS:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.m_pPlayer->IsPlaying())
     {
       UpdateAVInfo();
       strLabel.Format("%i", m_audioInfo.channels);
+    }
+    break;
+  case VIDEOPLAYER_STEREOSCOPIC_MODE:
+    if(g_application.m_pPlayer->IsPlaying())
+    {
+      UpdateAVInfo();
+      strLabel = m_videoInfo.stereoMode;
     }
     break;
   case PLAYLIST_LENGTH:
@@ -1706,13 +1723,13 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     }
     break;
   case SYSTEM_SCREEN_MODE:
-    strLabel = CDisplaySettings::Get().GetResolutionInfo(g_graphicsContext.GetVideoResolution()).strMode;
+    strLabel = g_graphicsContext.GetResInfo().strMode;
     break;
   case SYSTEM_SCREEN_WIDTH:
-    strLabel.Format("%i", CDisplaySettings::Get().GetResolutionInfo(g_graphicsContext.GetVideoResolution()).iScreenWidth);
+    strLabel.Format("%i", g_graphicsContext.GetResInfo().iScreenWidth);
     break;
   case SYSTEM_SCREEN_HEIGHT:
-    strLabel.Format("%i", CDisplaySettings::Get().GetResolutionInfo(g_graphicsContext.GetVideoResolution()).iScreenHeight);
+    strLabel.Format("%i", g_graphicsContext.GetResInfo().iScreenHeight);
     break;
   case SYSTEM_CURRENT_WINDOW:
     return g_localizeStrings.Get(g_windowManager.GetFocusedWindow());
@@ -1781,6 +1798,12 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
         strLabel.Format("%s (%s)", friendlyName.c_str(), g_application.getNetwork().GetHostName().c_str());
       else
         strLabel = friendlyName;
+    }
+    break;
+  case SYSTEM_STEREOSCOPIC_MODE:
+    {
+      int stereoMode = CSettings::Get().GetInt("videoscreen.stereoscopicmode");
+      strLabel.Format("%i", stereoMode);
     }
     break;
 
@@ -1942,7 +1965,7 @@ bool CGUIInfoManager::GetInt(int &value, int info, int contextWindow, const CGUI
     case PLAYER_CHAPTER:
     case PLAYER_CHAPTERCOUNT:
       {
-        if( g_application.IsPlaying() && g_application.m_pPlayer)
+        if( g_application.m_pPlayer->IsPlaying())
         {
           switch( info )
           {
@@ -2112,13 +2135,13 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
     bReturn = g_application.IsMusicScanning();
   }
   else if (condition == SYSTEM_PLATFORM_LINUX)
-#if defined(_LINUX) && !defined(TARGET_DARWIN) && !defined(TARGET_ANDROID)
+#if defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
     bReturn = true;
 #else
     bReturn = false;
 #endif
   else if (condition == SYSTEM_PLATFORM_WINDOWS)
-#ifdef WIN32
+#ifdef TARGET_WINDOWS
     bReturn = true;
 #else
     bReturn = false;
@@ -2212,11 +2235,11 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
   }
   else if (condition == SKIN_HAS_VIDEO_OVERLAY)
   {
-    bReturn = g_windowManager.IsOverlayAllowed() && g_application.IsPlayingVideo();
+    bReturn = g_windowManager.IsOverlayAllowed() && g_application.m_pPlayer->IsPlayingVideo();
   }
   else if (condition == SKIN_HAS_MUSIC_OVERLAY)
   {
-    bReturn = g_windowManager.IsOverlayAllowed() && g_application.IsPlayingAudio();
+    bReturn = g_windowManager.IsOverlayAllowed() && g_application.m_pPlayer->IsPlayingAudio();
   }
   else if (condition == CONTAINER_HASFILES || condition == CONTAINER_HASFOLDERS)
   {
@@ -2320,7 +2343,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
     CGUIWindowSlideShow *slideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
     bReturn = (slideShow && slideShow->GetCurrentSlide() && slideShow->GetCurrentSlide()->IsVideo());
   }
-  else if (g_application.IsPlaying())
+  else if (g_application.m_pPlayer->IsPlaying())
   {
     switch (condition)
     {
@@ -2328,52 +2351,52 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = true;
       break;
     case PLAYER_HAS_AUDIO:
-      bReturn = g_application.IsPlayingAudio();
+      bReturn = g_application.m_pPlayer->IsPlayingAudio();
       break;
     case PLAYER_HAS_VIDEO:
-      bReturn = g_application.IsPlayingVideo();
+      bReturn = g_application.m_pPlayer->IsPlayingVideo();
       break;
     case PLAYER_PLAYING:
-      bReturn = !g_application.IsPaused() && (g_application.GetPlaySpeed() == 1);
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && (g_application.m_pPlayer->GetPlaySpeed() == 1);
       break;
     case PLAYER_PAUSED:
-      bReturn = g_application.IsPaused();
+      bReturn = g_application.m_pPlayer->IsPausedPlayback();
       break;
     case PLAYER_REWINDING:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() < 1;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() < 1;
       break;
     case PLAYER_FORWARDING:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() > 1;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() > 1;
       break;
     case PLAYER_REWINDING_2x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == -2;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == -2;
       break;
     case PLAYER_REWINDING_4x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == -4;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == -4;
       break;
     case PLAYER_REWINDING_8x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == -8;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == -8;
       break;
     case PLAYER_REWINDING_16x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == -16;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == -16;
       break;
     case PLAYER_REWINDING_32x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == -32;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == -32;
       break;
     case PLAYER_FORWARDING_2x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == 2;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == 2;
       break;
     case PLAYER_FORWARDING_4x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == 4;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == 4;
       break;
     case PLAYER_FORWARDING_8x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == 8;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == 8;
       break;
     case PLAYER_FORWARDING_16x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == 16;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == 16;
       break;
     case PLAYER_FORWARDING_32x:
-      bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == 32;
+      bReturn = !g_application.m_pPlayer->IsPausedPlayback() && g_application.m_pPlayer->GetPlaySpeed() == 32;
       break;
     case PLAYER_CAN_RECORD:
       bReturn = g_application.m_pPlayer->CanRecord();
@@ -2406,7 +2429,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = m_playerShowTime;
     break;
     case PLAYER_PASSTHROUGH:
-      bReturn = g_application.m_pPlayer && g_application.m_pPlayer->IsPassthrough();
+      bReturn = g_application.m_pPlayer->IsPassthrough();
       break;
     case PLAYER_ISINTERNETSTREAM:
       bReturn = m_currentFile && URIUtils::IsInternetStream(m_currentFile->GetPath());
@@ -2433,7 +2456,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
     case MUSICPLAYER_PLAYLISTPLAYING:
       {
         bReturn = false;
-        if (g_application.IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
+        if (g_application.m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
           bReturn = true;
       }
       break;
@@ -2489,6 +2512,13 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
         bReturn = m_currentFile->GetPVRChannelInfoTag()->GetEPGNow(epgTag);
       }
     break;
+    case VIDEOPLAYER_IS_STEREOSCOPIC:
+      if(g_application.m_pPlayer->IsPlaying())
+      {
+        UpdateAVInfo();
+        bReturn = !m_videoInfo.stereoMode.empty();
+      }
+      break;
     default: // default, use integer value different from 0 as true
       {
         int val;
@@ -2841,7 +2871,7 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
         {
           const CGUIViewState *viewState = ((CGUIMediaWindow*)window)->GetViewState();
           if (viewState)
-            bReturn = ((unsigned int)viewState->GetSortMethod() == info.GetData1());
+            bReturn = ((unsigned int)viewState->GetSortMethod().sortBy == info.GetData1());
         }
         break;
       }
@@ -3012,8 +3042,8 @@ CStdString CGUIInfoManager::GetMultiInfoLabel(const GUIInfo &info, int contextWi
   else if (info.m_info == PLAYER_TIME_SPEED)
   {
     CStdString strTime;
-    if (g_application.GetPlaySpeed() != 1)
-      strTime.Format("%s (%ix)", GetCurrentPlayTime((TIME_FORMAT)info.GetData1()).c_str(), g_application.GetPlaySpeed());
+    if (g_application.m_pPlayer->GetPlaySpeed() != 1)
+      strTime.Format("%s (%ix)", GetCurrentPlayTime((TIME_FORMAT)info.GetData1()).c_str(), g_application.m_pPlayer->GetPlaySpeed());
     else
       strTime = GetCurrentPlayTime();
     return strTime;
@@ -3160,24 +3190,24 @@ CStdString CGUIInfoManager::GetImage(int info, int contextWindow, CStdString *fa
   }
   else if (info == MUSICPLAYER_COVER)
   {
-    if (!g_application.IsPlayingAudio()) return "";
+    if (!g_application.m_pPlayer->IsPlayingAudio()) return "";
     if (fallback)
       *fallback = "DefaultAlbumCover.png";
     return m_currentFile->HasArt("thumb") ? m_currentFile->GetArt("thumb") : "DefaultAlbumCover.png";
   }
   else if (info == MUSICPLAYER_RATING)
   {
-    if (!g_application.IsPlayingAudio()) return "";
+    if (!g_application.m_pPlayer->IsPlayingAudio()) return "";
     return GetItemImage(m_currentFile, LISTITEM_RATING);
   }
   else if (info == PLAYER_STAR_RATING)
   {
-    if (!g_application.IsPlaying()) return "";
+    if (!g_application.m_pPlayer->IsPlaying()) return "";
     return GetItemImage(m_currentFile, LISTITEM_STAR_RATING);
   }
   else if (info == VIDEOPLAYER_COVER)
   {
-    if (!g_application.IsPlayingVideo()) return "";
+    if (!g_application.m_pPlayer->IsPlayingVideo()) return "";
     if (fallback)
       *fallback = "DefaultVideoCover.png";
     if(m_currentMovieThumb.IsEmpty())
@@ -3268,13 +3298,13 @@ CStdString CGUIInfoManager::LocalizeTime(const CDateTime &time, TIME_FORMAT form
 
 CStdString CGUIInfoManager::GetDuration(TIME_FORMAT format) const
 {
-  if (g_application.IsPlayingAudio() && m_currentFile->HasMusicInfoTag())
+  if (g_application.m_pPlayer->IsPlayingAudio() && m_currentFile->HasMusicInfoTag())
   {
     const CMusicInfoTag& tag = *m_currentFile->GetMusicInfoTag();
     if (tag.GetDuration() > 0)
       return StringUtils::SecondsToTimeString(tag.GetDuration(), format);
   }
-  if (g_application.IsPlayingVideo() && !m_currentMovieDuration.IsEmpty())
+  if (g_application.m_pPlayer->IsPlayingVideo() && !m_currentMovieDuration.IsEmpty())
     return m_currentMovieDuration;  // for tuxbox
   unsigned int iTotal = (unsigned int)g_application.GetTotalTime();
   if (iTotal > 0)
@@ -3372,7 +3402,7 @@ const CStdString CGUIInfoManager::GetMusicPlaylistInfo(const GUIInfo& info)
 
 CStdString CGUIInfoManager::GetPlaylistLabel(int item) const
 {
-  if (!g_application.IsPlaying()) return "";
+  if (!g_application.m_pPlayer->IsPlaying()) return "";
   int iPlaylist = g_playlistPlayer.GetCurrentPlaylist();
   switch (item)
   {
@@ -3411,7 +3441,7 @@ CStdString CGUIInfoManager::GetPlaylistLabel(int item) const
 
 CStdString CGUIInfoManager::GetMusicLabel(int item)
 {
-  if (!g_application.IsPlaying() || !m_currentFile->HasMusicInfoTag()) return "";
+  if (!g_application.m_pPlayer->IsPlaying() || !m_currentFile->HasMusicInfoTag()) return "";
 
   UpdateAVInfo();
   switch (item)
@@ -3559,12 +3589,12 @@ CStdString CGUIInfoManager::GetMusicTagLabel(int info, const CFileItem *item)
 
 CStdString CGUIInfoManager::GetVideoLabel(int item)
 {
-  if (!g_application.IsPlaying())
+  if (!g_application.m_pPlayer->IsPlaying())
     return "";
 
   if (item == VIDEOPLAYER_TITLE)
   {
-    if(g_application.IsPlayingVideo())
+    if(g_application.m_pPlayer->IsPlayingVideo())
        return GetLabel(PLAYER_TITLE);
   }
   else if (item == VIDEOPLAYER_PLAYLISTLEN)
@@ -3716,22 +3746,21 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
     case VIDEOPLAYER_PLOT_OUTLINE:
       return m_currentFile->GetVideoInfoTag()->m_strPlotOutline;
     case VIDEOPLAYER_EPISODE:
+      if (m_currentFile->GetVideoInfoTag()->m_iEpisode > 0)
       {
         CStdString strEpisode;
-        if (m_currentFile->GetVideoInfoTag()->m_iSpecialSortEpisode > 0)
-          strEpisode.Format("S%i", m_currentFile->GetVideoInfoTag()->m_iSpecialSortEpisode);
-        else if(m_currentFile->GetVideoInfoTag()->m_iEpisode > 0)
+        if (m_currentFile->GetVideoInfoTag()->m_iSeason == 0) // prefix episode with 'S'
+          strEpisode.Format("S%i", m_currentFile->GetVideoInfoTag()->m_iEpisode);
+        else 
           strEpisode.Format("%i", m_currentFile->GetVideoInfoTag()->m_iEpisode);
         return strEpisode;
       }
       break;
     case VIDEOPLAYER_SEASON:
+      if (m_currentFile->GetVideoInfoTag()->m_iSeason > 0)
       {
         CStdString strSeason;
-        if (m_currentFile->GetVideoInfoTag()->m_iSpecialSortSeason > 0)
-          strSeason.Format("%i", m_currentFile->GetVideoInfoTag()->m_iSpecialSortSeason);
-        else if(m_currentFile->GetVideoInfoTag()->m_iSeason > 0)
-          strSeason.Format("%i", m_currentFile->GetVideoInfoTag()->m_iSeason);
+        strSeason.Format("%i", m_currentFile->GetVideoInfoTag()->m_iSeason);
         return strSeason;
       }
       break;
@@ -3784,7 +3813,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
 
 int64_t CGUIInfoManager::GetPlayTime() const
 {
-  if (g_application.IsPlaying())
+  if (g_application.m_pPlayer->IsPlaying())
   {
     int64_t lPTS = (int64_t)(g_application.GetTime() * 1000);
     if (lPTS < 0) lPTS = 0;
@@ -3797,7 +3826,7 @@ CStdString CGUIInfoManager::GetCurrentPlayTime(TIME_FORMAT format) const
 {
   if (format == TIME_FORMAT_GUESS && GetTotalPlayTime() >= 3600)
     format = TIME_FORMAT_HH_MM_SS;
-  if (g_application.IsPlaying())
+  if (g_application.m_pPlayer->IsPlaying())
     return StringUtils::SecondsToTimeString((int)(GetPlayTime()/1000), format);
   return "";
 }
@@ -3827,7 +3856,7 @@ CStdString CGUIInfoManager::GetCurrentPlayTimeRemaining(TIME_FORMAT format) cons
   if (format == TIME_FORMAT_GUESS && GetTotalPlayTime() >= 3600)
     format = TIME_FORMAT_HH_MM_SS;
   int timeRemaining = GetPlayTimeRemaining();
-  if (timeRemaining && g_application.IsPlaying())
+  if (timeRemaining && g_application.m_pPlayer->IsPlaying())
     return StringUtils::SecondsToTimeString(timeRemaining, format);
   return "";
 }
@@ -3892,7 +3921,9 @@ void CGUIInfoManager::SetCurrentSong(CFileItem &item)
     {
       CLog::Log(LOGDEBUG,"Streaming media detected... using %s to find a thumb", g_application.m_strPlayListFile.c_str());
       CFileItem streamingItem(g_application.m_strPlayListFile,false);
-      CMusicThumbLoader::FillThumb(streamingItem);
+
+      CMusicThumbLoader loader;
+      loader.FillThumb(streamingItem);
       if (streamingItem.HasArt("thumb"))
         m_currentFile->SetArt("thumb", streamingItem.GetArt("thumb"));
     }
@@ -3918,7 +3949,11 @@ void CGUIInfoManager::SetCurrentMovie(CFileItem &item)
     CVideoDatabase dbs;
     if (dbs.Open())
     {
-      dbs.LoadVideoInfo(item.GetPath(), *m_currentFile->GetVideoInfoTag());
+      CStdString path = item.GetPath();
+      CStdString videoInfoTagPath(item.GetVideoInfoTag()->m_strFileNameAndPath);
+      if (videoInfoTagPath.Find("removable://") == 0)
+        path = videoInfoTagPath;
+      dbs.LoadVideoInfo(path, *m_currentFile->GetVideoInfoTag());
       dbs.Close();
     }
   }
@@ -3934,7 +3969,7 @@ void CGUIInfoManager::SetCurrentMovie(CFileItem &item)
   if (item.IsInternetStream())
   {
     // case where .strm is used to start an audio stream
-    if (g_application.IsPlayingAudio())
+    if (g_application.m_pPlayer->IsPlayingAudio())
     {
       SetCurrentSong(item);
       return;
@@ -3945,7 +3980,9 @@ void CGUIInfoManager::SetCurrentMovie(CFileItem &item)
     {
       CLog::Log(LOGDEBUG,"Streaming media detected... using %s to find a thumb", g_application.m_strPlayListFile.c_str());
       CFileItem thumbItem(g_application.m_strPlayListFile,false);
-      if (CVideoThumbLoader::FillThumb(thumbItem))
+
+      CVideoThumbLoader loader;
+      if (loader.FillThumb(thumbItem))
         item.SetArt("thumb", thumbItem.GetArt("thumb"));
     }
   }
@@ -3959,7 +3996,7 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
   if (CTimeUtils::GetFrameTime() - m_lastSysHeatInfoTime >= SYSHEATUPDATEINTERVAL)
   { // update our variables
     m_lastSysHeatInfoTime = CTimeUtils::GetFrameTime();
-#if defined(_LINUX)
+#if defined(TARGET_POSIX)
     g_cpuInfo.getTemperature(m_cpuTemp);
     m_gpuTemp = GetGPUTemperature();
 #endif
@@ -3978,7 +4015,9 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
       text.Format("%i%%", m_fanSpeed * 2);
       break;
     case SYSTEM_CPU_USAGE:
-#if defined(TARGET_DARWIN) || defined(_WIN32)
+#if defined(TARGET_DARWIN_OSX)
+      text.Format("%4.2f%%", m_resourceCounter.GetCPUUsage());
+#elif defined(TARGET_DARWIN) || defined(TARGET_WINDOWS)
       text.Format("%d%%", g_cpuInfo.getUsedPercentage());
 #else
       text.Format("%s", g_cpuInfo.GetCoresUsageString());
@@ -3990,10 +4029,15 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
 
 CTemperature CGUIInfoManager::GetGPUTemperature()
 {
+  int  value = 0;
+  char scale = 0;
+
+#if defined(TARGET_DARWIN_OSX)
+  value = SMCGetTemperature(SMC_KEY_GPU_TEMP);
+  return CTemperature::CreateFromCelsius(value);
+#else
   CStdString  cmd   = g_advancedSettings.m_gpuTempCmd;
-  int         value = 0,
-              ret   = 0;
-  char        scale = 0;
+  int         ret   = 0;
   FILE        *p    = NULL;
 
   if (cmd.IsEmpty() || !(p = popen(cmd.c_str(), "r")))
@@ -4004,6 +4048,7 @@ CTemperature CGUIInfoManager::GetGPUTemperature()
 
   if (ret != 2)
     return CTemperature();
+#endif
 
   if (scale == 'C' || scale == 'c')
     return CTemperature::CreateFromCelsius(value);
@@ -4017,11 +4062,10 @@ CTemperature CGUIInfoManager::GetGPUTemperature()
 CStdString CGUIInfoManager::GetVersion()
 {
   CStdString tmp;
-#ifdef GIT_REV
-  tmp.Format("%d.%d%s Git:%s", VERSION_MAJOR, VERSION_MINOR, VERSION_TAG, GIT_REV);
-#else
-  tmp.Format("%d.%d%s", VERSION_MAJOR, VERSION_MINOR, VERSION_TAG);
-#endif
+  if (GetXbmcGitRevision())
+    tmp.Format("%d.%d%s Git:%s", VERSION_MAJOR, VERSION_MINOR, VERSION_TAG, GetXbmcGitRevision());
+  else
+    tmp.Format("%d.%d%s", VERSION_MAJOR, VERSION_MINOR, VERSION_TAG);
   return tmp;
 }
 
@@ -4080,12 +4124,18 @@ void CGUIInfoManager::UpdateFPS()
 
 void CGUIInfoManager::UpdateAVInfo()
 {
-  if(g_application.IsPlaying() && g_application.m_pPlayer)
+  if(g_application.m_pPlayer->IsPlaying())
   {
     if (!m_AVInfoValid)
     {
-      g_application.m_pPlayer->GetVideoStreamInfo(m_videoInfo);
-      g_application.m_pPlayer->GetAudioStreamInfo(g_application.m_pPlayer->GetAudioStream(), m_audioInfo);
+      SPlayerVideoStreamInfo video;
+      SPlayerAudioStreamInfo audio;
+
+      g_application.m_pPlayer->GetVideoStreamInfo(video);
+      g_application.m_pPlayer->GetAudioStreamInfo(g_application.m_pPlayer->GetAudioStream(), audio);
+
+      m_videoInfo = video;
+      m_audioInfo = audio;
       m_AVInfoValid = true;
     }
   }
@@ -4478,24 +4528,21 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
       return item->GetVideoInfoTag()->m_strPlotOutline;
     break;
   case LISTITEM_EPISODE:
-    if (item->HasVideoInfoTag())
+    if (item->HasVideoInfoTag() && item->GetVideoInfoTag()->m_iEpisode > 0)
     {
       CStdString strResult;
-      if (item->GetVideoInfoTag()->m_iSpecialSortEpisode > 0)
+      if (item->GetVideoInfoTag()->m_iSeason == 0) // prefix episode with 'S'
         strResult.Format("S%d",item->GetVideoInfoTag()->m_iEpisode);
-      else if (item->GetVideoInfoTag()->m_iEpisode > 0) // if m_iEpisode = -1 there's no episode detail
+      else
         strResult.Format("%d",item->GetVideoInfoTag()->m_iEpisode);
       return strResult;
     }
     break;
   case LISTITEM_SEASON:
-    if (item->HasVideoInfoTag())
+    if (item->HasVideoInfoTag() && item->GetVideoInfoTag()->m_iSeason > 0)
     {
       CStdString strResult;
-      if (item->GetVideoInfoTag()->m_iSpecialSortSeason > 0)
-        strResult.Format("%d",item->GetVideoInfoTag()->m_iSpecialSortSeason);
-      else if (item->GetVideoInfoTag()->m_iSeason > 0) // if m_iSeason = -1 there's no season detail
-        strResult.Format("%d",item->GetVideoInfoTag()->m_iSeason);
+      strResult.Format("%d",item->GetVideoInfoTag()->m_iSeason);
       return strResult;
     }
     break;
@@ -4531,7 +4578,7 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
     {
       CStdString path;
       if (item->IsMusicDb() && item->HasMusicInfoTag())
-        URIUtils::GetDirectory(item->GetMusicInfoTag()->GetURL(), path);
+        path = URIUtils::GetDirectory(item->GetMusicInfoTag()->GetURL());
       else if (item->IsVideoDb() && item->HasVideoInfoTag())
       {
         if( item->m_bIsFolder )
@@ -5048,8 +5095,7 @@ CStdString CGUIInfoManager::GetPictureLabel(int info)
     return GetItemLabel(m_currentSlide, LISTITEM_FILENAME);
   else if (info == SLIDE_FILE_PATH)
   {
-    CStdString path;
-    URIUtils::GetDirectory(m_currentSlide->GetPath(), path);
+    CStdString path = URIUtils::GetDirectory(m_currentSlide->GetPath());
     return CURL(path).GetWithoutUserDetails();
   }
   else if (info == SLIDE_FILE_SIZE)

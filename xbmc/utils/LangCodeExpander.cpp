@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -158,7 +158,7 @@ bool CLangCodeExpander::ConvertTwoToThreeCharCode(CStdString& strThreeCharCode, 
     {
       if (strTwoCharCodeLower.Equals(CharCode2To3[index].old))
       {
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
         if (localeHack && CharCode2To3[index].win_id)
         {
           strThreeCharCode = CharCode2To3[index].win_id;
@@ -418,6 +418,27 @@ void CLangCodeExpander::CodeToString(long code, CStdString& ret)
     ret.Insert(0, c);
     code >>= 8;
   }
+}
+
+std::vector<std::string> CLangCodeExpander::GetLanguageNames(LANGFORMATS format /* = CLangCodeExpander::ISO_639_1 */) const
+{
+  std::vector<std::string> languages;
+  const LCENTRY *lang = g_iso639_1;
+  size_t length = sizeof(g_iso639_1);
+  if (format == CLangCodeExpander::ISO_639_2)
+  {
+    lang = g_iso639_2;
+    length = sizeof(g_iso639_2);
+  }
+  length /= sizeof(LCENTRY);
+
+  for (size_t i = 0; i < length; i++)
+  {
+    languages.push_back(lang->name);
+    ++lang;
+  }
+
+  return languages;
 }
 
 extern const LCENTRY g_iso639_1[144] =

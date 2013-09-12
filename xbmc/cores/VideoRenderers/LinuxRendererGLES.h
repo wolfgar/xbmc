@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,9 +40,8 @@ class CBaseTexture;
 namespace Shaders { class BaseYUV2RGBShader; }
 namespace Shaders { class BaseVideoFilterShader; }
 class COpenMaxVideo;
+class CStageFrightVideo;
 typedef std::vector<int>     Features;
-
-#define NUM_BUFFERS 3
 
 
 #undef ALIGN
@@ -87,7 +86,8 @@ enum RenderMethod
   RENDER_POT    = 0x010,
   RENDER_OMXEGL = 0x040,
   RENDER_CVREF  = 0x080,
-  RENDER_BYPASS = 0x100
+  RENDER_BYPASS = 0x100,
+  RENDER_EGLIMG = 0x200
 };
 
 enum RenderQuality
@@ -124,7 +124,7 @@ public:
   CLinuxRendererGLES();
   virtual ~CLinuxRendererGLES();
 
-  virtual void Update(bool bPauseDrawing);
+  virtual void Update();
   virtual void SetupScreenshot() {};
 
   bool RenderCapture(CRenderCapture* capture);
@@ -139,6 +139,9 @@ public:
   virtual void         UnInit();
   virtual void         Reset(); /* resets renderer after seek for example */
   virtual void         ReorderDrawPoints();
+  virtual void         SetBufferSize(int numBuffers) { m_NumYV12Buffers = numBuffers; }
+  virtual unsigned int GetMaxBufferSize() { return NUM_BUFFERS; }
+  virtual unsigned int GetProcessorSize();
 
   virtual void RenderUpdate(bool clear, DWORD flags = 0, DWORD alpha = 255);
 
@@ -154,10 +157,13 @@ public:
   virtual std::vector<ERenderFormat> SupportedFormats() { return m_formats; }
 
 #ifdef HAVE_LIBOPENMAX
-  virtual void         AddProcessor(COpenMax* openMax, DVDVideoPicture *picture);
+  virtual void         AddProcessor(COpenMax* openMax, DVDVideoPicture *picture, int index);
 #endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
-  virtual void         AddProcessor(struct __CVBuffer *cvBufferRef);
+  virtual void         AddProcessor(struct __CVBuffer *cvBufferRef, int index);
+#endif
+#ifdef HAS_LIBSTAGEFRIGHT
+  virtual void         AddProcessor(CStageFrightVideo* stf, EGLImageKHR eglimg, int index);
 #endif
 #ifdef HAS_IMXVPU
   virtual void         AddProcessor(CDVDVideoCodecIMX *imx);
@@ -166,7 +172,6 @@ public:
 protected:
   virtual void Render(DWORD flags, int index);
 
-  virtual void ManageTextures();
   int  NextYV12Texture();
   virtual bool ValidateRenderTarget();
   virtual void LoadShaders(int field=FIELD_FULL);
@@ -190,6 +195,10 @@ protected:
   void DeleteBYPASSTexture(int index);
   bool CreateBYPASSTexture(int index);
 
+  void UploadEGLIMGTexture(int index);
+  void DeleteEGLIMGTexture(int index);
+  bool CreateEGLIMGTexture(int index);
+
   void CalculateTextureSourceRects(int source, int num_planes);
 
   // renderers
@@ -197,6 +206,7 @@ protected:
   void RenderSinglePass(int index, int field);    // single pass glsl renderer
   void RenderSoftware(int index, int field);      // single pass s/w yuv2rgb renderer
   void RenderOpenMax(int index, int field);       // OpenMAX rgb texture
+  void RenderEglImage(int index, int field);       // Android OES texture
   void RenderCoreVideoRef(int index, int field);  // CoreVideo reference
 
   CFrameBufferObject m_fbo;
@@ -256,7 +266,10 @@ protected:
 #ifdef HAS_IMXVPU
     CDVDVideoCodecIMX *imx;
 #endif
-
+#ifdef HAS_LIBSTAGEFRIGHT
+    CStageFrightVideo* stf;
+    EGLImageKHR eglimg;
+#endif
   };
 
   typedef YUVBUFFER          YUVBUFFERS[NUM_BUFFERS];
@@ -267,7 +280,7 @@ protected:
 
   void LoadPlane( YUVPLANE& plane, int type, unsigned flipindex
                 , unsigned width,  unsigned height
-                , int stride, void* data );
+                , unsigned int stride, void* data );
 
   Shaders::BaseYUV2RGBShader     *m_pYUVShader;
   Shaders::BaseVideoFilterShader *m_pVideoFilterShader;
@@ -287,9 +300,6 @@ protected:
   struct SwsContext *m_sw_context;
   BYTE	      *m_rgbBuffer;  // if software scale is used, this will hold the result image
   unsigned int m_rgbBufferSize;
-
-  CEvent* m_eventTexturesDone[NUM_BUFFERS];
-
 };
 
 

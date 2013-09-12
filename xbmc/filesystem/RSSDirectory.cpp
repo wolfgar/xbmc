@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -88,42 +88,18 @@ bool CRSSDirectory::ContainsFiles(const CStdString& strPath)
 
 static bool IsPathToMedia(const CStdString& strPath )
 {
-  CStdString extension;
-  URIUtils::GetExtension(strPath, extension);
-
-  if (extension.IsEmpty())
-    return false;
-
-  extension.ToLower();
-
-  if (g_advancedSettings.m_videoExtensions.Find(extension) != -1)
-    return true;
-
-  if (g_advancedSettings.m_musicExtensions.Find(extension) != -1)
-    return true;
-
-  if (g_advancedSettings.m_pictureExtensions.Find(extension) != -1)
-    return true;
-
-  return false;
+  return URIUtils::HasExtension(strPath,
+                              g_advancedSettings.m_videoExtensions + '|' +
+                              g_advancedSettings.m_musicExtensions + '|' +
+                              g_advancedSettings.m_pictureExtensions);
 }
 
 static bool IsPathToThumbnail(const CStdString& strPath )
 {
   // Currently just check if this is an image, maybe we will add some
   // other checks later
-  CStdString extension;
-  URIUtils::GetExtension(strPath, extension);
-
-  if (extension.IsEmpty())
-    return false;
-
-  extension.ToLower();
-
-  if (g_advancedSettings.m_pictureExtensions.Find(extension) != -1)
-    return true;
-
-  return false;
+  return URIUtils::HasExtension(strPath,
+                                    g_advancedSettings.m_pictureExtensions);
 }
 
 static time_t ParseDate(const CStdString & strDate)
@@ -637,10 +613,10 @@ bool CRSSDirectory::GetDirectory(const CStdString& path, CFileItemList &items)
       items.Add(item);
   }
 
-  items.AddSortMethod(SORT_METHOD_UNSORTED , 231, LABEL_MASKS("%L", "%D", "%L", ""));    // FileName, Duration | Foldername, empty
-  items.AddSortMethod(SORT_METHOD_LABEL    , 551, LABEL_MASKS("%L", "%D", "%L", ""));    // FileName, Duration | Foldername, empty
-  items.AddSortMethod(SORT_METHOD_SIZE     , 553, LABEL_MASKS("%L", "%I", "%L", "%I"));  // FileName, Size | Foldername, Size
-  items.AddSortMethod(SORT_METHOD_DATE     , 552, LABEL_MASKS("%L", "%J", "%L", "%J"));  // FileName, Date | Foldername, Date
+  items.AddSortMethod(SortByNone   , 231, LABEL_MASKS("%L", "%D", "%L", ""));    // FileName, Duration | Foldername, empty
+  items.AddSortMethod(SortByLabel  , 551, LABEL_MASKS("%L", "%D", "%L", ""));    // FileName, Duration | Foldername, empty
+  items.AddSortMethod(SortBySize   , 553, LABEL_MASKS("%L", "%I", "%L", "%I"));  // FileName, Size | Foldername, Size
+  items.AddSortMethod(SortByDate   , 552, LABEL_MASKS("%L", "%J", "%L", "%J"));  // FileName, Date | Foldername, Date
 
   CDateTime time = CDateTime::GetCurrentDateTime();
   int mins = 60;

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -215,10 +215,10 @@ BLURAY_TITLE_INFO* CDVDInputStreamBluray::GetTitleLongest()
 {
   int titles = m_dll->bd_get_titles(m_bd, TITLES_RELEVANT, 0);
 
-  BLURAY_TITLE_INFO *t, *s = NULL;
+  BLURAY_TITLE_INFO *s = NULL;
   for(int i=0; i < titles; i++)
   {
-    t = m_dll->bd_get_title_info(m_bd, i, 0);
+    BLURAY_TITLE_INFO *t = m_dll->bd_get_title_info(m_bd, i, 0);
     if(!t)
     {
       CLog::Log(LOGDEBUG, "get_main_title - unable to get title %d", i);
@@ -254,8 +254,6 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
   CStdString strPath(strFile);
   CStdString filename;
   CStdString root;
-  CStdString ext(URIUtils::GetExtension(strPath));
-  ext.ToLower();
 
   if(strPath.Left(7).Equals("bluray:"))
   {
@@ -263,8 +261,7 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
     root     = url.GetHostName();
     filename = URIUtils::GetFileName(url.GetFileName());
   }
-  else if(ext == ".iso"
-       || ext == ".img")
+  else if(URIUtils::HasExtension(strPath, ".iso|.img"))
   {
     CURL url("udf://");
     url.SetHostName(strPath);
@@ -273,23 +270,26 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
   }
   else
   {
-    URIUtils::GetDirectory(strPath,strPath);
+    strPath = URIUtils::GetDirectory(strPath);
     URIUtils::RemoveSlashAtEnd(strPath);
 
     if(URIUtils::GetFileName(strPath) == "PLAYLIST")
     {
-      URIUtils::GetDirectory(strPath,strPath);
+      strPath = URIUtils::GetDirectory(strPath);
       URIUtils::RemoveSlashAtEnd(strPath);
     }
 
     if(URIUtils::GetFileName(strPath) == "BDMV")
     {
-      URIUtils::GetDirectory(strPath,strPath);
+      strPath = URIUtils::GetDirectory(strPath);
       URIUtils::RemoveSlashAtEnd(strPath);
     }
     root     = strPath;
     filename = URIUtils::GetFileName(strFile);
   }
+
+  // root should not have trailing slash
+  URIUtils::RemoveSlashAtEnd(root);
 
   if (!m_dll)
     return false;
@@ -352,7 +352,7 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
     m_navmode = false;
     m_title = GetTitleLongest();
   }
-  else if(URIUtils::GetExtension(filename).Equals(".mpls"))
+  else if(URIUtils::HasExtension(filename, ".mpls"))
   {
     m_navmode = false;
     m_title = GetTitleFile(filename);
@@ -421,6 +421,7 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
       CLog::Log(LOGERROR, "CDVDInputStreamBluray::Open - failed to select title %d", m_title->idx);
       return false;
     }
+    m_clip = 0;
   }
 
   return true;
@@ -586,7 +587,7 @@ void CDVDInputStreamBluray::ProcessEvent() {
   m_event.event = BD_EVENT_NONE;
 }
 
-int CDVDInputStreamBluray::Read(BYTE* buf, int buf_size)
+int CDVDInputStreamBluray::Read(uint8_t* buf, int buf_size)
 {
   if(m_navmode)
   {

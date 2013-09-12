@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -260,7 +260,7 @@ void CMultiPathDirectory::MergeItems(CFileItemList &items)
     return;
   // sort items by label
   // folders are before files in this sort method
-  items.Sort(SORT_METHOD_LABEL, SortOrderAscending);
+  items.Sort(SortByLabel, SortOrderAscending);
   int i = 0;
 
   // if first item in the sorted list is a file, just abort

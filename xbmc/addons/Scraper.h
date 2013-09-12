@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ public:
   CScraper(const AddonProps &props) : CAddon(props), m_fLoaded(false) {}
   CScraper(const cp_extension_t *ext);
   virtual ~CScraper() {}
-  virtual AddonPtr Clone(const AddonPtr &self) const;
+  virtual AddonPtr Clone() const;
 
   /*! \brief Set the scraper settings for a particular path from an XML string
    Loads the default and user settings (if not already loaded) and, if the given XML string is non-empty,
@@ -148,7 +148,7 @@ public:
     const CStdString &sSearch, CArtist &artist);
 
 private:
-  CScraper(const CScraper&, const AddonPtr&);
+  CScraper(const CScraper &rhs);
   CStdString SearchStringEncoding() const
     { return m_parser.GetSearchStringEncoding(); }
 

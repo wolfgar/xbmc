@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "NSFFileDirectory.h"
 #include "SIDFileDirectory.h"
 #include "ASAPFileDirectory.h"
+#include "UDFDirectory.h"
 #include "RSSDirectory.h"
 #include "cores/paplayer/ASAPCodec.h"
 #endif
@@ -61,6 +62,9 @@ CFileDirectoryFactory::~CFileDirectoryFactory(void)
 // return NULL + set pItem->m_bIsFolder to remove it completely from list.
 IFileDirectory* CFileDirectoryFactory::Create(const CStdString& strPath, CFileItem* pItem, const CStdString& strMask)
 {
+  if (URIUtils::IsStack(strPath)) // disqualify stack as we need to work with each of the parts instead
+    return NULL;
+
   CStdString strExtension=URIUtils::GetExtension(strPath);
   strExtension.MakeLower();
 
@@ -112,6 +116,9 @@ IFileDirectory* CFileDirectoryFactory::Create(const CStdString& strPath, CFileIt
 
   if (pItem->IsRSS())
     return new CRSSDirectory();
+
+  if (pItem->IsDVDImage())
+    return new CUDFDirectory();
 
 #endif
 #if defined(TARGET_ANDROID)
@@ -224,7 +231,7 @@ IFileDirectory* CFileDirectoryFactory::Create(const CStdString& strPath, CFileIt
     IFileDirectory* pDir=new CSmartPlaylistDirectory;
     return pDir; // treat as directory
   }
-  if (g_advancedSettings.m_playlistAsFolders && CPlayListFactory::IsPlaylist(strPath))
+  if (CPlayListFactory::IsPlaylist(strPath))
   { // Playlist file
     // currently we only return the directory if it contains
     // more than one file.  Reason is that .pls and .m3u may be used
