@@ -25,6 +25,9 @@
 #include "DVDStreamInfo.h"
 #include "threads/CriticalSection.h"
 
+
+//#define IMX_PROFILE
+
 /* FIXME TODO Develop real proper CVPUBuffer class */
 #define VPU_DEC_MAX_NUM_MEM_NUM 20
 typedef struct
@@ -43,7 +46,11 @@ typedef struct
 
 typedef struct {
   struct v4l2_buffer *v4l2_buffer;
+  VpuFieldType field;
   double pts;
+#ifdef IMX_PROFILE
+  unsigned long long push_ts;
+#endif
 } outputFrameType;
   
 class CDVDVideoCodecIMX : public CDVDVideoCodec
@@ -86,7 +93,7 @@ protected:
   bool                m_dropState;
   /* FIXME V4L rendering stuff & Frame Buffers: To be moved in a dedicated class */
   bool VpuAllocFrameBuffers(void);
-  bool VpuPushFrame(VpuFrameBuffer *);
+  bool VpuPushFrame(VpuFrameBuffer *, VpuFieldType);
   bool VpuDeQueueFrame(void);
   int GetAvailableBufferNb(void);
   void InitFB(void);
