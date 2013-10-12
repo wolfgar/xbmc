@@ -248,7 +248,7 @@ bool CEGLNativeTypeIMX::GetPreferredResolution(RESOLUTION_INFO *res) const
 
 bool CEGLNativeTypeIMX::ShowWindow(bool show)
 {
-   CLog::Log(LOGERROR, "%s - call CEGLNativeTypeIMX::ShowWindow with %d.\n", __FUNCTION__, show);
+  // CLog::Log(LOGERROR, "%s - call CEGLNativeTypeIMX::ShowWindow with %d.\n", __FUNCTION__, show);
   return false;
 }
 
