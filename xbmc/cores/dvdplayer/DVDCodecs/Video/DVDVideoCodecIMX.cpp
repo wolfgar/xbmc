@@ -347,7 +347,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   rect.top =  m_initInfo.PicCropRect.nTop;
   rect.width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
   rect.height = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
-  fmt.fmt.pix.priv = &rect;
+  fmt.fmt.pix.priv = (unsigned int)&rect;
 
   ret = ioctl(m_v4lfd, VIDIOC_S_FMT, &fmt);
   if (ret < 0)
