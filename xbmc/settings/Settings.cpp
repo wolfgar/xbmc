@@ -82,6 +82,13 @@
 #include "utils/XBMCTinyXML.h"
 #include "view/ViewStateSettings.h"
 #include "windowing/WindowingFactory.h"
+#if defined(TARGET_ANDROID)
+#include "android/activity/AndroidFeatures.h"
+#endif
+
+#if defined(HAS_LIBAMCODEC)
+#include "utils/AMLUtils.h"
+#endif
 
 #define SETTINGS_XML_FOLDER "special://xbmc/system/settings/"
 #define SETTINGS_XML_ROOT   "settings"
@@ -416,6 +423,9 @@ void CSettings::Uninitialize()
 #endif // defined(TARGET_LINUX)
   m_settingsManager->UnregisterCallback(&g_weatherManager);
   m_settingsManager->UnregisterCallback(&PERIPHERALS::CPeripherals::Get());
+#if defined(TARGET_DARWIN_OSX)
+  m_settingsManager->UnregisterCallback(&XBMCHelper::GetInstance());
+#endif
 
   // unregister ISubSettings implementations
   m_settingsManager->UnregisterSubSettings(&g_application);
@@ -711,6 +721,9 @@ void CSettings::InitializeConditions()
 #ifdef HAS_EVENT_SERVER
   m_settingsManager->AddCondition("has_event_server");
 #endif
+#ifdef HAVE_X11
+  m_settingsManager->AddCondition("have_x11");
+#endif
 #ifdef HAS_GL
   m_settingsManager->AddCondition("has_gl");
 #endif
@@ -752,10 +765,18 @@ void CSettings::InitializeConditions()
 #ifdef HAVE_LIBVDPAU
   m_settingsManager->AddCondition("have_libvdpau");
 #endif
+#ifdef TARGET_ANDROID
+  if (CAndroidFeatures::GetVersion() > 15)
+    m_settingsManager->AddCondition("has_mediacodec");
+#endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   m_settingsManager->AddCondition("have_videotoolboxdecoder");
   if (g_sysinfo.HasVideoToolBoxDecoder())
     m_settingsManager->AddCondition("hasvideotoolboxdecoder");
+#endif
+#ifdef HAS_LIBAMCODEC
+  if (aml_present())
+    m_settingsManager->AddCondition("have_amcodec");
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
   m_settingsManager->AddCondition("have_libstagefrightdecoder");
@@ -766,8 +787,7 @@ void CSettings::InitializeConditions()
 #endif
 #if defined(TARGET_WINDOWS) && defined(HAS_DX)
   m_settingsManager->AddCondition("has_dx");
-  if (g_sysinfo.IsWindowsVersionAtLeast(CSysInfo::WindowsVersionVista))
-    m_settingsManager->AddCondition("hasdxva2");
+  m_settingsManager->AddCondition("hasdxva2");
 #endif
 
   if (g_application.IsStandAlone())
@@ -894,6 +914,8 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert("screensaver.settings");
   settingSet.insert("videoscreen.guicalibration");
   settingSet.insert("videoscreen.testpattern");
+  settingSet.insert("videoplayer.useamcodec");
+  settingSet.insert("videoplayer.usemediacodec");
   m_settingsManager->RegisterCallback(&g_application, settingSet);
 
   settingSet.clear();
@@ -926,6 +948,12 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.clear();
   settingSet.insert("input.enablemouse");
   m_settingsManager->RegisterCallback(&g_Mouse, settingSet);
+
+#if defined(HAS_GL) && defined(HAVE_X11)
+  settingSet.clear();
+  settingSet.insert("input.enablesystemkeys");
+  m_settingsManager->RegisterCallback(&g_Windowing, settingSet);
+#endif
 
   settingSet.clear();
   settingSet.insert("services.webserver");

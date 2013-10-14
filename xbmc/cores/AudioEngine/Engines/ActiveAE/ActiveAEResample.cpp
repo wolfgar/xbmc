@@ -82,6 +82,15 @@ bool CActiveAEResample::Init(uint64_t dst_chan_layout, int dst_channels, int dst
     m_dllAvUtil.av_opt_set_int(m_pContext, "output_sample_bits", m_dst_bits, 0);
   }
 
+  // tell resampler to clamp float values
+  // not required for sink stage (remapLayout == true)
+  if ((m_dst_fmt == AV_SAMPLE_FMT_FLT || m_dst_fmt == AV_SAMPLE_FMT_FLTP) &&
+      (m_src_fmt == AV_SAMPLE_FMT_FLT || m_src_fmt == AV_SAMPLE_FMT_FLTP) &&
+      !remapLayout)
+  {
+     m_dllAvUtil.av_opt_set_double(m_pContext, "rematrix_maxval", 1.0, 0);
+  }
+
   if(!m_pContext)
   {
     CLog::Log(LOGERROR, "CActiveAEResample::Init - create context failed");
@@ -93,14 +102,19 @@ bool CActiveAEResample::Init(uint64_t dst_chan_layout, int dst_channels, int dst
     // remapLayout is the layout of the sink, if the channel is in our src layout
     // the channel is mapped by setting coef 1.0
     memset(m_rematrix, 0, sizeof(m_rematrix));
+    m_dst_chan_layout = 0;
     for (unsigned int out=0; out<remapLayout->Count(); out++)
     {
+      m_dst_chan_layout += (uint64_t) (1 << out);
       int idx = GetAVChannelIndex((*remapLayout)[out], m_src_chan_layout);
       if (idx >= 0)
       {
         m_rematrix[out][idx] = 1.0;
       }
     }
+
+    m_dllAvUtil.av_opt_set_int(m_pContext, "out_channel_count", m_dst_channels, 0);
+    m_dllAvUtil.av_opt_set_int(m_pContext, "out_channel_layout", m_dst_chan_layout, 0);
 
     if (m_dllSwResample.swr_set_matrix(m_pContext, (const double*)m_rematrix, AE_CH_MAX) < 0)
     {
@@ -155,8 +169,19 @@ bool CActiveAEResample::Init(uint64_t dst_chan_layout, int dst_channels, int dst
   return true;
 }
 
-int CActiveAEResample::Resample(uint8_t **dst_buffer, int dst_samples, uint8_t **src_buffer, int src_samples)
+int CActiveAEResample::Resample(uint8_t **dst_buffer, int dst_samples, uint8_t **src_buffer, int src_samples, double ratio)
 {
+  if (ratio != 1.0)
+  {
+    if (m_dllSwResample.swr_set_compensation(m_pContext,
+                                            (dst_samples*ratio-dst_samples)*m_dst_rate/m_src_rate,
+                                             dst_samples*m_dst_rate/m_src_rate) < 0)
+    {
+      CLog::Log(LOGERROR, "CActiveAEResample::Resample - set compensation failed");
+      return 0;
+    }
+  }
+
   int ret = m_dllSwResample.swr_convert(m_pContext, dst_buffer, dst_samples, (const uint8_t**)src_buffer, src_samples);
   if (ret < 0)
   {

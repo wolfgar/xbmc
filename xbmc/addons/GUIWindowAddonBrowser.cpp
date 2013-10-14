@@ -43,7 +43,6 @@
 #include "utils/StringUtils.h"
 #include "AddonDatabase.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/MediaSourceSettings.h"
 #include "storage/MediaManager.h"
 #include "LangInfo.h"
 #include "guilib/Key.h"
@@ -481,7 +480,7 @@ int CGUIWindowAddonBrowser::SelectAddonID(const vector<ADDON::TYPE> &types, CStd
 
 CStdString CGUIWindowAddonBrowser::GetStartFolder(const CStdString &dir)
 {
-  if (dir.Left(9).Equals("addons://"))
+  if (StringUtils::StartsWithNoCase(dir, "addons://"))
     return dir;
   return CGUIMediaWindow::GetStartFolder(dir);
 }

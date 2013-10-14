@@ -147,7 +147,7 @@
   "Playlist.Item": {
     "type": [
       { "type": "object", "properties": { "file": { "type": "string", "description": "Path to a file (not a directory) to be added to the playlist", "required": true } }, "additionalProperties": false },
-      { "type": "object", "properties": { "directory": { "type": "string", "required": true }, "recursive": { "type": "boolean", "default": false }, "media": { "$ref": "Files.Media" } }, "additionalProperties": false },
+      { "type": "object", "properties": { "directory": { "type": "string", "required": true }, "recursive": { "type": "boolean", "default": false }, "media": { "$ref": "Files.Media", "default": "files" } }, "additionalProperties": false },
       { "type": "object", "properties": { "movieid": { "$ref": "Library.Id", "required": true } }, "additionalProperties": false },
       { "type": "object", "properties": { "episodeid": { "$ref": "Library.Id", "required": true } }, "additionalProperties": false },
       { "type": "object", "properties": { "musicvideoid": { "$ref": "Library.Id", "required": true } }, "additionalProperties": false },
@@ -1244,17 +1244,15 @@
     "enum": [ "media", "window", "script", "unknown" ]
   },
   "Favourite.Details.Favourite": {
-    "type": "array",
-    "items": { "type": "object",
-      "properties": {
-        "title": { "type": "string", "required": true },
-        "type": { "$ref": "Favourite.Type", "required": true },
-        "path": { "type": "string" },
-        "window": { "type": "string" },
-        "windowparameter": { "type": "string" },
-        "thumbnail": { "type": "string" }
-      },
-      "additionalProperties": false
-    }
+    "type": "object",
+    "properties": {
+      "title": { "type": "string", "required": true },
+      "type": { "$ref": "Favourite.Type", "required": true },
+      "path": { "type": "string" },
+      "window": { "type": "string" },
+      "windowparameter": { "type": "string" },
+      "thumbnail": { "type": "string" }
+    },
+    "additionalProperties": false
   }
 }

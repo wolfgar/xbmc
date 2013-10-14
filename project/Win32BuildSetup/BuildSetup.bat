@@ -3,8 +3,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 rem ----Usage----
 rem BuildSetup [gl|dx] [clean|noclean]
 rem vs2010 for compiling with visual studio 2010
-rem gl for opengl build (default)
-rem dx for directx build
+rem gl for opengl build
+rem dx for directx build (default)
 rem clean to force a full rebuild
 rem noclean to force a build without clean
 rem noprompt to avoid all prompts
@@ -134,7 +134,7 @@ IF %comp%==vs2010 (
   %NET% %CLEAN_EXE%
   ECHO Compiling XBMC branch %BRANCH%...
   %NET% %OPTS_EXE%
-  IF NOT EXIST %EXE% (
+  IF %errorlevel%==1 (
   	set DIETEXT="XBMC.EXE failed to build!  See %CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
 	IF %promptlevel%==noprompt (
 		type "%CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
@@ -151,7 +151,7 @@ IF %comp%==vs2010 (
   ECHO ------------------------------------------------------------
   ECHO Compiling XBMC branch %BRANCH%...
   %NET% %OPTS_EXE%
-  IF NOT EXIST %EXE% (
+  IF %errorlevel%==1 (
   	set DIETEXT="XBMC.EXE failed to build!  See %CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
 	IF %promptlevel%==noprompt (
 		type "%CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
@@ -190,8 +190,8 @@ IF %comp%==vs2010 (
   Echo Desktop.ini>>exclude.txt
   Echo dsstdfx.bin>>exclude.txt
   Echo exclude.txt>>exclude.txt
-  Echo xbmc.txt>>exclude.txt
-  Echo xbmc.old.txt>>exclude.txt
+  Echo xbmc.log>>exclude.txt
+  Echo xbmc.old.log>>exclude.txt
   rem Exclude userdata files
   Echo userdata\advancedsettings.xml>>exclude.txt
   Echo userdata\guisettings.xml>>exclude.txt
@@ -345,6 +345,7 @@ IF %comp%==vs2010 (
   echo %DIETEXT%
   SET exitcode=1
   ECHO ------------------------------------------------------------
+  GOTO END
 
 :VIEWLOG_EXE
   SET log="%CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"

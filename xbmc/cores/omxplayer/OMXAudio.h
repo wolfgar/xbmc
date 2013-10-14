@@ -27,7 +27,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "cores/AudioEngine/AEAudioFormat.h"
+#include "cores/AudioEngine/Utils/AEAudioFormat.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/Utils/AERemap.h"
 #include "cores/IAudioCallback.h"
@@ -109,7 +109,6 @@ private:
   unsigned int  m_BytesPerSec;
   unsigned int  m_BufferLen;
   unsigned int  m_ChunkLen;
-  unsigned int  m_OutputChannels;
   unsigned int  m_BitsPerSample;
   float         m_maxLevel;
   float         m_amplification;
@@ -160,7 +159,6 @@ protected:
   DllAvUtil         m_dllAvUtil;
 
   OMX_AUDIO_CHANNELTYPE m_input_channels[OMX_AUDIO_MAXCHANNELS];
-  OMX_AUDIO_CHANNELTYPE m_output_channels[OMX_AUDIO_MAXCHANNELS];
 
   CAEChannelInfo    m_channelLayout;
 

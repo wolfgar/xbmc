@@ -43,6 +43,11 @@ public:
     user.clear();
     pass.clear();
     name.clear();
+    key.clear();
+    cert.clear();
+    ca.clear();
+    capath.clear();
+    ciphers.clear();
   };
   CStdString type;
   CStdString host;
@@ -50,6 +55,11 @@ public:
   CStdString user;
   CStdString pass;
   CStdString name;
+  CStdString key;
+  CStdString cert;
+  CStdString ca;
+  CStdString capath;
+  CStdString ciphers;
 };
 
 struct TVShowRegexp
@@ -157,6 +167,8 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     int m_videoPercentSeekBackwardBig;
     CStdString m_videoPPFFmpegDeint;
     CStdString m_videoPPFFmpegPostProc;
+    bool m_videoVDPAUtelecine;
+    bool m_videoVDPAUdeintSkipChromaHD;
     bool m_musicUseTimeSeeking;
     int m_musicTimeSeekForward;
     int m_musicTimeSeekBackward;
@@ -172,7 +184,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     CStdString m_audioHost;
     bool m_audioApplyDrc;
 
-    bool  m_videoVDPAUScaling;
+    int   m_videoVDPAUScaling;
     float m_videoNonLinStretchRatio;
     bool  m_videoEnableHighQualityHwScalers;
     float m_videoAutoScaleMaxFps;
@@ -395,6 +407,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     CStdString m_musicExtensions;
     CStdString m_videoExtensions;
     CStdString m_discStubExtensions;
+    CStdString m_subtitlesExtensions;
 
     CStdString m_stereoscopicflags_sbs;
     CStdString m_stereoscopicflags_tab;

@@ -68,7 +68,6 @@ COMXVideo::COMXVideo() : m_video_codec_name("")
   m_is_open           = false;
   m_extradata         = NULL;
   m_extrasize         = 0;
-  m_video_convert     = false;
   m_deinterlace       = false;
   m_deinterlace_request = VS_DEINTERLACEMODE_OFF;
   m_hdmi_clock_sync   = false;
@@ -675,12 +674,6 @@ bool COMXVideo::Open(CDVDStreamInfo &hints, OMXClock *clock, EDEINTERLACEMODE de
 
 void COMXVideo::Close()
 {
-  m_omx_tunnel_decoder.Flush();
-  if(m_deinterlace)
-    m_omx_tunnel_image_fx.Flush();
-  m_omx_tunnel_clock.Flush();
-  m_omx_tunnel_sched.Flush();
-
   m_omx_tunnel_clock.Deestablish();
   m_omx_tunnel_decoder.Deestablish();
   if(m_deinterlace)
@@ -702,7 +695,6 @@ void COMXVideo::Close()
   m_extradata = NULL;
   m_extrasize = 0;
 
-  m_video_convert     = false;
   m_video_codec_name  = "";
   m_deinterlace       = false;
   m_av_clock          = NULL;
@@ -823,7 +815,6 @@ void COMXVideo::Reset(void)
 
   m_setStartTime = true;
   m_omx_decoder.FlushInput();
-  m_omx_tunnel_decoder.Flush();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

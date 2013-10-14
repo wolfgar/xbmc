@@ -34,6 +34,10 @@
   #include "Engines/PulseAE/PulseAE.h"
 #endif
 
+#if defined(TARGET_RASPBERRY_PI)
+  #include "Engines/PiAudio/PiAudioAE.h"
+#endif
+
 #include "guilib/LocalizeStrings.h"
 #include "settings/Setting.h"
 #include "utils/StringUtils.h"
@@ -49,13 +53,14 @@ IAE *CAEFactory::GetEngine()
 
 bool CAEFactory::LoadEngine()
 {
-#if defined(TARGET_RASPBERRY_PI)
-  return true;
-#endif
-
   bool loaded = false;
 
-#if defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
+#if defined(TARGET_RASPBERRY_PI)
+  return CAEFactory::LoadEngine(AE_ENGINE_PIAUDIO);
+#elif defined(TARGET_DARWIN)
+  return CAEFactory::LoadEngine(AE_ENGINE_COREAUDIO);
+#endif
+
   std::string engine;
   if (getenv("AE_ENGINE"))
   {
@@ -66,39 +71,21 @@ bool CAEFactory::LoadEngine()
     if (!loaded && engine == "PULSE")
       loaded = CAEFactory::LoadEngine(AE_ENGINE_PULSE);
     #endif
+    
     if (!loaded && engine == "SOFT" )
       loaded = CAEFactory::LoadEngine(AE_ENGINE_SOFT);
+
     if (!loaded && engine == "ACTIVE")
       loaded = CAEFactory::LoadEngine(AE_ENGINE_ACTIVE);
   }
-#endif
-
-#if defined(TARGET_WINDOWS)
-  std::string engine;
-  if (getenv("AE_ENGINE"))
-  {
-    engine = (std::string)getenv("AE_ENGINE");
-    std::transform(engine.begin(), engine.end(), engine.begin(), ::toupper);
-
-    if (!loaded && engine == "SOFT" )
-      loaded = CAEFactory::LoadEngine(AE_ENGINE_SOFT);
-    if (!loaded && engine == "ACTIVE")
-      loaded = CAEFactory::LoadEngine(AE_ENGINE_ACTIVE);
-  }
-#endif
 
 #if defined(HAS_PULSEAUDIO)
   if (!loaded)
     loaded = CAEFactory::LoadEngine(AE_ENGINE_PULSE);
 #endif
 
-#if defined(TARGET_DARWIN)
-  if (!loaded)
-    loaded = CAEFactory::LoadEngine(AE_ENGINE_COREAUDIO);
-#else
   if (!loaded)
     loaded = CAEFactory::LoadEngine(AE_ENGINE_ACTIVE);
-#endif
 
   return loaded;
 }
@@ -121,7 +108,9 @@ bool CAEFactory::LoadEngine(enum AEEngine engine)
 #if defined(HAS_PULSEAUDIO)
     case AE_ENGINE_PULSE    : AE = new CPulseAE(); break;
 #endif
-
+#if defined(TARGET_RASPBERRY_PI)
+    case AE_ENGINE_PIAUDIO  : AE = new PiAudioAE::CPiAudioAE(); break;
+#endif
     default:
       return false;
   }
@@ -147,10 +136,6 @@ void CAEFactory::UnLoadEngine()
 
 bool CAEFactory::StartEngine()
 {
-#if defined(TARGET_RASPBERRY_PI)
-  return true;
-#endif
-
   if (!AE)
     return false;
 

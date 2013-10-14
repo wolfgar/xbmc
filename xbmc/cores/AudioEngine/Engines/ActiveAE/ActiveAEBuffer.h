@@ -21,7 +21,7 @@
 
 #include "DllAvUtil.h"
 #include "DllSwResample.h"
-#include "AEAudioFormat.h"
+#include "Utils/AEAudioFormat.h"
 #include "Interfaces/AE.h"
 #include <deque>
 
@@ -107,7 +107,6 @@ public:
   bool m_changeResampler;
   double m_resampleRatio;
   AEQuality m_resampleQuality;
-  unsigned int m_outSampleRate;
   bool m_stereoUpmix;
 };
 

@@ -548,13 +548,13 @@ void XBPython::Finalize()
     UnloadExtensionLibs();
 #endif
 
-    // first free all dlls loaded by python, after that python24.dll (this is done by UnloadPythonDlls
+    // first free all dlls loaded by python, after that unload python (this is done by UnloadPythonDlls
 #if !(defined(TARGET_DARWIN) || defined(TARGET_WINDOWS))
     DllLoaderContainer::UnloadPythonDlls();
 #endif
 #if defined(TARGET_POSIX) && !defined(TARGET_DARWIN) && !defined(TARGET_FREEBSD)
     // we can't release it on windows, as this is done in UnloadPythonDlls() for win32 (see above).
-    // The implementation for linux needs looking at - UnloadPythonDlls() currently only searches for "python24.dll"
+    // The implementation for linux needs looking at - UnloadPythonDlls() currently only searches for "python26.dll"
     // The implementation for osx can never unload the python dylib.
     DllLoaderContainer::ReleaseModule(m_pDll);
 #endif
@@ -563,6 +563,11 @@ void XBPython::Finalize()
 
 void XBPython::Uninitialize()
 {
+  // don't handle any more announcements as most scripts are probably already
+  // stopped and executing a callback on one of their already destroyed classes
+  // would lead to a crash
+  CAnnouncementManager::RemoveAnnouncer(this);
+
   LOCK_AND_COPY(std::vector<PyElem>,tmpvec,m_vecPyList);
   m_vecPyList.clear();
   m_vecPyList.hadSomethingRemoved = true;

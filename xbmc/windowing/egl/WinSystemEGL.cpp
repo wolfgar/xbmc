@@ -165,13 +165,20 @@ bool CWinSystemEGL::CreateWindow(RESOLUTION_INFO &res)
     }
   }
 
-  int width = 0, height = 0;
-  if (!m_egl->GetSurfaceSize(m_display, m_surface, &width, &height))
+  /* The intel driver on wayland is broken and always returns a surface
+   * size of -1, -1. Work around it for now */
+  if (m_egl->TrustSurfaceSize())
   {
-    CLog::Log(LOGERROR, "%s: Surface is invalid",__FUNCTION__);
-    return false;
+    int width = 0, height = 0;
+    if (!m_egl->GetSurfaceSize(m_display, m_surface, &width, &height))
+    {
+      CLog::Log(LOGERROR, "%s: Surface is invalid",__FUNCTION__);
+      return false;
+    }
+    CLog::Log(LOGDEBUG, "%s: Created surface of size %ix%i",__FUNCTION__, width, height);
   }
-  CLog::Log(LOGDEBUG, "%s: Created surface of size %ix%i",__FUNCTION__, width, height);
+  else
+    CLog::Log(LOGDEBUG, "%s: Cannot reliably get surface size with this backend",__FUNCTION__);
 
   EGLint contextAttrs[] =
   {
@@ -318,10 +325,20 @@ void CWinSystemEGL::UpdateResolutions()
   RESOLUTION_INFO resDesktop, curDisplay;
   std::vector<RESOLUTION_INFO> resolutions;
 
-  if (!m_egl->ProbeResolutions(resolutions) || !resolutions.size())
+  if (!m_egl->ProbeResolutions(resolutions) || resolutions.empty())
   {
-    CLog::Log(LOGERROR, "%s: Could not find any possible resolutions",__FUNCTION__);
-    return;
+    CLog::Log(LOGWARNING, "%s: ProbeResolutions failed. Trying safe default.",__FUNCTION__);
+
+    RESOLUTION_INFO fallback;
+    if (m_egl->GetPreferredResolution(&fallback))
+    {
+      resolutions.push_back(fallback);
+    }
+    else
+    {
+      CLog::Log(LOGERROR, "%s: Fatal Error, GetPreferredResolution failed",__FUNCTION__);
+      return;
+    }
   }
 
   /* ProbeResolutions includes already all resolutions.

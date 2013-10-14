@@ -84,6 +84,10 @@ static PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 #endif
 
+#if defined(TARGET_ANDROID)
+#include "DVDCodecs/Video/DVDVideoCodecAndroidMediaCodec.h"
+#endif
+
 using namespace Shaders;
 
 CLinuxRendererGLES::YUVBUFFER::YUVBUFFER()
@@ -100,6 +104,9 @@ CLinuxRendererGLES::YUVBUFFER::YUVBUFFER()
 #ifdef HAS_LIBSTAGEFRIGHT
   stf = NULL;
   eglimg = EGL_NO_IMAGE_KHR;
+#endif
+#if defined(TARGET_ANDROID)
+  mediacodec = NULL;
 #endif
 #ifdef HAS_IMXVPU
   imx = NULL;
@@ -200,6 +207,12 @@ bool CLinuxRendererGLES::ValidateRenderTarget()
   {
     CLog::Log(LOGNOTICE,"Using GL_TEXTURE_2D");
 
+    // function pointer for texture might change in
+    // call to LoadShaders
+    glFinish();
+    for (int i = 0 ; i < NUM_BUFFERS ; i++)
+      (this->*m_textureDelete)(i);
+
      // create the yuv textures
     LoadShaders();
 
@@ -289,7 +302,13 @@ int CLinuxRendererGLES::GetImage(YV12Image *image, int source, bool readonly)
   {
     return source;
   }
+
 #endif
+  if ( m_renderMethod & RENDER_MEDIACODEC )
+  {
+    return source;
+  }
+
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   if (m_renderMethod & RENDER_CVREF )
   {
@@ -449,6 +468,22 @@ void CLinuxRendererGLES::Reset()
   }
 }
 
+void CLinuxRendererGLES::Flush()
+{
+  if (!m_bValidated)
+    return;
+
+  glFinish();
+
+  for (int i = 0 ; i < m_NumYV12Buffers ; i++)
+    (this->*m_textureDelete)(i);
+
+  glFinish();
+  m_bValidated = false;
+  m_fbo.Cleanup();
+  m_iYV12RenderBuffer = 0;
+}
+
 void CLinuxRendererGLES::Update()
 {
   if (!m_bConfigured) return;
@@ -465,6 +500,15 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
   if (m_renderMethod & RENDER_BYPASS)
   {
+    // FIXME : move in its own render mode instead of mixup with BYPASS
+    if (m_format == RENDER_FMT_IMX)
+    {
+      int index = m_iYV12RenderBuffer;
+      CDVDVideoCodecIMX *imx = m_buffers[index].imx;
+
+      imx->RenderFrame();
+    }
+
     ManageDisplay();
     // if running bypass, then the player might need the src/dst rects
     // for sizing video playback on a layer other than the gles layer.
@@ -497,14 +541,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     g_graphicsContext.SetScissors(old);
     g_graphicsContext.EndPaint();
 
-    // FIXME : move in its own render mode instead of mixup with BYPASS
-    if (m_format == RENDER_FMT_IMX)
-    {
-      int index = m_iYV12RenderBuffer;
-      CDVDVideoCodecIMX *imx = m_buffers[index].imx;
 
-      imx->RenderFrame();
-    }
     //CLog::Log(LOGDEBUG, "%s : %d %d %f %f %f %f",  __FUNCTION__, iWidth, iHeight, m_destRect.x1, m_destRect.y1, m_destRect.x2, m_destRect.y2);
     return;
   }
@@ -515,7 +552,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   int index = m_iYV12RenderBuffer;
   YUVBUFFER& buf =  m_buffers[index];
 
-  if (m_format != RENDER_FMT_OMXEGL && m_format != RENDER_FMT_EGLIMG)
+  if (m_format != RENDER_FMT_OMXEGL && m_format != RENDER_FMT_EGLIMG && m_format != RENDER_FMT_MEDIACODEC)
   {
     if (!buf.fields[FIELD_FULL][0].id) return;
   }
@@ -598,6 +635,9 @@ unsigned int CLinuxRendererGLES::PreInit()
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
   m_formats.push_back(RENDER_FMT_EGLIMG);
+#endif
+#if defined(TARGET_ANDROID)
+  m_formats.push_back(RENDER_FMT_MEDIACODEC);
 #endif
 
   // setup the background colour
@@ -704,6 +744,12 @@ void CLinuxRendererGLES::LoadShaders(int field)
         m_renderMethod = RENDER_EGLIMG;
         break;
       }
+      else if (m_format == RENDER_FMT_MEDIACODEC)
+      {
+        CLog::Log(LOGNOTICE, "GL: Using MediaCodec render method");
+        m_renderMethod = RENDER_MEDIACODEC;
+        break;
+      }
       else if (m_format == RENDER_FMT_BYPASS)
       {
         CLog::Log(LOGNOTICE, "GL: Using BYPASS render method");
@@ -791,6 +837,13 @@ void CLinuxRendererGLES::LoadShaders(int field)
     m_textureCreate = &CLinuxRendererGLES::CreateEGLIMGTexture;
     m_textureDelete = &CLinuxRendererGLES::DeleteEGLIMGTexture;
   }
+  else if (m_format == RENDER_FMT_MEDIACODEC)
+  {
+    m_textureUpload = &CLinuxRendererGLES::UploadSurfaceTexture;
+    m_textureCreate = &CLinuxRendererGLES::CreateSurfaceTexture;
+    m_textureDelete = &CLinuxRendererGLES::DeleteSurfaceTexture;
+  }
+
   else
   {
     // default to YV12 texture handlers
@@ -858,6 +911,22 @@ inline void CLinuxRendererGLES::ReorderDrawPoints()
   }
 }
 
+void CLinuxRendererGLES::ReleaseBuffer(int idx)
+{
+#ifdef HAVE_VIDEOTOOLBOXDECODER
+  YUVBUFFER &buf = m_buffers[idx];
+
+  if (buf.cvBufferRef)
+    CVBufferRelease(buf.cvBufferRef);
+  buf.cvBufferRef = NULL;
+#endif
+#if defined(TARGET_ANDROID)
+  YUVBUFFER &buf = m_buffers[idx];
+
+  SAFE_RELEASE(m_buffers[idx].mediacodec);
+#endif
+}
+
 void CLinuxRendererGLES::Render(DWORD flags, int index)
 {
   // If rendered directly by the hardware
@@ -912,6 +981,10 @@ void CLinuxRendererGLES::Render(DWORD flags, int index)
   {
     RenderCoreVideoRef(index, m_currentField);
     VerifyGLState();
+  }
+  else if (m_renderMethod & RENDER_MEDIACODEC)
+  {
+    RenderMediaCodec(index, m_currentField);
   }
   else
   {
@@ -1232,10 +1305,7 @@ void CLinuxRendererGLES::RenderSoftware(int index, int field)
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
   GLfloat ver[4][4];
   GLfloat tex[4][2];
-  float col[4][3];
-
-  for (int index = 0;index < 4;++index)
-    col[index][0] = col[index][1] = col[index][2] = 1.0;
+  GLfloat col[3] = {1.0f, 1.0f, 1.0f};
 
   GLint   posLoc = g_Windowing.GUIShaderGetPos();
   GLint   texLoc = g_Windowing.GUIShaderGetCoord0();
@@ -1295,12 +1365,7 @@ void CLinuxRendererGLES::RenderOpenMax(int index, int field)
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
   GLfloat ver[4][4];
   GLfloat tex[4][2];
-  float col[4][3];
-
-  for (int index = 0;index < 4;++index)
-  {
-    col[index][0] = col[index][1] = col[index][2] = 1.0;
-  }
+  GLfloat col[3] = {1.0f, 1.0f, 1.0f};
 
   GLint   posLoc = g_Windowing.GUIShaderGetPos();
   GLint   texLoc = g_Windowing.GUIShaderGetCoord0();
@@ -1363,12 +1428,7 @@ void CLinuxRendererGLES::RenderEglImage(int index, int field)
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
   GLfloat ver[4][4];
   GLfloat tex[4][2];
-  float col[4][3];
-
-  for (int i = 0;i < 4;++i)
-  {
-    col[i][0] = col[i][1] = col[i][2] = 1.0;
-  }
+  GLfloat col[3] = {1.0f, 1.0f, 1.0f};
 
   GLint   posLoc = g_Windowing.GUIShaderGetPos();
   GLint   texLoc = g_Windowing.GUIShaderGetCoord0();
@@ -1415,6 +1475,84 @@ void CLinuxRendererGLES::RenderEglImage(int index, int field)
 #endif
 }
 
+void CLinuxRendererGLES::RenderMediaCodec(int index, int field)
+{
+#if defined(TARGET_ANDROID)
+  #ifdef DEBUG_VERBOSE
+    unsigned int time = XbmcThreads::SystemClockMillis();
+  #endif
+
+  YUVPLANE &plane = m_buffers[index].fields[0][0];
+
+  glDisable(GL_DEPTH_TEST);
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_EXTERNAL_OES, plane.id);
+
+  g_Windowing.EnableGUIShader(SM_TEXTURE_RGBA_OES);
+
+  glUniformMatrix4fv(g_Windowing.GUIShaderGetCoord0Matrix(), 1, GL_FALSE, m_textureMatrix);
+
+  GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
+  GLfloat ver[4][4];
+  GLfloat tex[4][4];
+
+  GLint   posLoc = g_Windowing.GUIShaderGetPos();
+  GLint   texLoc = g_Windowing.GUIShaderGetCoord0();
+
+
+  glVertexAttribPointer(posLoc, 4, GL_FLOAT, 0, 0, ver);
+  glVertexAttribPointer(texLoc, 4, GL_FLOAT, 0, 0, tex);
+
+  glEnableVertexAttribArray(posLoc);
+  glEnableVertexAttribArray(texLoc);
+
+  // Set vertex coordinates
+  for(int i = 0; i < 4; i++)
+  {
+    ver[i][0] = m_rotatedDestCoords[i].x;
+    ver[i][1] = m_rotatedDestCoords[i].y;
+    ver[i][2] = 0.0f;        // set z to 0
+    ver[i][3] = 1.0f;
+  }
+
+  // Set texture coordinates (MediaCodec is flipped in y)
+  tex[0][0] = tex[3][0] = 0.0f;
+  tex[0][1] = tex[1][1] = 1.0f;
+  tex[1][0] = tex[2][0] = 1.0f;
+  tex[2][1] = tex[3][1] = 0.0f;
+
+  for(int i = 0; i < 4; i++)
+  {
+    tex[i][2] = 0.0f;
+    tex[i][3] = 1.0f;
+  }
+
+  glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, idx);
+
+  glDisableVertexAttribArray(posLoc);
+  glDisableVertexAttribArray(texLoc);
+
+  const float identity[16] = {
+      1.0f, 0.0f, 0.0f, 0.0f,
+      0.0f, 1.0f, 0.0f, 0.0f,
+      0.0f, 0.0f, 1.0f, 0.0f,
+      0.0f, 0.0f, 0.0f, 1.0f
+  };
+  glUniformMatrix4fv(g_Windowing.GUIShaderGetCoord0Matrix(),  1, GL_FALSE, identity);
+
+  g_Windowing.DisableGUIShader();
+  VerifyGLState();
+
+  glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+  VerifyGLState();
+
+  #ifdef DEBUG_VERBOSE
+    CLog::Log(LOGDEBUG, "RenderMediaCodecImage %d: tm:%d", index, XbmcThreads::SystemClockMillis() - time);
+  #endif
+#endif
+}
+
 void CLinuxRendererGLES::RenderCoreVideoRef(int index, int field)
 {
 #ifdef HAVE_VIDEOTOOLBOXDECODER
@@ -1431,12 +1569,7 @@ void CLinuxRendererGLES::RenderCoreVideoRef(int index, int field)
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
   GLfloat ver[4][4];
   GLfloat tex[4][2];
-  float col[4][3];
-
-  for (int index = 0;index < 4;++index)
-  {
-    col[index][0] = col[index][1] = col[index][2] = 1.0;
-  }
+  GLfloat col[3] = {1.0f, 1.0f, 1.0f};
 
   GLint   posLoc = g_Windowing.GUIShaderGetPos();
   GLint   texLoc = g_Windowing.GUIShaderGetCoord0();
@@ -1483,6 +1616,14 @@ bool CLinuxRendererGLES::RenderCapture(CRenderCapture* capture)
 {
   if (!m_bValidated)
     return false;
+
+  // If rendered directly by the hardware
+  if (m_renderMethod & RENDER_BYPASS)
+  {
+    capture->BeginRender();
+    capture->EndRender();
+    return true;
+  }
 
   // save current video rect
   CRect saveSize = m_destRect;
@@ -2046,6 +2187,34 @@ bool CLinuxRendererGLES::CreateEGLIMGTexture(int index)
   return true;
 }
 
+//********************************************************************************************************
+// SurfaceTexture creation, deletion, copying + clearing
+//********************************************************************************************************
+void CLinuxRendererGLES::UploadSurfaceTexture(int index)
+{
+#if defined(TARGET_ANDROID)
+  if (m_buffers[index].mediacodec)
+  {
+    m_buffers[index].fields[0][0].id = m_buffers[index].mediacodec->GetTextureID();
+    m_buffers[index].mediacodec->ReleaseOutputBuffer(true);
+    m_buffers[index].mediacodec->UpdateTexImage();
+    m_buffers[index].mediacodec->GetTransformMatrix(m_textureMatrix);
+    SAFE_RELEASE(m_buffers[index].mediacodec);
+  }
+
+#endif
+}
+void CLinuxRendererGLES::DeleteSurfaceTexture(int index)
+{
+#if defined(TARGET_ANDROID)
+  SAFE_RELEASE(m_buffers[index].mediacodec);
+#endif
+}
+bool CLinuxRendererGLES::CreateSurfaceTexture(int index)
+{
+  return true;
+}
+
 void CLinuxRendererGLES::SetTextureFilter(GLenum method)
 {
   for (int i = 0 ; i<m_NumYV12Buffers ; i++)
@@ -2163,6 +2332,9 @@ bool CLinuxRendererGLES::Supports(EINTERLACEMETHOD method)
   if(m_renderMethod & RENDER_EGLIMG)
     return false;
 
+  if(m_renderMethod & RENDER_MEDIACODEC)
+    return false;
+
   if(m_renderMethod & RENDER_CVREF)
     return false;
 
@@ -2228,7 +2400,8 @@ unsigned int CLinuxRendererGLES::GetProcessorSize()
 {
   if(m_format == RENDER_FMT_OMXEGL
   || m_format == RENDER_FMT_CVBREF
-  || m_format == RENDER_FMT_EGLIMG)
+  || m_format == RENDER_FMT_EGLIMG
+  || m_format == RENDER_FMT_MEDIACODEC)
     return 1;
   else
     return 0;
@@ -2292,6 +2465,23 @@ void CLinuxRendererGLES::AddProcessor(CStageFrightVideo* stf, EGLImageKHR eglimg
 }
 #endif
 
+
+#if defined(TARGET_ANDROID)
+void CLinuxRendererGLES::AddProcessor(CDVDMediaCodecInfo *mediacodec, int index)
+{
+#ifdef DEBUG_VERBOSE
+  unsigned int time = XbmcThreads::SystemClockMillis();
+#endif
+
+  YUVBUFFER &buf = m_buffers[index];
+  if (mediacodec)
+    buf.mediacodec = mediacodec->Retain();
+
+#ifdef DEBUG_VERBOSE
+  CLog::Log(LOGDEBUG, "AddProcessor %d: img:%d: tm:%d\n", index, buf.mediacodec->GetTexture(), XbmcThreads::SystemClockMillis() - time);
+#endif
+}
+#endif
 
 #endif
 
