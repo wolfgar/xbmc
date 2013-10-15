@@ -535,7 +535,8 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     /* FIXME new version     g_graphicsContext.SetScissors(m_destRect);*/
 /*    glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);*/
-    glClearColor(GLfloat(1.0/255.0), GLfloat(2.0/255.0), GLfloat(3.0/255.0), 0);
+    //glClearColor(GLfloat(1.0/255.0), GLfloat(2.0/255.0), GLfloat(3.0/255.0), 0);
+    glClearColor(GLfloat(0.0/255.0), GLfloat(0.0/255.0), GLfloat(0.0/255.0), 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     g_graphicsContext.SetScissors(old);

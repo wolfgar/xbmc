@@ -42,7 +42,7 @@
 /* video device on which the video will be rendered (/dev/video17 => /dev/fb1) */
 const char *CDVDVideoCodecIMX::m_v4lDeviceName = "/dev/video17";
 /* Experiments show that we need at least one more (+1) V4L buffer than the min value returned by the VPU */
-const int CDVDVideoCodecIMX::m_extraVpuBuffers = 10;
+const int CDVDVideoCodecIMX::m_extraVpuBuffers = 3;
 
 
 #ifdef IMX_PROFILE
@@ -246,7 +246,8 @@ void CDVDVideoCodecIMX::InitFB(void)
   ioctl(fd, MXCFB_SET_GBL_ALPHA, &alpha);
   /* Enable color keying */
   colorKey.enable = 1;
-  colorKey.color_key = (1 << 16) | (2 << 8) | 3;
+  //colorKey.color_key = (1 << 16) | (2 << 8) | 3;
+  colorKey.color_key = 0;
   if (ioctl(fd, MXCFB_SET_CLR_KEY, &colorKey) < 0)
     CLog::Log(LOGERROR, "%s - Error while trying to enable color keying %s.\n", __FUNCTION__, strerror(errno));
 
