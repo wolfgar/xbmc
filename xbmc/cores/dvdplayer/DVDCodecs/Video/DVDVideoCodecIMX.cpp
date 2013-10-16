@@ -42,7 +42,7 @@
 /* video device on which the video will be rendered (/dev/video17 => /dev/fb1) */
 const char *CDVDVideoCodecIMX::m_v4lDeviceName = "/dev/video17";
 /* Experiments show that we need at least one more (+1) V4L buffer than the min value returned by the VPU */
-const int CDVDVideoCodecIMX::m_extraVpuBuffers = 3;
+const int CDVDVideoCodecIMX::m_extraVpuBuffers = 4;
 
 
 #ifdef IMX_PROFILE
@@ -936,7 +936,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 #endif
 
   while (VpuDeQueueFrame());
-  
+
   if (pData && iSize)
   {  
     if (m_convert_bitstream)
@@ -1134,7 +1134,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     if (retSatus == 0)
       /* No Picture ready and Not enough VPU buffers.
        * Lets sleep a litlle to wait for VPU buffers to be freed by IPU... */
-      usleep(5000);
+      usleep(500);
 
 
 #ifdef IMX_PROFILE
@@ -1143,6 +1143,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
    
   if (bitstream_convered)
       free(demuxer_content);
+
   return retSatus;
 
 out_error:
