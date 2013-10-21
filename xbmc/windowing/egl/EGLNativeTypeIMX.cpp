@@ -73,13 +73,13 @@ void CEGLNativeTypeIMX::Initialize()
     CLog::Log(LOGERROR, "%s - Error while querying frame buffer.\n", __FUNCTION__);
     return;
   }
-  /* Configure overlay in the same way as FG plane */
+  /* Configure overlay in the same way as BG plane */
   if (ioctl(fd2, FBIOPUT_VSCREENINFO, &m_screeninfo) != 0)
   {
     CLog::Log(LOGERROR, "%s - Error while setting overlay frame buffer.\n", __FUNCTION__);
     return;
   }
-   
+      
   /* set fb0 as the only visible layer - ioctl on /dev/fb0 so that fb0 is BG and fb1 is FG */
   alpha.alpha = 255;
   alpha.enable = 1;

@@ -521,29 +521,21 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     int iHeight = CDisplaySettings::Get().GetResolutionInfo(res).iHeight;
 
     g_graphicsContext.BeginPaint();
-
-    /* FIXME
-    glScissor(m_destRect.x1, 
-              iHeight - m_destRect.y2, 
-              m_destRect.x2 - m_destRect.x1, 
-              m_destRect.y2 - m_destRect.y1);*/
-    glScissor(0, 
+    glScissor(0,
               0,
               iWidth,
               iHeight);
-    
-    /* FIXME new version     g_graphicsContext.SetScissors(m_destRect);*/
+    glClearColor(GLfloat(0.0), GLfloat(0.0), GLfloat(0.0), 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    g_graphicsContext.SetScissors(m_destRect);
 /*    glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);*/
-    //glClearColor(GLfloat(1.0/255.0), GLfloat(2.0/255.0), GLfloat(3.0/255.0), 0);
-    glClearColor(GLfloat(0.0/255.0), GLfloat(0.0/255.0), GLfloat(0.0/255.0), 0);
+    glClearColor(GLfloat(2.0/31.0), GLfloat(2.0/63.0), GLfloat(2.0/31.0), 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     g_graphicsContext.SetScissors(old);
     g_graphicsContext.EndPaint();
-
-
-    //CLog::Log(LOGDEBUG, "%s : %d %d %f %f %f %f",  __FUNCTION__, iWidth, iHeight, m_destRect.x1, m_destRect.y1, m_destRect.x2, m_destRect.y2);
     return;
   }
 

@@ -246,8 +246,7 @@ void CDVDVideoCodecIMX::InitFB(void)
   ioctl(fd, MXCFB_SET_GBL_ALPHA, &alpha);
   /* Enable color keying */
   colorKey.enable = 1;
-  //colorKey.color_key = (1 << 16) | (2 << 8) | 3;
-  colorKey.color_key = 0;
+  colorKey.color_key = (16 << 16) | (8 << 8) | 16;
   if (ioctl(fd, MXCFB_SET_CLR_KEY, &colorKey) < 0)
     CLog::Log(LOGERROR, "%s - Error while trying to enable color keying %s.\n", __FUNCTION__, strerror(errno));
 
@@ -812,6 +811,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
 
   m_tsm = createTSManager(0);
   setTSManagerFrameRate(m_tsm, m_hints.fpsrate, m_hints.fpsscale);
+
   return VpuOpen();
 }
 
@@ -1131,10 +1131,11 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   if (GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers))
     retSatus |= VC_BUFFER;
   else
-    if (retSatus == 0)
+    if (retSatus == 0) {
       /* No Picture ready and Not enough VPU buffers.
        * Lets sleep a litlle to wait for VPU buffers to be freed by IPU... */
       usleep(500);
+    }
 
 
 #ifdef IMX_PROFILE
@@ -1188,14 +1189,14 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   {
     pDvdVideoPicture->iFlags = DVP_FLAG_DROPPED;
     CSingleLock lock(outputFrameQueueLock);
-    /*while (m_outputFrames.size() > 0)
-    {*/
+    while (m_outputFrames.size() > 0)
+    {
       outputFrame = m_outputFrames.front();
       m_outputFrames.pop();
       //CLog::Log(LOGINFO, "%s - idx : %d buffer %x\n", __FUNCTION__, outputFrame.v4l2_buffer->index, m_outputBuffers[outputFrame.v4l2_buffer->index]);
       VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
       m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
-    //}
+    }
   }
   else
   {
