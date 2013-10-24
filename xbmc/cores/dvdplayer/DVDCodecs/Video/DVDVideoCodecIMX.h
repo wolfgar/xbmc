@@ -67,7 +67,8 @@ public:
   virtual bool GetPicture(DVDVideoPicture *pDvdVideoPicture);
   virtual void SetDropState(bool bDrop);
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
-
+  virtual unsigned GetAllowedReferences();
+  
   void RenderFrame(void);
 protected:
 
@@ -94,7 +95,7 @@ protected:
   /* FIXME V4L rendering stuff & Frame Buffers: To be moved in a dedicated class */
   bool VpuAllocFrameBuffers(void);
   bool VpuPushFrame(VpuFrameBuffer *, VpuFieldType);
-  bool VpuDeQueueFrame(void);
+  bool VpuDeQueueFrame(bool);
   int GetAvailableBufferNb(void);
   void InitFB(void);
   void RestoreFB(void);
