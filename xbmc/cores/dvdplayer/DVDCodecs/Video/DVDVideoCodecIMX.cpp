@@ -63,6 +63,21 @@ static unsigned long long get_time()
 }
 #endif
 
+
+void CDVDVideoCodecIMX::FlushOutputFrames(void)
+{
+  outputFrameType outputFrame;
+
+  CSingleLock lock(outputFrameQueueLock);
+  while (m_outputFrames.size() > 0)
+  {
+    outputFrame = m_outputFrames.front();
+    m_outputFrames.pop();
+    VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
+    m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
+  }
+}
+
 bool CDVDVideoCodecIMX::VpuAllocBuffers(VpuMemInfo *pMemBlock)
 {
   int i, size;
@@ -459,6 +474,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuFrameBuffer *frameBuffer, VpuFieldType f
   double pts;
 
   pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
+
   /* Find Frame given physical address */
   for (i=0; i<m_vpuFrameBufferNum; i++)
     if ((unsigned int)frameBuffer->pbufY == m_v4lBuffers[i].m.offset)
@@ -950,7 +966,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   uint8_t *demuxer_content = pData;
   bool bitstream_convered  = false;
   bool retry = false;
-  static double last_pts;
 
 #ifdef IMX_PROFILE
   static unsigned long long previous, current;
@@ -990,33 +1005,27 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }      
     }
 
-
-    if (m_tsSyncRequired)
-    {
-      m_tsSyncRequired = false;
-      if (pts != DVD_NOPTS_VALUE)
-        resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);     
-      { //FIXME pour test boost prio 
-      /*
-        struct sched_param sched_params;
-        memset(&sched_params, 0, sizeof(sched_params));
-        sched_params.sched_priority = 22;
-        pthread_setschedparam(pthread_self(), SCHED_RR, &sched_params);
-        */
-      }      
-    }
-    
     if (pts != DVD_NOPTS_VALUE)
     {
-      if (((pts - last_pts) > (double)500000.0) ||
-          ((last_pts - pts) > (double)500000.0))
+      if (m_tsSyncRequired)
       {
-        CLog::Log(LOGINFO, "%s - Resync TS manager because of pts step\n", __FUNCTION__);
+        m_tsSyncRequired = false;
         resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);
       }
-      last_pts = pts;
-
       TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize);
+    }
+    else
+    {
+      //If no pts but dts available (AVI container for instance) then use this one
+      if (dts !=  DVD_NOPTS_VALUE)
+      {
+        if (m_tsSyncRequired)
+        {
+          m_tsSyncRequired = false;
+          resyncTSManager(m_tsm, llrint(dts) * 1000, MODE_AI);
+        }
+        TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
+      }
     }
 
     //CLog::Log(LOGDEBUG, "%s - Query2 : %lld\n", __FUNCTION__, TSManagerQuery2(m_tsm, NULL));
@@ -1168,26 +1177,13 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       if (!(decRet & VPU_DEC_OUTPUT_DIS)  &&
            (inData.nSize != 0))
       {
+        /* Let's process again as VPU_DEC_NO_ENOUGH_INBUF was not set
+         * and we don't have an image ready if we reach that point
+         */
         inData.pVirAddr = NULL;
         inData.nSize = 0;
         retry = true;
       }
-#if 0
-      if (inData.nSize != 0)
-      { // Let's process again as VPU_DEC_NO_ENOUGH_INBUF was not set if we reach that point
-      
-        inData.pVirAddr = NULL;
-        inData.nSize = 0;
-        retry = true;
-     
-      } 
-      else
-      {
-        if (decRet & VPU_DEC_OUTPUT_DIS)
-        // the decoder may still have additional input data to process if it has just produced a picture
-          retry = true;        
-      }
-#endif
 
     } while (retry == true);
   } //(pData && iSize)
@@ -1221,9 +1217,20 @@ out_error:
 
 void CDVDVideoCodecIMX::Reset()
 {
-  /* FIXME TODO
-   * At least Flush the decoder and the video frames
-   */
+  int ret;
+
+  CLog::Log(LOGDEBUG, "%s - called\n", __FUNCTION__);
+
+  /* We have to resync timestamp manager */
+  m_tsSyncRequired = true;
+  /* Flush VPU */
+  ret = VPU_DecFlushAll(m_vpuHandle);
+  if (ret != VPU_DEC_RET_SUCCESS)
+  {
+    CLog::Log(LOGERROR, "%s - VPU flush failed with error code %d.\n", __FUNCTION__, ret);
+  }
+  /* Flush the output frames */
+  FlushOutputFrames();
 }
 
 unsigned CDVDVideoCodecIMX::GetAllowedReferences()
@@ -1256,31 +1263,19 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     return false;
   }
   
+  outputFrame = m_outputFrames.back();
+  ts = outputFrame.pts;
+
   pDvdVideoPicture->iFlags &= DVP_FLAG_DROPPED;
-  /* FIXME */
-#if 0
   if ((pDvdVideoPicture->iFlags != 0) || (m_dropState))
   {
     pDvdVideoPicture->iFlags = DVP_FLAG_DROPPED;
-    CSingleLock lock(outputFrameQueueLock);
-   /* while (m_outputFrames.size() > 0)
-    {*/
-      outputFrame = m_outputFrames.front();
-      m_outputFrames.pop();
-      //CLog::Log(LOGINFO, "%s - idx : %d buffer %x\n", __FUNCTION__, outputFrame.v4l2_buffer->index, m_outputBuffers[outputFrame.v4l2_buffer->index]);
-      VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
-      m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
-    //}
+    FlushOutputFrames();
   }
   else
-#endif
   {
     displayedFrames++;
-    currentPlayerPts = GetPlayerPtsSeconds() * (double)DVD_TIME_BASE;      
-
-    outputFrame = m_outputFrames.back();
-    ts = outputFrame.pts;
-    //CLog::Log(LOGNOTICE, "%s - ts : %f - idx : %d\n",  __FUNCTION__, ts, outputFrame.v4l2_buffer->index);
+    currentPlayerPts = GetPlayerPtsSeconds() * (double)DVD_TIME_BASE;
     if (currentPlayerPts > ts)
     {
         CLog::Log(LOGERROR, "%s - player is ahead of time (%f)\n", __FUNCTION__, currentPlayerPts - ts);
@@ -1304,7 +1299,6 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 
 void CDVDVideoCodecIMX::SetDropState(bool bDrop)
 {
-  outputFrameType outputFrame;
   /* We are fast enough to continue to really decode every frames
    * and avoid artefacts...
    * (Of course these frames won't be rendered but only decoded !)
@@ -1313,21 +1307,6 @@ void CDVDVideoCodecIMX::SetDropState(bool bDrop)
   {
     CLog::Log(LOGNOTICE, "%s : %d.\n", __FUNCTION__, bDrop);
     m_dropState = bDrop;   
-    /*if (bDrop)
-      m_tsSyncRequired = true;*/
-
-    if (bDrop)
-    {
-      /* Flush any frame in queue */
-      CSingleLock lock(outputFrameQueueLock);
-      while (m_outputFrames.size() > 0)
-      {
-        outputFrame = m_outputFrames.front();
-        m_outputFrames.pop();
-        VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
-        m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
-      }
-    }
   }
 }
 

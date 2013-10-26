@@ -99,6 +99,7 @@ protected:
   int GetAvailableBufferNb(void);
   void InitFB(void);
   void RestoreFB(void);
+  void FlushOutputFrames(void);
   
   static const int    m_extraVpuBuffers;
   static const char  *m_v4lDeviceName;
