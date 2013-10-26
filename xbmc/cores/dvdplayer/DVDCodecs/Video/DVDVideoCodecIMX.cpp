@@ -531,7 +531,10 @@ void CDVDVideoCodecIMX::RenderFrame(void)
   struct v4l2_format fmt;
   static VpuFieldType current_field = VPU_FIELD_UNKNOWN;
 
-   
+  /* lock has to be acquired that soon even if queue is modified far later
+   * (to prevent compiler optimization that will race...)
+   */
+  CSingleLock lock(outputFrameQueueLock);
   if (m_outputFrames.size() == 0)
   {
     CLog::Log(LOGNOTICE, "%s - No frame available to render !\n",
@@ -632,7 +635,6 @@ void CDVDVideoCodecIMX::RenderFrame(void)
 #endif
 
   //CLog::Log(LOGERROR, "%s - render frame called on buffer %d (size : %d) \n", __FUNCTION__, buffer->index, m_outputFrames.size());
-  CSingleLock lock(outputFrameQueueLock);
   m_outputFrames.pop(); 
 #ifdef NO_V4L_RENDERING
   VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
@@ -1223,14 +1225,17 @@ void CDVDVideoCodecIMX::Reset()
 
   /* We have to resync timestamp manager */
   m_tsSyncRequired = true;
+
+  /* Flush the output frames */
+  FlushOutputFrames();
+
   /* Flush VPU */
   ret = VPU_DecFlushAll(m_vpuHandle);
   if (ret != VPU_DEC_RET_SUCCESS)
   {
     CLog::Log(LOGERROR, "%s - VPU flush failed with error code %d.\n", __FUNCTION__, ret);
   }
-  /* Flush the output frames */
-  FlushOutputFrames();
+
 }
 
 unsigned CDVDVideoCodecIMX::GetAllowedReferences()
