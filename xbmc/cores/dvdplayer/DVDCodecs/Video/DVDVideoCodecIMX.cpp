@@ -525,6 +525,7 @@ void CDVDVideoCodecIMX::RenderFrame(void)
   /* Warning : called from renderer thread
    * Especially do not call any VPU functions as they are not thread safe
    */
+
   int ret, type;
   outputFrameType outputFrame;
   struct timeval queue_ts;
@@ -617,14 +618,6 @@ void CDVDVideoCodecIMX::RenderFrame(void)
      * FIXME check why in drivers...
      */
     ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-    
-   /*{
-      struct sched_param sched_params;
-      memset(&sched_params, 0, sizeof(sched_params));
-      sched_params.sched_priority = 22;
-      pthread_setschedparam(pthread_self(), SCHED_RR, &sched_params);
-    }*/    
-    
   }
 #endif
 
@@ -693,12 +686,10 @@ bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
   {
     if (errno != EAGAIN)
       CLog::Log(LOGERROR, "%s - Dequeue buffer error (ret %d : %s)\n",
-              __FUNCTION__, ret, strerror(errno));      
+              __FUNCTION__, ret, strerror(errno));
     return false;
   }
-  
-  /*CLog::Log(LOGDEBUG, "%s - Dequeue buffer %d\n",
-              __FUNCTION__, buf.index);*/
+
   // Mark frame as displayed for VPU
 #ifdef IMX_PROFILE
           CLog::Log(LOGDEBUG, "%s - Time render to dequeue (%d) %llu\n",
@@ -951,7 +942,7 @@ void CDVDVideoCodecIMX::Dispose(void)
     destroyTSManager(m_tsm);
     m_tsm = NULL;
   }
-  
+
   RestoreFB();
   return;
 }
@@ -973,7 +964,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   static unsigned long long previous, current;
 #endif
 
-  //CLog::Log(LOGDEBUG, "%s - demux size : %d  dts : %f - pts : %f\n", __FUNCTION__, iSize, dts, pts);
   if (!m_vpuHandle)
     return VC_ERROR;
 
@@ -1057,11 +1047,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         CLog::Log(LOGERROR, "%s - VPU decode failed with error code %d.\n", __FUNCTION__, ret);
         goto out_error;
       }
-/*      else
-      {
-        CLog::Log(LOGDEBUG, "%s - VPU decode success : %x.\n", __FUNCTION__, decRet);
-      }*/
-      
+
       if (decRet & VPU_DEC_INIT_OK)
       /* VPU decoding init OK : We can retrieve stream info */
       {
@@ -1104,7 +1090,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         TSManagerValid2(m_tsm, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
       }//VPU_DEC_ONE_FRM_CONSUMED
-      
+
       if ((decRet & VPU_DEC_OUTPUT_DIS) ||
           (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS))
       /* Frame ready to be displayed */
@@ -1121,19 +1107,15 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         if (VpuPushFrame(frameInfo.pDisplayFrameBuf, frameInfo.eFieldType))
         {
           m_displayedFrames++;
-          retSatus |= VC_PICTURE;        
+          retSatus |= VC_PICTURE;
         }        
-       /* else
-        {
-          TSManagerSend(m_tsm);  
-        }*/
       } //VPU_DEC_OUTPUT_DIS
       
       if (decRet & VPU_DEC_OUTPUT_REPEAT)
       {
         TSManagerSend(m_tsm);
         CLog::Log(LOGDEBUG, "%s - Frame repeat.\n", __FUNCTION__);
-      }    
+      }
       if (decRet & VPU_DEC_OUTPUT_DROPPED)
       {
         TSManagerSend(m_tsm);
@@ -1161,16 +1143,14 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       if (decRet & VPU_DEC_OUTPUT_EOS)
       {
         CLog::Log(LOGNOTICE, "%s - EOS encountered.\n", __FUNCTION__);
-      }    
+      }
       if (decRet & VPU_DEC_NO_ENOUGH_INBUF)
       {
         // We are done with VPU decoder that time
-        break;        
+        break;
       }
       if (!(decRet & VPU_DEC_INPUT_USED))
       {
-        // Retry decode in this case
-        //retry = true;
         CLog::Log(LOGERROR, "%s - input not used : addr %x  size :%d!\n", __FUNCTION__, inData.pVirAddr, inData.nSize);
         TSManagerSend(m_tsm);
       }
@@ -1300,7 +1280,6 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   pDvdVideoPicture->imx = this;
   return true;
 }
-
 
 void CDVDVideoCodecIMX::SetDropState(bool bDrop)
 {
