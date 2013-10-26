@@ -950,6 +950,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   uint8_t *demuxer_content = pData;
   bool bitstream_convered  = false;
   bool retry = false;
+  static double last_pts;
+
 #ifdef IMX_PROFILE
   static unsigned long long previous, current;
 #endif
@@ -988,6 +990,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }      
     }
 
+
     if (m_tsSyncRequired)
     {
       m_tsSyncRequired = false;
@@ -1005,8 +1008,15 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     
     if (pts != DVD_NOPTS_VALUE)
     {
-      /* TODO quelle taille iSize ou demuxer_bytes ? */
-      TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize /*demuxer_bytes*/);
+      if (((pts - last_pts) > (double)500000.0) ||
+          ((last_pts - pts) > (double)500000.0))
+      {
+        CLog::Log(LOGINFO, "%s - Resync TS manager because of pts step\n", __FUNCTION__);
+        resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);
+      }
+      last_pts = pts;
+
+      TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize);
     }
 
     //CLog::Log(LOGDEBUG, "%s - Query2 : %lld\n", __FUNCTION__, TSManagerQuery2(m_tsm, NULL));
