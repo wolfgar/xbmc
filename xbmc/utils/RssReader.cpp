@@ -148,11 +148,10 @@ void CRssReader::Process()
       strXML = "<rss><item><title>"+g_localizeStrings.Get(15301)+"</title></item></rss>";
     else
     {
-      unsigned int starttime = XbmcThreads::SystemClockMillis();
+      XbmcThreads::EndTime timeout(15000);
       while (!m_bStop && nRetries > 0)
       {
-        unsigned int currenttimer = XbmcThreads::SystemClockMillis() - starttime;
-        if (currenttimer > 15000)
+        if (timeout.IsTimePast())
         {
           CLog::Log(LOGERROR, "Timeout whilst retrieving %s", strUrl.c_str());
           http.Cancel();
@@ -328,7 +327,7 @@ void CRssReader::fromRSSToUTF16(const CStdStringA& strSource, CStdStringW& strDe
 bool CRssReader::Parse(LPSTR szBuffer, int iFeed)
 {
   m_xml.Clear();
-  m_xml.Parse((LPCSTR)szBuffer, 0, TIXML_ENCODING_LEGACY);
+  m_xml.Parse((LPCSTR)szBuffer, TIXML_ENCODING_LEGACY);
 
   m_encoding = "UTF-8";
   if (m_xml.RootElement())
