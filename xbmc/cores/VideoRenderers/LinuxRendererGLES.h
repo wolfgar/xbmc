@@ -40,7 +40,7 @@ class CBaseTexture;
 namespace Shaders { class BaseYUV2RGBShader; }
 namespace Shaders { class BaseVideoFilterShader; }
 class COpenMaxVideo;
-class CStageFrightVideo;
+class CDVDVideoCodecStageFright;
 class CDVDMediaCodecInfo;
 typedef std::vector<int>     Features;
 
@@ -167,7 +167,7 @@ public:
   virtual void         AddProcessor(struct __CVBuffer *cvBufferRef, int index);
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
-  virtual void         AddProcessor(CStageFrightVideo* stf, EGLImageKHR eglimg, int index);
+  virtual void         AddProcessor(CDVDVideoCodecStageFright* stf, EGLImageKHR eglimg, int index);
 #endif
 #ifdef HAS_IMXVPU
   virtual void         AddProcessor(CDVDVideoCodecIMX *imx,  int index);
@@ -284,7 +284,7 @@ protected:
     CDVDVideoCodecIMX *imx;
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
-    CStageFrightVideo* stf;
+    CDVDVideoCodecStageFright* stf;
     EGLImageKHR eglimg;
 #endif
 #if defined(TARGET_ANDROID)

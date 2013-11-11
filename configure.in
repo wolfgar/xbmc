@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.9], [http://trac.xbmc.org])
+AC_INIT([xbmc], [12.9.10], [http://trac.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
 m4_include([m4/ax_prog_cc_for_build.m4])
@@ -39,6 +39,7 @@ AC_DEFUN([XB_ADD_CODEC],
   AC_MSG_CHECKING([for $2])
   case $add_codecs in
     *$2*)
+      use_codec_$2="yes"
       AC_SUBST([USE_$1], 1)
       AC_DEFINE([HAS_$1], 1, [using $2])
       AC_MSG_RESULT([enabling $2])
@@ -1522,9 +1523,12 @@ fi
 
 # samba
 if test "x$use_samba" != "xno"; then
-  AC_CHECK_LIB([smbclient], [main],,
-    use_samba=no;AC_MSG_ERROR($missing_library))
-    USE_LIBSMBCLIENT=0
+  PKG_CHECK_MODULES([SAMBA], [smbclient],
+    [INCLUDES="$INCLUDES $SAMBA_CFLAGS"; LIBS="$LIBS $SAMBA_LIBS"],
+    [AC_CHECK_LIB([smbclient], [main],,
+      use_samba=no;AC_MSG_ERROR($missing_library))
+      USE_LIBSMBCLIENT=0
+    ])
 else
   AC_MSG_RESULT($samba_disabled)
   USE_LIBSMBCLIENT=0
@@ -1974,7 +1978,6 @@ case $add_codecs in
       fi
       ;;
   *libstagefright*)
-      LIBS+="-L${prefix}/opt/android-libs -lstdc++ -lutils -lcutils -lstagefright -lbinder -lui -lgui"
       XB_ADD_CODEC([LIBSTAGEFRIGHT], [libstagefright])
       ;;
   *)
@@ -2562,11 +2565,18 @@ OUTPUT_FILES="Makefile \
     xbmc/android/jni/Makefile \
     xbmc/utils/Makefile \
     xbmc/main/Makefile \
-    xbmc/windowing/tests/wayland/Makefile \
     project/cmake/xbmc-config.cmake"
+
+if test "$use_wayland" = "yes"; then
+OUTPUT_FILES="$OUTPUT_FILES xbmc/windowing/tests/wayland/Makefile"
+fi
 
 if test "$use_skin_touched" = "yes"; then
 OUTPUT_FILES="$OUTPUT_FILES addons/skin.touched/media/Makefile"
+fi
+
+if test "$use_codec_libstagefright" = "yes"; then
+OUTPUT_FILES="$OUTPUT_FILES xbmc/cores/dvdplayer/DVDCodecs/Video/libstagefrightICS/Makefile"
 fi
 
 OUTPUT_FILES="$OUTPUT_FILES \
@@ -2906,7 +2916,13 @@ XB_CONFIG_MODULE([xbmc/visualizations/Goom/goom2k4-0],[
 
 XB_CONFIG_MODULE([xbmc/screensavers/rsxs-0.9/], [
   if test "$host_vendor" = "apple"; then
-    TEMPCFLAGS="${CFLAGS} -fgnu89-inline";
+    # clang treats inlines different
+    case $CC in
+      *clang*)
+        TEMPCFLAGS="$CFLAGS";;
+      *)
+        TEMPCFLAGS="${CFLAGS} -fgnu89-inline";;
+    esac
   else
     TEMPCFLAGS="$CFLAGS";
   fi

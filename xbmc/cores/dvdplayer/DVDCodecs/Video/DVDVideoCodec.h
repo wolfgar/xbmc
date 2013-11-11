@@ -40,7 +40,8 @@ class COpenMaxVideo;
 struct OpenMaxVideoBuffer;
 /* FIXME dont use directly this class in final implementtaion */
 class CDVDVideoCodecIMX;
-class CStageFrightVideo;
+class CDVDVideoCodecStageFright;
+
 class CDVDMediaCodecInfo;
 typedef void* EGLImageKHR;
 
@@ -79,7 +80,7 @@ struct DVDVideoPicture
     };
 
     struct {
-      CStageFrightVideo* stf;
+      CDVDVideoCodecStageFright* stf;
       EGLImageKHR eglimg;
     };
 
