@@ -1,8 +1,6 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2013 Team XBMC
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,17 +18,22 @@
  *
  */
 
-#include "GUIDialogBoxBase.h"
+#include "IListProvider.h"
+#include "utils/XBMCTinyXML.h"
+#include "StaticProvider.h"
+#include "DirectoryProvider.h"
 
-class CGUIDialogOK :
-      public CGUIDialogBoxBase
+IListProvider *IListProvider::Create(const TiXmlNode *node, int parentID)
 {
-public:
-  CGUIDialogOK(void);
-  virtual ~CGUIDialogOK(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  static void ShowAndGetInput(const CVariant &heading, const CVariant &text);
-  static void ShowAndGetInput(const CVariant &heading, const CVariant &line0, const CVariant &line1, const CVariant &line2);
-protected:
-  virtual int GetDefaultLabelID(int controlId) const;
-};
+  const TiXmlElement *root = node->FirstChildElement("content");
+  if (root)
+  {
+    const TiXmlElement *item = root->FirstChildElement("item");
+    if (item)
+      return new CStaticListProvider(root, parentID);
+
+    if (!root->NoChildren())
+      return new CDirectoryProvider(root, parentID);
+  }
+  return NULL;
+}

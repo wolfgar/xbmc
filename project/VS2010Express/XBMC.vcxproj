@@ -655,6 +655,7 @@
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\PlaylistOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\ProfilesOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\PVROperations.cpp" />
+    <ClCompile Include="..\..\xbmc\interfaces\json-rpc\SettingsOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\SystemOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\VideoLibrary.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\XBMCOperations.cpp" />
@@ -705,6 +706,9 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\interfaces\python\XBPython.cpp" />
     <ClCompile Include="..\..\xbmc\LangInfo.cpp" />
+    <ClCompile Include="..\..\xbmc\listproviders\IListProvider.cpp" />
+    <ClCompile Include="..\..\xbmc\listproviders\DirectoryProvider.cpp" />
+    <ClCompile Include="..\..\xbmc\listproviders\StaticProvider.cpp" />
     <ClCompile Include="..\..\xbmc\MediaSource.cpp" />
     <ClCompile Include="..\..\xbmc\music\Album.cpp" />
     <ClCompile Include="..\..\xbmc\music\Artist.cpp" />
@@ -1034,6 +1038,7 @@
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\FavouritesOperations.h" />
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\ProfilesOperations.h" />
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\PVROperations.h" />
+    <ClInclude Include="..\..\xbmc\interfaces\json-rpc\SettingsOperations.h" />
     <ClInclude Include="..\..\xbmc\interfaces\legacy\Addon.h" />
     <ClInclude Include="..\..\xbmc\interfaces\legacy\AddonCallback.h" />
     <ClInclude Include="..\..\xbmc\interfaces\legacy\AddonClass.h" />
@@ -1714,7 +1719,6 @@
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDMessageTracker.cpp" />
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDOverlayContainer.cpp" />
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDOverlayRenderer.cpp" />
-    <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDPerformanceCounter.cpp" />
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDPlayer.cpp" />
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDPlayerAudio.cpp" />
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDPlayerSubtitle.cpp" />
@@ -2176,6 +2180,9 @@
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\TextureOperations.h" />
     <ClInclude Include="..\..\xbmc\IProgressCallback.h" />
     <ClInclude Include="..\..\xbmc\LangInfo.h" />
+    <ClInclude Include="..\..\xbmc\listproviders\IListProvider.h" />
+    <ClInclude Include="..\..\xbmc\listproviders\DirectoryProvider.h" />
+    <ClInclude Include="..\..\xbmc\listproviders\StaticProvider.h" />
     <ClInclude Include="..\..\xbmc\MediaSource.h" />
     <ClInclude Include="..\..\xbmc\music\Album.h" />
     <ClInclude Include="..\..\xbmc\music\Artist.h" />
@@ -2496,7 +2503,6 @@
     <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDMessageTracker.h" />
     <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDOverlayContainer.h" />
     <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDOverlayRenderer.h" />
-    <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDPerformanceCounter.h" />
     <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDPlayer.h" />
     <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDPlayerAudio.h" />
     <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDPlayerSubtitle.h" />
