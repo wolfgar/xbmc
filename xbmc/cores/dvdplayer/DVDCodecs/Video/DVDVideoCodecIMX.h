@@ -75,10 +75,8 @@ protected:
   CDVDStreamInfo      m_hints;
   DVDVideoPicture     m_picture;
   const char         *m_pFormatName;
-  //int                 m_nframes;
-  int                 m_displayedFrames;
-  
-  
+
+
   /* FIXME pure VPU  stuff : TO be moved in a dedicated class ? */
   bool VpuOpen(void);
   bool VpuAllocBuffers(VpuMemInfo *);
@@ -107,12 +105,16 @@ protected:
   struct v4l2_crop    m_crop;              // Current cropping properties 
   int                 m_xscreen, m_yscreen;// Current screen resolution
   int                 m_v4lfd;             // fd on V4L2 device
+  struct v4l2_format  m_v4l_fmt;
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   struct v4l2_buffer *m_v4lBuffers;        // Table of V4L buffer info (as returned by VIDIOC_QUERYBUF)
   VpuFrameBuffer    **m_outputBuffers;     // Output buffer pointers from VPU (table index is V4L buffer index). Enable to call VPU_DecOutFrameDisplayed
   bool                m_streamon;          // Flag that indicates whether streaming in on (from V4L point of view)
+  int                 m_pushed_frames;     // Number of frames queued in V4L2
+  VpuFieldType        m_current_field;     // Current field type
+
   CCriticalSection outputFrameQueueLock;
   std::queue <outputFrameType> m_outputFrames;   // Frames to be displayed  
   
