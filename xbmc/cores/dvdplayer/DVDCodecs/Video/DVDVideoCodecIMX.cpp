@@ -507,7 +507,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuFrameBuffer *frameBuffer, VpuFieldType f
 }
 
 
-void CDVDVideoCodecIMX::RenderFrame(void)
+void CDVDVideoCodecIMX::RenderFrame(struct v4l2_crop &destRect)
 {
   /* Warning : called from renderer thread
    * Especially do not call any VPU functions as they are not thread safe
@@ -519,6 +519,7 @@ void CDVDVideoCodecIMX::RenderFrame(void)
   struct v4l2_format fmt;
   int stream_trigger;
   struct v4l2_control ctrl;
+  bool crop_update = false;
 
   /* lock has to be acquired that soon even if queue is modified far later
    * (to prevent compiler optimization that will race...)
@@ -548,6 +549,19 @@ void CDVDVideoCodecIMX::RenderFrame(void)
               __FUNCTION__, ret, strerror(errno));
   } else
     m_pushed_frames++;
+
+
+  if ((m_crop.c.top != destRect.c.top) ||
+      (m_crop.c.left != destRect.c.left) ||
+      (m_crop.c.width != destRect.c.width) ||
+      (m_crop.c.height !=  destRect.c.height))
+  {
+     CLog::Log(LOGNOTICE, "%s - Newcrop : %d % d %d %d\n",
+              __FUNCTION__, destRect.c.top, destRect.c.left, destRect.c.width, destRect.c.height);
+
+    m_crop.c = destRect.c;
+    crop_update = true;
+  }
 
   if (!m_streamon)
   {
@@ -629,7 +643,24 @@ void CDVDVideoCodecIMX::RenderFrame(void)
       /* We have to repeat crop command after streamon for some vids
       * FIXME check why in drivers...
       */
-      ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
+      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
+    }
+  }
+  else
+  {
+    if (crop_update)
+    {
+      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
     }
   }
 #endif

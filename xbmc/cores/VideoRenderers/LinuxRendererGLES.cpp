@@ -501,14 +501,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
   if (m_renderMethod & RENDER_BYPASS)
   {
-    // FIXME : move in its own render mode instead of mixup with BYPASS
-    if (m_format == RENDER_FMT_IMX)
-    {
-      int index = m_iYV12RenderBuffer;
-      CDVDVideoCodecIMX *imx = m_buffers[index].imx;
 
-      imx->RenderFrame();
-    }
 
     ManageDisplay();
     // if running bypass, then the player might need the src/dst rects
@@ -522,14 +515,21 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     int iHeight = CDisplaySettings::Get().GetResolutionInfo(res).iHeight;
 
     g_graphicsContext.BeginPaint();
-    glScissor(0,
-              0,
-              iWidth,
-              iHeight);
-    glClearColor(GLfloat(0.0), GLfloat(0.0), GLfloat(0.0), 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    if (clear)
+    {
+      glScissor(0,
+                0,
+                iWidth,
+                iHeight);
+      glClearColor(GLfloat(0.0), GLfloat(0.0), GLfloat(0.0), 0);
+      glClear(GL_COLOR_BUFFER_BIT);
+    }
 
     g_graphicsContext.SetScissors(m_destRect);
+   /* CLog::Log(LOGDEBUG, "%s - m_destRect : %f %f %f %f\n",
+              __FUNCTION__, m_destRect.x1,  m_destRect.x2, m_destRect.y1,m_destRect.y2);*/
+
+
 /*    glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);*/
     glClearColor(GLfloat(2.0/31.0), GLfloat(2.0/63.0), GLfloat(2.0/31.0), 0);
@@ -537,6 +537,20 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
     g_graphicsContext.SetScissors(old);
     g_graphicsContext.EndPaint();
+
+    // FIXME : move in its own render mode instead of mixup with BYPASS
+    if (m_format == RENDER_FMT_IMX)
+    {
+      int index = m_iYV12RenderBuffer;
+      struct v4l2_crop crop;
+
+      crop.c.top = (int)m_destRect.y1;
+      crop.c.left = (int)m_destRect.x1;
+      crop.c.width =  (int)(m_destRect.x2 -  m_destRect.x1);
+      crop.c.height = (int)(m_destRect.y2 - m_destRect.y1);
+      CDVDVideoCodecIMX *imx = m_buffers[index].imx;
+      imx->RenderFrame(crop);
+    }
     return;
   }
 

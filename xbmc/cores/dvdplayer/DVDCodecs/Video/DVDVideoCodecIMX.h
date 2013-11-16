@@ -69,7 +69,7 @@ public:
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
   virtual unsigned GetAllowedReferences();
   
-  void RenderFrame(void);
+  void RenderFrame(struct v4l2_crop &);
 protected:
 
   CDVDStreamInfo      m_hints;
