@@ -293,7 +293,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   /* Alloc frame buffers from V4L2 for efficient rendering through V4L streaming */ 
   struct v4l2_requestbuffers bufReq;
   struct v4l2_format fmt;
-  /*FIXME*/ static struct v4l2_rect rect;
+  struct v4l2_rect rect;
   int ret, i, j;
   int width, height;
   int ySize, cSize;
@@ -309,7 +309,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     CLog::Log(LOGERROR, "%s - Error while trying to open %s.\n", __FUNCTION__, m_v4lDeviceName);
     return false;
   }
-  
+
   video_width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
   video_height =  m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
 
@@ -334,6 +334,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     m_crop.c.top = m_crop.c.top + (m_crop.c.height - height) / 2;
     m_crop.c.height = height;
   }
+
   /* FIXME This is a workaround for the black screen bug with BSP 4.0.0 */
   if (m_crop.c.height == 816)
     m_crop.c.height = 824;
@@ -349,8 +350,8 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   /* Set V4L2  Format */
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-  fmt.fmt.pix.width = Align(video_width, FRAME_ALIGN);
-  fmt.fmt.pix.height = Align(video_height, FRAME_ALIGN);
+  fmt.fmt.pix.width = Align( m_initInfo.nPicWidth, FRAME_ALIGN);
+  fmt.fmt.pix.height = Align(m_initInfo.nPicHeight, FRAME_ALIGN);
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
 /*fmt.fmt.pix.bytesperline = fmt.fmt.pix.width;
   fmt.fmt.pix.sizeimage = fmt.fmt.pix.width * fmt.fmt.pix.height  * 3 / 2;*/
@@ -519,7 +520,9 @@ void CDVDVideoCodecIMX::RenderFrame(struct v4l2_crop &destRect)
   struct v4l2_format fmt;
   int stream_trigger;
   struct v4l2_control ctrl;
+  struct v4l2_rect rect;
   bool crop_update = false;
+
 
   /* lock has to be acquired that soon even if queue is modified far later
    * (to prevent compiler optimization that will race...)
@@ -550,7 +553,11 @@ void CDVDVideoCodecIMX::RenderFrame(struct v4l2_crop &destRect)
   } else
     m_pushed_frames++;
 
-
+  /* Force cropping dimensions to be aligned */
+  destRect.c.top    &= 0xFFFFFFF8;
+  destRect.c.left   &= 0xFFFFFFF8;
+  destRect.c.width  &= 0xFFFFFFF8;
+  destRect.c.height &= 0xFFFFFFF8;
   if ((m_crop.c.top != destRect.c.top) ||
       (m_crop.c.left != destRect.c.left) ||
       (m_crop.c.width != destRect.c.width) ||
@@ -596,6 +603,13 @@ void CDVDVideoCodecIMX::RenderFrame(struct v4l2_crop &destRect)
           fmt.fmt.pix.field = V4L2_FIELD_NONE;
           break;
         }
+
+        /* Take into account cropping from decoded video (for input picture) */
+        rect.left =  m_initInfo.PicCropRect.nLeft;
+        rect.top =  m_initInfo.PicCropRect.nTop;
+        rect.width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
+        rect.height = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
+        fmt.fmt.pix.priv = (unsigned int)&rect;
 
         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
         ret = ioctl (m_v4lfd, VIDIOC_S_FMT, &fmt);
@@ -1326,8 +1340,8 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   pDvdVideoPicture->dts = DVD_NOPTS_VALUE;
   pDvdVideoPicture->iWidth = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
   pDvdVideoPicture->iHeight = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
-  pDvdVideoPicture->iDisplayWidth =  m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
-  pDvdVideoPicture->iDisplayHeight =  m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
+  pDvdVideoPicture->iDisplayWidth = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
+  pDvdVideoPicture->iDisplayHeight = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
   pDvdVideoPicture->format = RENDER_FMT_IMX;
   pDvdVideoPicture->imx = this;
   return true;
