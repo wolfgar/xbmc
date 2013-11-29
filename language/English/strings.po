@@ -3452,7 +3452,7 @@ msgid "Program Add-ons"
 msgstr ""
 
 msgctxt "#1044"
-msgid "Set plugin thumb"
+msgid "Set plug-in thumb"
 msgstr ""
 
 #: xbmc/dialogs/GUIDialogContextMenu.cpp
@@ -6953,7 +6953,7 @@ msgid "Edit title"
 msgstr ""
 
 msgctxt "#16106"
-msgid "Manage ..."
+msgid "Manage..."
 msgstr ""
 
 msgctxt "#16107"
@@ -11948,7 +11948,7 @@ msgstr ""
 
 #: xbmc/addons/Repository.cpp
 msgctxt "#24096"
-msgid "Add-on has been marked as broken in repository."
+msgid "Add-on is incompatible or has been marked broken in repository."
 msgstr ""
 
 #: xbmc/addons/Repository.cpp
@@ -11991,7 +11991,62 @@ msgctxt "#24104"
 msgid "Add-on is incompatible due to unmet dependencies."
 msgstr ""
 
-#empty strings from id 24105 to 24999
+#: system/settings/settings.xml
+msgctxt "#24105"
+msgid "Pause when searching for subtitles"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#24106"
+msgid "If not saved to movie folder subtitles will be downloaded to custom subtitle folder"
+msgstr ""
+
+#: xbmc/dialogs/GUIDialogSubtitles.cpp
+msgctxt "#24107"
+msgid "Searching for subtitles ..."
+msgstr ""
+
+#: xbmc/dialogs/GUIDialogSubtitles.cpp
+msgctxt "#24108"
+msgid "%d subtitles found"
+msgstr ""
+
+#: xbmc/dialogs/GUIDialogSubtitles.cpp
+msgctxt "#24109"
+msgid "No subtitles found"
+msgstr ""
+
+#: xbmc/dialogs/GUIDialogSubtitles.cpp
+msgctxt "#24110"
+msgid "Downloading subtitles ..."
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#24111"
+msgid "Languages to download subtitles for"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#24112"
+msgid "Set languages to use when searching for subtitles. Not all subtitle services will use all languages."
+msgstr ""
+
+#: xbmc/dialogs/GUIDialogSubtitles.cpp
+msgctxt "#24113"
+msgid "Failed to download subtitle"
+msgstr ""
+
+#: xbmc/dialogs/GUIDialogSubtitles.cpp
+msgctxt "#24114"
+msgid "No subtitle services installed"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#24115"
+msgid "Save subtitles to movie folder"
+msgstr ""
+
+#empty strings from id 24116 to 24999
 
 msgctxt "#25000"
 msgid "Notifications"
@@ -12047,7 +12102,7 @@ msgid "Passthrough Audio in use"
 msgstr ""
 
 #empty strings from id 29803 to 33000
-#strings 30000 thru 30999 reserved for plugins and plugin settings
+#strings 30000 thru 30999 reserved for plug-ins and plug-in settings
 #strings 31000 thru 31999 reserved for skins
 #strings 32000 thru 32999 reserved for scripts
 #strings 33000 thru 33999 reserved for common strings used in Add-ons
@@ -12118,7 +12173,7 @@ msgid "Clips"
 msgstr ""
 
 msgctxt "#33017"
-msgid "Restart plugin to enable"
+msgid "Restart plug-in to enable"
 msgstr ""
 
 msgctxt "#33018"
@@ -14721,7 +14776,7 @@ msgctxt "#36533"
 msgid "Select how audio is downmixed, for example from 5.1 to 2.0: [Enabled] maintains the dynamic range of the original audio source when downmixed however volume will be lower [Disabled] maintains volume level of the original audio source however the dynamic range is compressed. Note - Dynamic range is the difference between the quietest and loudest sounds in a audio source."
 msgstr ""
 
-#empty strings from id 36534 to 36534
+#empty string with id 36534
 
 #: guilib/StereoscopicsManager.cpp
 #: xbmc/video/dialogs/GUIDialogVideoSettings.cpp

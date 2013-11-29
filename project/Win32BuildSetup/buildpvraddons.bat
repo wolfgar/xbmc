@@ -9,7 +9,7 @@ SET DEPS_DIR=..\BuildDependencies
 SET TMP_DIR=%DEPS_DIR%\tmp
 
 SET LIBNAME=xbmc-pvr-addons
-SET VERSION=accba457b54f0a2f85b56d3b1bab1790b6fcd656
+SET VERSION=d4cb4d5c0e7fc1a4b9a3b911c3053df178c36944
 SET SOURCE=%LIBNAME%
 SET GIT_URL=git://github.com/opdenkamp/%LIBNAME%.git
 SET SOURCE_DIR=%TMP_DIR%\%SOURCE%

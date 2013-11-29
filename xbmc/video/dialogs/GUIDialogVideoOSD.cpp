@@ -55,7 +55,9 @@ void CGUIDialogVideoOSD::FrameMove()
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_DIRECTOR)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_CUTTER)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_OSD_TELETEXT))
-      SetAutoClose(1000);
+
+      // extend show time by original value
+      SetAutoClose(m_showDuration);
   }
   CGUIDialog::FrameMove();
 }

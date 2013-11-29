@@ -70,9 +70,9 @@
 #include "settings/MediaSourceSettings.h"
 #include "settings/SettingAddon.h"
 #include "settings/SettingControl.h"
-#include "settings/SettingsManager.h"
 #include "settings/SettingPath.h"
 #include "settings/SkinSettings.h"
+#include "settings/lib/SettingsManager.h"
 #include "threads/SingleLock.h"
 #include "utils/CharsetConverter.h"
 #include "utils/log.h"
@@ -911,6 +911,9 @@ void CSettings::InitializeConditions()
   if (CAndroidFeatures::GetVersion() > 15)
     m_settingsManager->AddCondition("has_mediacodec");
 #endif
+#ifdef HAS_LIBSTAGEFRIGHT
+  m_settingsManager->AddCondition("have_libstagefrightdecoder");
+#endif
 #ifdef HAVE_VIDEOTOOLBOXDECODER
   m_settingsManager->AddCondition("have_videotoolboxdecoder");
   if (g_sysinfo.HasVideoToolBoxDecoder())
@@ -919,10 +922,6 @@ void CSettings::InitializeConditions()
 #ifdef HAS_LIBAMCODEC
   if (aml_present())
     m_settingsManager->AddCondition("have_amcodec");
-#endif
-#ifdef HAS_LIBSTAGEFRIGHT
-  if (CAndroidFeatures::GetVersion() < 19)
-    m_settingsManager->AddCondition("have_libstagefrightdecoder");
 #endif
 #ifdef TARGET_DARWIN_IOS_ATV2
   if (g_sysinfo.IsAppleTV2())

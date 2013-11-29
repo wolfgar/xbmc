@@ -27,6 +27,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "guilib/gui3d.h"
 
 CEGLNativeTypeIMX::CEGLNativeTypeIMX()
@@ -42,7 +43,7 @@ bool CEGLNativeTypeIMX::CheckCompatibility()
   char name[256] = {0};
   get_sysfs_str("/sys/class/graphics/fb0/device/modalias", name, 255);
   CStdString strName = name;
-  strName.Trim();
+  StringUtils::Trim(strName);
   if (strName == "platform:mxc_sdc_fb")
     return true;
   return false;
@@ -217,7 +218,7 @@ bool CEGLNativeTypeIMX::GetNativeResolution(RESOLUTION_INFO *res) const
   res->bFullScreen   = true;
   res->iSubtitles    = (int)(0.965 * res->iHeight);
   res->fPixelRatio   = 1.0f;
-  res->strMode.Format("%dx%d @ %.2f%s - Full Screen", res->iScreenWidth, res->iScreenHeight, res->fRefreshRate,
+  res->strMode = StringUtils::Format("%dx%d @ %.2f%s - Full Screen", res->iScreenWidth, res->iScreenHeight, res->fRefreshRate,
   res->dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "");
 
   return res->iWidth > 0 && res->iHeight> 0;
