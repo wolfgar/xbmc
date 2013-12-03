@@ -774,6 +774,7 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX()
   m_tsSyncRequired = true;  
   m_dropState = false;
   m_tsm = NULL;
+  m_convert_bitstream = false;
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1007,6 +1008,14 @@ void CDVDVideoCodecIMX::Dispose(void)
     m_tsm = NULL;
   }
 
+  if (m_convert_bitstream)
+  {
+    if (m_sps_pps_context.sps_pps_data)
+    {
+      free(m_sps_pps_context.sps_pps_data);
+      m_sps_pps_context.sps_pps_data = NULL;
+    }
+  }
   return;
 }
 
