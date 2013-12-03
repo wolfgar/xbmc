@@ -61,11 +61,14 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/linux/linux.a \
                    xbmc/music/dialogs/musicdialogs.a \
                    xbmc/music/infoscanner/musicscanner.a \
-                   xbmc/pictures/infoscanner/picturescanner.a \
                    xbmc/music/karaoke/karaoke.a \
                    xbmc/music/music.a \
                    xbmc/music/tags/musictags.a \
                    xbmc/music/windows/musicwindows.a \
+                   xbmc/pictures/infoscanner/pictureinfoscanner.a \
+                   xbmc/pictures/tags/picturetags.a \
+                   xbmc/contacts/contacts.a \
+                   xbmc/contacts/tags/contacttags.a \
                    xbmc/network/websocket/websocket.a \
                    xbmc/network/network.a \
                    xbmc/peripherals/bus/peripheral-bus.a \
@@ -73,7 +76,6 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/peripherals/dialogs/peripheral-dialogs.a \
                    xbmc/peripherals/peripherals.a \
                    xbmc/pictures/pictures.a \
-                   xbmc/contacts/contacts.a \
                    xbmc/playlists/playlists.a \
                    xbmc/powermanagement/powermanagement.a \
                    xbmc/profiles/profiles.a \
