@@ -1,0 +1,28 @@
+SRCS=DirectoryNode.cpp \
+     DirectoryNodeAlbum.cpp \
+     DirectoryNodeAlbumRecentlyAdded.cpp \
+     DirectoryNodeAlbumRecentlyAddedPicture.cpp \
+     DirectoryNodeFace.cpp \
+     DirectoryNodeGrouped.cpp \
+     DirectoryNodeOverview.cpp \
+     DirectoryNodePicture.cpp \
+     DirectoryNodeRoot.cpp \
+
+     DirectoryNodeAlbumCompilations.cpp \
+     DirectoryNodeAlbumCompilationsSongs.cpp \
+     DirectoryNodeAlbumRecentlyPlayed.cpp \
+     DirectoryNodeAlbumRecentlyPlayedSong.cpp \
+     DirectoryNodeAlbumTop100.cpp \
+     DirectoryNodeAlbumTop100Song.cpp \
+     DirectoryNodeArtist.cpp \
+     DirectoryNodeSingles.cpp \
+     DirectoryNodeSongTop100.cpp \
+     DirectoryNodeTop100.cpp \
+     DirectoryNodeYearAlbum.cpp \
+     DirectoryNodeYearSong.cpp \
+     QueryParams.cpp \
+
+LIB=musicdatabasedirectory.a
+
+include ../../../Makefile.include
+-include $(patsubst %.cpp,%.P,$(patsubst %.c,%.P,$(SRCS)))

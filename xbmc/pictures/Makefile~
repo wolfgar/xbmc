@@ -9,7 +9,6 @@ SRCS=GUIDialogPictureInfo.cpp \
      PictureAlbum.cpp \
      PictureInfoLoader.cpp \
      tags/PictureInfoTag.cpp \
-     infoscanner/PictureInfoScanner.cpp \
      PictureThumbLoader.cpp \
      SlideShowPicture.cpp \
      

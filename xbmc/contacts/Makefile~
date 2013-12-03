@@ -5,6 +5,7 @@ SRCS=GUIDialogContactInfo.cpp \
      ContactDbUrl.cpp \
      ContactInfoLoader.cpp \
      ContactThumbLoader.cpp \
+     SlideShowContact.cpp \
      
 LIB=contacts.a
 
