@@ -141,4 +141,8 @@ protected:
   uint32_t          m_sps_pps_size;
   omx_bitstream_ctx m_sps_pps_context; 
   bool m_convert_bitstream;
+
+  uint8_t *parse_mpeg2_aspect_ratio(uint8_t *pData, int iSize);
+  int m_display_width;
+  int m_display_height;
 };
