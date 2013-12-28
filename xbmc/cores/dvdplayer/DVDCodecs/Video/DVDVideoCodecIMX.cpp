@@ -30,8 +30,464 @@
 #include "utils/log.h"
 #include "DVDClock.h"
 #include "mfw_gst_ts.h"
+#include "threads/Atomics.h"
 
 //#define NO_V4L_RENDERING
+
+/* video device on which the video will be rendered (/dev/video17 => /dev/fb1) */
+const char *CIMXRenderingFrames::m_v4lDeviceName = "/dev/video17";
+static long sg_singleton_lock_variable = 0;
+CIMXRenderingFrames* CIMXRenderingFrames::m_instance = 0;
+
+CIMXRenderingFrames&
+CIMXRenderingFrames::GetInstance()
+{
+  CAtomicSpinLock lock(sg_singleton_lock_variable);
+  if( ! m_instance )
+  {
+    m_instance = new CIMXRenderingFrames();
+  }
+  return *m_instance;
+}
+
+CIMXRenderingFrames::CIMXRenderingFrames()
+{
+  m_ready = false;
+  m_v4lfd = -1;
+  m_virtAddr = NULL;
+  m_v4lBuffers = NULL;
+  memset(&m_crop, 0, sizeof(m_crop));
+  m_crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+}
+
+bool CIMXRenderingFrames::AllocateBuffers(const struct v4l2_format *format, int nbBuffers)
+{
+  int ret, i;
+  struct v4l2_requestbuffers bufReq;
+  struct v4l2_format fmt;
+  struct v4l2_buffer v4lBuf;
+
+  CSingleLock lock(m_renderingFramesLock);
+  if (m_ready)
+  {
+    CLog::Log(LOGERROR, "%s - Try to re-allocate buffers while previous buffers were not freed.\n", __FUNCTION__);
+    return false;
+  }
+
+  m_v4lfd = open(m_v4lDeviceName, O_RDWR|O_NONBLOCK, 0);
+  if (m_v4lfd < 0)
+  {
+    CLog::Log(LOGERROR, "%s - Error while trying to open %s.\n", __FUNCTION__, m_v4lDeviceName);
+    __ReleaseBuffers();
+    return false;
+  }
+
+  ret = ioctl(m_v4lfd, VIDIOC_S_FMT, format);
+  if (ret < 0)
+  {
+    CLog::Log(LOGERROR, "%s - Error while setting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
+    __ReleaseBuffers();
+    return false;
+  }
+
+  fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  ret = ioctl(m_v4lfd, VIDIOC_G_FMT, &fmt);
+  if (ret < 0)
+  {
+    CLog::Log(LOGERROR, "%s - Error while getting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
+    __ReleaseBuffers();
+    return false;
+  }
+
+  m_bufferNum = nbBuffers;
+  /* Alloc V4L2 buffers */
+  memset(&bufReq, 0, sizeof(bufReq));
+  bufReq.count =  m_bufferNum;
+  bufReq.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  bufReq.memory = V4L2_MEMORY_MMAP;
+  ret = ioctl(m_v4lfd, VIDIOC_REQBUFS, &bufReq);
+  if (ret < 0)
+  {
+    CLog::Log(LOGERROR, "%s - %d Hw buffer allocation error (%d)\n", __FUNCTION__, bufReq.count, ret);
+    __ReleaseBuffers();
+    return false;
+  }
+  CLog::Log(LOGDEBUG, "%s - %d Hw buffer of %d bytes allocated\n", __FUNCTION__, bufReq.count, fmt.fmt.pix.sizeimage);
+
+  m_virtAddr = new void*[m_bufferNum];
+  if (m_virtAddr == NULL)
+  {
+    CLog::Log(LOGERROR, "%s - Allocation failure (m_virtAddr table of %d elements)\n", __FUNCTION__, m_bufferNum);
+    __ReleaseBuffers();
+    return false;
+  }
+  m_v4lBuffers = new v4l2_buffer[m_bufferNum];
+  if (m_v4lBuffers == NULL)
+  {
+    CLog::Log(LOGERROR, "%s - Allocation failure (m_v4lBuffers table of %d elements)\n", __FUNCTION__, m_bufferNum);
+    __ReleaseBuffers();
+    return false;
+  }
+
+  for (i = 0 ; i < m_bufferNum; i++)
+  {
+    memset(&v4lBuf, 0, sizeof(v4lBuf));
+    v4lBuf.index = i;
+    v4lBuf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    v4lBuf.memory = V4L2_MEMORY_MMAP;
+    ret = ioctl (m_v4lfd, VIDIOC_QUERYBUF, &v4lBuf);
+    if (ret < 0)
+    {
+      CLog::Log(LOGERROR, "%s - Error during 1st query of V4L buffer (ret %d : %s)\n", __FUNCTION__, ret, strerror(errno));
+      return false;
+    }
+    m_v4lBuffers[i] = v4lBuf;
+    m_virtAddr[i] = NULL;
+  }
+  memset(&m_crop, 0, sizeof(m_crop));
+  m_crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  m_pushedFrames = 0;
+  m_streamOn = false;
+  m_currentField = VPU_FIELD_UNKNOWN;
+  m_ready = true;
+  return true;
+}
+
+void *CIMXRenderingFrames::GetVirtAddr(int idx)
+{
+  struct v4l2_buffer v4lBuf;
+  int ret;
+
+  CSingleLock lock(m_renderingFramesLock);
+  if (!m_ready)
+    return NULL;
+  if ((idx < 0) || (idx >= m_bufferNum))
+    return NULL;
+
+  if (m_virtAddr[idx] == NULL)
+  {
+    v4lBuf = m_v4lBuffers[idx];
+    m_virtAddr[idx] = mmap(NULL, v4lBuf.length, PROT_READ | PROT_WRITE, MAP_SHARED, m_v4lfd, v4lBuf.m.offset);
+
+    /* 2nd query to retrieve real Physical address after mmap (iMX6 bug) */
+    ret = ioctl (m_v4lfd, VIDIOC_QUERYBUF, &v4lBuf);
+    if (ret < 0)
+    {
+      CLog::Log(LOGERROR, "%s - Error during 2nd query of V4L buffer (ret %d : %s)\n", __FUNCTION__, ret, strerror(errno));
+    }
+    m_v4lBuffers[idx] = v4lBuf;
+  }
+  return m_virtAddr[idx];
+}
+
+void *CIMXRenderingFrames::GetPhyAddr(int idx)
+{
+
+  CSingleLock lock(m_renderingFramesLock);
+  if (!m_ready)
+    return NULL;
+  if ((idx < 0) || (idx >= m_bufferNum))
+    return NULL;
+
+  return (void *)m_v4lBuffers[idx].m.offset;
+}
+
+int CIMXRenderingFrames::FindBuffer(void *phyAddr)
+{
+  int i;
+
+  CSingleLock lock(m_renderingFramesLock);
+  if (!m_ready)
+    return -1;
+
+  for (i = 0; i < m_bufferNum; i++)
+  {
+    if (m_v4lBuffers[i].m.offset == (unsigned int)phyAddr)
+    {
+      // CLog::Log(LOGNOTICE, "%s - found buffer OK %d!\n", __FUNCTION__, i);
+      return i;
+    }
+  }
+  return -1;
+}
+
+int CIMXRenderingFrames::DeQueue(bool wait)
+{
+  int ret;
+  int status;
+  struct v4l2_buffer buf;
+
+  CSingleLock lock(m_renderingFramesLock);
+  if (!m_ready)
+  {
+      CLog::Log(LOGNOTICE, "%s - Cannot dequeue frame as buffers were released !\n",
+              __FUNCTION__);
+    return -1;
+  }
+  if (!m_streamOn)
+  {
+    return -1;
+  }
+
+  if (wait) {
+    status = fcntl(m_v4lfd, F_GETFL);
+    fcntl(m_v4lfd, F_SETFL, status & (~O_NONBLOCK));
+  }
+  buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  buf.memory = V4L2_MEMORY_MMAP;
+  ret = ioctl(m_v4lfd, VIDIOC_DQBUF, &buf);
+  if (wait)
+    fcntl(m_v4lfd, F_SETFL, status | O_NONBLOCK);
+  if (ret != 0)
+  {
+    if (errno != EAGAIN)
+      CLog::Log(LOGERROR, "%s - Dequeue buffer error (ret %d : %s)\n",
+              __FUNCTION__, ret, strerror(errno));
+    return -1;
+  }
+
+#ifdef IMX_PROFILE
+          CLog::Log(LOGDEBUG, "%s - Time render to dequeue (%d) %llu\n",
+              __FUNCTION__, buf.index, get_time() - render_ts[buf.index]);
+#endif
+  return buf.index;
+}
+
+void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &destRect)
+{
+  /* Warning : called from renderer thread
+   * Especially do not call any VPU functions as they are not thread safe
+   */
+
+  int ret, type;
+  struct timeval queue_ts;
+  struct v4l2_format fmt;
+  int stream_trigger;
+  struct v4l2_control ctrl;
+  struct v4l2_rect rect;
+  bool crop_update = false;
+
+  CSingleLock lock(m_renderingFramesLock);
+  if (!m_ready)
+  {
+    CLog::Log(LOGNOTICE, "%s - Cannot queue frame as buffers were released !\n",
+              __FUNCTION__);
+    return;
+  }
+
+  /*CLog::Log(LOGDEBUG, "%s - queuing frame %d - picture adress : %p\n",
+              __FUNCTION__, picture->v4l2BufferIdx, picture);*/
+
+  if ((picture->v4l2BufferIdx < 0) || (picture->v4l2BufferIdx >= m_bufferNum))
+  {
+    CLog::Log(LOGERROR, "%s - Invalid buffer index : %d - picture adress : %p\n",
+              __FUNCTION__, picture->v4l2BufferIdx, picture);
+  }
+  else
+  {
+
+  /* mxc_vout driver does not display immediatly
+   * if timestamp is set to 0
+   * (instead this driver expects a 30fps rate)
+   * So we explicitly set current time for immediate display
+   */
+  gettimeofday (&queue_ts, NULL);
+  m_v4lBuffers[picture->v4l2BufferIdx].timestamp = queue_ts;
+#ifndef NO_V4L_RENDERING
+  ret = ioctl(m_v4lfd, VIDIOC_QBUF, &m_v4lBuffers[picture->v4l2BufferIdx]);
+  if (ret < 0)
+  {
+    CLog::Log(LOGERROR, "%s - V4L Queue buffer failed (ret %d : %s)\n",
+              __FUNCTION__, ret, strerror(errno));
+    /* If it fails odds are very high picture is invalid so just exit now */
+    return;
+  } else
+    m_pushedFrames++;
+
+  /* Force cropping dimensions to be aligned */
+  destRect.c.top    &= 0xFFFFFFF8;
+  destRect.c.left   &= 0xFFFFFFF8;
+  destRect.c.width  &= 0xFFFFFFF8;
+  destRect.c.height &= 0xFFFFFFF8;
+  if ((m_crop.c.top != destRect.c.top) ||
+      (m_crop.c.left != destRect.c.left) ||
+      (m_crop.c.width != destRect.c.width) ||
+      (m_crop.c.height !=  destRect.c.height))
+  {
+     CLog::Log(LOGNOTICE, "%s - Newcrop : %d % d %d %d\n",
+              __FUNCTION__, destRect.c.top, destRect.c.left, destRect.c.width, destRect.c.height);
+    m_crop.c = destRect.c;
+    crop_update = true;
+  }
+
+  if (!m_streamOn)
+  {
+    if (picture->field != m_currentField)
+    {
+      CLog::Log(LOGNOTICE, "%s - New field is %d\n",
+                __FUNCTION__, picture->field);
+
+      /* Handle interlace field */
+      fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+      ret = ioctl (m_v4lfd, VIDIOC_G_FMT, &fmt);
+      if (ret < 0) {
+        CLog::Log(LOGERROR, "%s - V4L VIDIOC_G_FMT failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      } else {
+        switch (picture->field)
+        {
+        case VPU_FIELD_TOP:
+          fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE; /* V4L2_FIELD_TOP */
+          break;
+        case VPU_FIELD_BOTTOM:
+          fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE; /* V4L2_FIELD_BOTTOM */
+          break;
+        case VPU_FIELD_TB:
+          fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_TB;
+          break;
+        case VPU_FIELD_BT:
+          fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_BT;
+          break;
+        case VPU_FIELD_NONE:
+        default:
+          fmt.fmt.pix.field = V4L2_FIELD_NONE;
+          break;
+        }
+
+        /* Take into account cropping from decoded video (for input picture) */
+        rect.left = picture->picCrop.nLeft;
+        rect.top =  picture->picCrop.nTop;
+        rect.width = picture->picCrop.nRight - picture->picCrop.nLeft;
+        rect.height = picture->picCrop.nBottom - picture->picCrop.nTop;
+        fmt.fmt.pix.priv = (unsigned int)&rect;
+
+        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        ret = ioctl (m_v4lfd, VIDIOC_S_FMT, &fmt);
+        if (ret < 0)
+        {
+          CLog::Log(LOGERROR, "%s - V4L VIDIOC_S_FMT failed (ret %d : %s)\n",
+                  __FUNCTION__, ret, strerror(errno));
+        }
+        else
+          m_currentField = picture->field;
+      }
+    }
+    if (m_currentField  == VPU_FIELD_NONE)
+      stream_trigger = 1;
+    else {
+      stream_trigger = 2;
+
+      /* FIXME : How to select the most appropriate motion type ? */
+      ctrl.id = V4L2_CID_MXC_MOTION;
+      ctrl.value = 1; /* 2 stands for high motion */
+      ret = ioctl (m_v4lfd, VIDIOC_S_CTRL, &ctrl);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - Error while setting V4L motion (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
+      }
+    }
+    CLog::Log(LOGDEBUG, "%s - Number of required frames before steaming : %d\n",
+              __FUNCTION__, stream_trigger);
+
+    if (m_pushedFrames >= stream_trigger) {
+      type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+      ret = ioctl(m_v4lfd, VIDIOC_STREAMON, &type);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - V4L Stream ON failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
+      else
+      {
+        CLog::Log(LOGDEBUG, "%s - V4L Stream ON OK\n",
+                __FUNCTION__);
+        m_streamOn = true;
+      }
+      /* We have to repeat crop command after streamon for some vids
+      * FIXME check why in drivers...
+      */
+      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
+    }
+  }
+  else
+  {
+    if (crop_update)
+    {
+      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
+    }
+  }
+#endif
+
+#ifdef IMX_PROFILE
+  render_ts[picture->v4l2BufferIdx] = get_time();
+  CLog::Log(LOGDEBUG, "%s - Time push to render (%d) %llu\n",
+              __FUNCTION__, picture->v4l2BufferIdx, render_ts[picture->v4l2BufferIdx] - picture->pushTS);
+#endif
+
+  delete picture;
+  }
+}
+
+void CIMXRenderingFrames::ReleaseBuffers()
+{
+  CSingleLock lock(m_renderingFramesLock);
+  if (!m_ready)
+  {
+      CLog::Log(LOGERROR, "%s - AllocateBuffers was not previously called\n", __FUNCTION__);
+      return;
+  }
+  __ReleaseBuffers();
+}
+
+/* Note : Has to be called with m_renderingFramesLock held */
+void CIMXRenderingFrames::__ReleaseBuffers()
+{
+  int type, i;
+
+  if (m_v4lfd >= 0)
+  {
+    /* stream off */
+    type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    ioctl (m_v4lfd, VIDIOC_STREAMOFF, &type);
+    m_streamOn = false;
+  }
+
+  if (m_virtAddr != NULL)
+  {
+    for (i = 0; i < m_bufferNum; i++)
+    {
+      if (m_virtAddr[i] != NULL)
+        munmap (m_virtAddr[i], m_v4lBuffers[i].length);
+    }
+    delete m_virtAddr;
+    m_virtAddr = NULL;
+  }
+
+  if (m_v4lfd >= 0)
+  {
+    /* Close V4L2 device */
+    close(m_v4lfd);
+    m_v4lfd = -1;
+  }
+
+  if (m_v4lBuffers != NULL)
+  {
+    delete m_v4lBuffers;
+    m_v4lBuffers = NULL;
+  }
+  m_bufferNum = 0;
+  m_ready = false;
+}
 
 /* FIXME get rid of these defines properly */
 #define FRAME_ALIGN 16
@@ -40,16 +496,14 @@
 #define Align(ptr,align)  (((unsigned int)ptr + (align) - 1)/(align)*(align))
 #define min(a, b) (a<b)?a:b
 
-/* video device on which the video will be rendered (/dev/video17 => /dev/fb1) */
-const char *CDVDVideoCodecIMX::m_v4lDeviceName = "/dev/video17";
+
 /* Experiments show that we need at least one more (+1) V4L buffer than the min value returned by the VPU */
 const int CDVDVideoCodecIMX::m_extraVpuBuffers = 8;
 
 
+
 #ifdef IMX_PROFILE
-
-unsigned long long render_ts[30];
-
+static unsigned long long render_ts[30];
 static unsigned long long get_time()
 {
   struct timespec ts;
@@ -63,18 +517,14 @@ static unsigned long long get_time()
 }
 #endif
 
-
-void CDVDVideoCodecIMX::FlushOutputFrames(void)
+void CDVDVideoCodecIMX::FlushOutputFrame(void)
 {
-  outputFrameType outputFrame;
-
-  CSingleLock lock(outputFrameQueueLock);
-  while (m_outputFrames.size() > 0)
+  if (m_outputFrameReady)
   {
-    outputFrame = m_outputFrames.front();
-    m_outputFrames.pop();
-    VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
-    m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
+    VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[m_outputFrame.imxOutputFrame->v4l2BufferIdx]);
+    m_outputBuffers[m_outputFrame.imxOutputFrame->v4l2BufferIdx] = NULL;
+    delete m_outputFrame.imxOutputFrame;
+    m_outputFrameReady = false;
   }
 }
 
@@ -243,7 +693,6 @@ VpuOpenError:
 
 void CDVDVideoCodecIMX::InitFB(void)
 {
-  struct fb_var_screeninfo screen;
   struct mxcfb_gbl_alpha alpha;
   struct mxcfb_color_key colorKey;
   int fd;
@@ -258,14 +707,7 @@ void CDVDVideoCodecIMX::InitFB(void)
   colorKey.color_key = (16 << 16) | (8 << 8) | 16;
   if (ioctl(fd, MXCFB_SET_CLR_KEY, &colorKey) < 0)
     CLog::Log(LOGERROR, "%s - Error while trying to enable color keying %s.\n", __FUNCTION__, strerror(errno));
-
-  /* Retrieve screen resolution */
-  ioctl(fd, FBIOGET_VSCREENINFO, &screen);
   close(fd);
-
-  /* Keep resolution */
-  m_xscreen = screen.xres;
-  m_yscreen = screen.yres;  
 }
 
 void CDVDVideoCodecIMX::RestoreFB(void)
@@ -285,77 +727,31 @@ void CDVDVideoCodecIMX::RestoreFB(void)
   if (ioctl(fd, MXCFB_SET_CLR_KEY, &colorKey) < 0)
     CLog::Log(LOGERROR, "%s - Error while trying to disable color keying %s.\n", __FUNCTION__, strerror(errno));
   close(fd);
-
 }
 
 bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
 {
   /* Alloc frame buffers from V4L2 for efficient rendering through V4L streaming */ 
-  struct v4l2_requestbuffers bufReq;
   struct v4l2_format fmt;
   struct v4l2_rect rect;
-  int ret, i, j;
-  int width, height;
+  int i, j;
+  /*int ret, width, height;
+  int video_width, video_height;*/
   int ySize, cSize;
-  int video_width, video_height;
   VpuDecRetCode vpuRet;
-  struct v4l2_buffer v4lBuf;
+  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
+
 
   InitFB();
 
-  m_v4lfd = open(m_v4lDeviceName, O_RDWR|O_NONBLOCK, 0);
-  if (m_v4lfd < 0)
-  {
-    CLog::Log(LOGERROR, "%s - Error while trying to open %s.\n", __FUNCTION__, m_v4lDeviceName);
-    return false;
-  }
-
-  video_width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
-  video_height =  m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
-
-  /* Set crop of output picture to keep aspect ratio */
-  m_crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-  m_crop.c.top = 0;
-  m_crop.c.left = 0;
-  m_crop.c.width = m_xscreen;
-  m_crop.c.height = m_yscreen;
-
-  if (m_crop.c.width * video_height > m_crop.c.height * video_width)
-  {
-    width = video_width * m_crop.c.height / video_height;
-    width = width & 0xFFFFFFF8;
-    m_crop.c.left = m_crop.c.left + (m_crop.c.width - width) / 2;
-    m_crop.c.width = width;
-  }
-  else if (m_crop.c.width * video_height < m_crop.c.height * video_width)
-  {
-    height = video_height * m_crop.c.width / video_width;
-    height = height & 0xFFFFFFF8;
-    m_crop.c.top = m_crop.c.top + (m_crop.c.height - height) / 2;
-    m_crop.c.height = height;
-  }
-
-  /* FIXME This is a workaround for the black screen bug with BSP 4.0.0 */
-  if (m_crop.c.height == 816)
-    m_crop.c.height = 824;
-
-  ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-  if (ret < 0)
-  {
-    CLog::Log(LOGERROR, "%s - Error while setting crop (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
-    return false;
-  }
-  CLog::Log(LOGDEBUG, "%s - V4L crop : %d %d %d %d\n", __FUNCTION__, m_crop.c.top, m_crop.c.left, m_crop.c.width, m_crop.c.height);
-
-  /* Set V4L2  Format */
+  /* Set V4L2 Format */
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
   fmt.fmt.pix.width = Align( m_initInfo.nPicWidth, FRAME_ALIGN);
   fmt.fmt.pix.height = Align(m_initInfo.nPicHeight, FRAME_ALIGN);
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
-/*fmt.fmt.pix.bytesperline = fmt.fmt.pix.width;
+  /*fmt.fmt.pix.bytesperline = fmt.fmt.pix.width;
   fmt.fmt.pix.sizeimage = fmt.fmt.pix.width * fmt.fmt.pix.height  * 3 / 2;*/
-
   /* Take into account cropping from decoded video (for input picture) */
   rect.left =  m_initInfo.PicCropRect.nLeft;
   rect.top =  m_initInfo.PicCropRect.nTop;
@@ -363,65 +759,23 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   rect.height = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
   fmt.fmt.pix.priv = (unsigned int)&rect;
 
-  m_v4l_fmt = fmt;
-  ret = ioctl(m_v4lfd, VIDIOC_S_FMT, &fmt);
-  if (ret < 0)
+  m_vpuFrameBufferNum =  m_initInfo.nMinFrameBufferCount + m_extraVpuBuffers;
+  if (!renderingFrames.AllocateBuffers(&fmt, m_vpuFrameBufferNum))
   {
-    CLog::Log(LOGERROR, "%s - Error while setting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
     return false;
   }
-  ret = ioctl(m_v4lfd, VIDIOC_G_FMT, &fmt);
-  if (ret < 0)
-  {
-    CLog::Log(LOGERROR, "%s - Error while getting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
-    return false;
-  }
-
-  /* Alloc V4L2 buffers */
-  memset(&bufReq, 0, sizeof(bufReq));
-  bufReq.count =  m_initInfo.nMinFrameBufferCount + m_extraVpuBuffers;
-  bufReq.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-  bufReq.memory = V4L2_MEMORY_MMAP;
-  ret = ioctl(m_v4lfd, VIDIOC_REQBUFS, &bufReq);
-  if (ret < 0)
-  {
-    CLog::Log(LOGERROR, "%s - %d Hw buffer allocation error (%d)\n", __FUNCTION__, bufReq.count, ret);
-    return false;
-  }
-  CLog::Log(LOGDEBUG, "%s - %d Hw buffer of %d bytes allocated\n", __FUNCTION__, bufReq.count, fmt.fmt.pix.sizeimage);  
   
-  m_vpuFrameBufferNum = bufReq.count;
   m_outputBuffers = new VpuFrameBuffer*[m_vpuFrameBufferNum];
   m_vpuFrameBuffers = new VpuFrameBuffer[m_vpuFrameBufferNum];  
-  m_v4lBuffers = new v4l2_buffer[m_vpuFrameBufferNum];
   m_extraMem = new VpuMemDesc[m_vpuFrameBufferNum];
   ySize = fmt.fmt.pix.width * fmt.fmt.pix.height;
   cSize = ySize / 4;
-  for (i=0 ; i<m_vpuFrameBufferNum; i++)
+  for (i = 0 ; i < m_vpuFrameBufferNum; i++)
   {
-    m_outputBuffers[i] = NULL;
-    memset(&v4lBuf, 0, sizeof(v4lBuf));
-    v4lBuf.index = i;
-    v4lBuf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-    v4lBuf.memory = V4L2_MEMORY_MMAP;
-    ret = ioctl (m_v4lfd, VIDIOC_QUERYBUF, &v4lBuf);
-    if (ret < 0)
-    {
-      CLog::Log(LOGERROR, "%s - Error during 1st query of V4L buffer (ret %d : %s)\n", __FUNCTION__, ret, strerror(errno));
-      return false;
-    }
-    m_vpuFrameBuffers[i].pbufVirtY = (unsigned char *)mmap(NULL, v4lBuf.length, PROT_READ | PROT_WRITE, MAP_SHARED, m_v4lfd, v4lBuf.m.offset);    
-    /* 2nd query to retrieve real Physical address (iMX6 bug) */
-    ret = ioctl (m_v4lfd, VIDIOC_QUERYBUF, &v4lBuf);
-    if (ret < 0)
-    {
-      CLog::Log(LOGERROR, "%s - Error during 2nd query of V4L buffer (ret %d : %s)\n", __FUNCTION__, ret, strerror(errno));
-      return false;
-    }
-    m_v4lBuffers[i] = v4lBuf;
+    m_vpuFrameBuffers[i].pbufVirtY = (unsigned char *)renderingFrames.GetVirtAddr(i);
     m_vpuFrameBuffers[i].nStrideY = fmt.fmt.pix.width;
     m_vpuFrameBuffers[i].nStrideC = m_vpuFrameBuffers[i].nStrideY / 2;
-    m_vpuFrameBuffers[i].pbufY = (unsigned char *)v4lBuf.m.offset;
+    m_vpuFrameBuffers[i].pbufY = (unsigned char *)renderingFrames.GetPhyAddr(i);
     m_vpuFrameBuffers[i].pbufCb = m_vpuFrameBuffers[i].pbufY + ySize;
     m_vpuFrameBuffers[i].pbufCr = m_vpuFrameBuffers[i].pbufCb + cSize;
     m_vpuFrameBuffers[i].pbufVirtCb = m_vpuFrameBuffers[i].pbufVirtY + ySize;
@@ -431,10 +785,11 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     m_vpuFrameBuffers[i].pbufCb_tilebot = 0;
     m_vpuFrameBuffers[i].pbufVirtY_tilebot = 0;
     m_vpuFrameBuffers[i].pbufVirtCb_tilebot = 0;
+    m_outputBuffers[i] = NULL;
   }
   
   /* Allocate physical extra memory */
-  for (i=0 ; i<m_vpuFrameBufferNum; i++)
+  for (i = 0 ; i < m_vpuFrameBufferNum; i++)
   {
     m_extraMem[i].nSize = cSize;
     vpuRet = VPU_DecGetMem(&m_extraMem[i]);
@@ -446,28 +801,36 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
         m_extraMem[j].nSize = 0;
       return false;
     }
-    m_vpuFrameBuffers[i].pbufMvCol =  (unsigned char *)m_extraMem[i].nPhyAddr;
-    m_vpuFrameBuffers[i].pbufVirtMvCol =  (unsigned char *)m_extraMem[i].nVirtAddr;
+    m_vpuFrameBuffers[i].pbufMvCol = (unsigned char *)m_extraMem[i].nPhyAddr;
+    m_vpuFrameBuffers[i].pbufVirtMvCol = (unsigned char *)m_extraMem[i].nVirtAddr;
   }
-  
+
   return true;
 }
 
-bool CDVDVideoCodecIMX::VpuPushFrame(VpuFrameBuffer *frameBuffer, VpuFieldType field)
+bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
 {
   #ifdef IMX_PROFILE
   static unsigned long long previous_ts;
   #endif
+  VpuFrameBuffer *frameBuffer = frameInfo->pDisplayFrameBuf;
+  CIMXOutputFrame *outputFrame = new CIMXOutputFrame();
+  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   int i;
-  outputFrameType outputFrame;
+  //outputFrameType outputFrame;
   double pts;
 
   pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
+  if (m_dropState)
+  {
+    /* If we are dropping frame then release current frame immediatly */
+    VPU_DecOutFrameDisplayed(m_vpuHandle, frameBuffer);
+    return false;
+  }
+
   /* Find Frame given physical address */
-  for (i=0; i<m_vpuFrameBufferNum; i++)
-    if ((unsigned int)frameBuffer->pbufY == m_v4lBuffers[i].m.offset)
-      break;
-  if (i >= m_vpuFrameBufferNum)
+  i = renderingFrames.FindBuffer(frameBuffer->pbufY);
+  if (i == -1)
   {
     CLog::Log(LOGERROR, "%s - V4L buffer not found\n", __FUNCTION__);
     return false;
@@ -477,228 +840,52 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuFrameBuffer *frameBuffer, VpuFieldType f
     CLog::Log(LOGERROR, "%s - Try to reuse buffer which was not dequeued !\n", __FUNCTION__);
     return false;
   }
-  
-  if (m_dropState)
+  if (m_outputFrameReady)
   {
-    /* If we are dropping frame that release current frame immediatly */
-    VPU_DecOutFrameDisplayed(m_vpuHandle, frameBuffer);
-    return false;
-  }
-  else
-  {
-    /* Store the pointer to be able to invoke VPU_DecOutFrameDisplayed when the buffer will be dequeued*/
-    m_outputBuffers[i] = frameBuffer;
-    //CLog::Log(LOGDEBUG, "%s - set ouputBuffer idx %d : %x\n", __FUNCTION__, i, frameBuffer);
-
-    /* Frame ready to be displayed by the renderer */
-    outputFrame.v4l2_buffer = &m_v4lBuffers[i];
-    outputFrame.pts = pts;
-    outputFrame.field = field;
-#ifdef IMX_PROFILE
-    outputFrame.push_ts = get_time();
-    CLog::Log(LOGDEBUG, "%s - Time between push %llu\n",
-                __FUNCTION__, outputFrame.push_ts - previous_ts);
-    previous_ts = outputFrame.push_ts;
-#endif
-    CSingleLock lock(outputFrameQueueLock);
-    m_outputFrames.push(outputFrame);
-    return true;
-  }
-  
-}
-
-
-void CDVDVideoCodecIMX::RenderFrame(struct v4l2_crop &destRect)
-{
-  /* Warning : called from renderer thread
-   * Especially do not call any VPU functions as they are not thread safe
-   */
-
-  int ret, type;
-  outputFrameType outputFrame;
-  struct timeval queue_ts;
-  struct v4l2_format fmt;
-  int stream_trigger;
-  struct v4l2_control ctrl;
-  struct v4l2_rect rect;
-  bool crop_update = false;
-
-
-  /* lock has to be acquired that soon even if queue is modified far later
-   * (to prevent compiler optimization that will race...)
-   */
-  CSingleLock lock(outputFrameQueueLock);
-  if (m_outputFrames.size() == 0)
-  {
-    CLog::Log(LOGNOTICE, "%s - No frame available to render !\n",
-              __FUNCTION__);
-    return;
+      CLog::Log(LOGERROR, "%s - Called while GetPicture has not consumed previous frame\n", __FUNCTION__);
   }
 
-  outputFrame = m_outputFrames.front();
+  /* Store the pointer to be able to invoke VPU_DecOutFrameDisplayed when the buffer will be dequeued */
+  m_outputBuffers[i] = frameBuffer;
+  //CLog::Log(LOGDEBUG, "%s - set ouputBuffer idx %d : %x\n", __FUNCTION__, i, frameBuffer);
 
-  /* mxc_vout driver does not display immediatly
-   * if timestamp is set to 0
-   * (instead this driver expects a 30fps rate)
-   * So we explicitly set current time for immediate display
-   */
-  gettimeofday (&queue_ts, NULL);
-  outputFrame.v4l2_buffer->timestamp = queue_ts;
-#ifndef NO_V4L_RENDERING
-  ret = ioctl(m_v4lfd, VIDIOC_QBUF, outputFrame.v4l2_buffer);
-  if (ret < 0)
-  {
-    CLog::Log(LOGERROR, "%s - V4L Queue buffer failed (ret %d : %s)\n",
-              __FUNCTION__, ret, strerror(errno));
-  } else
-    m_pushed_frames++;
+  outputFrame = new CIMXOutputFrame();
+  outputFrame->v4l2BufferIdx = i;
+  outputFrame->field = frameInfo->eFieldType;
+  outputFrame->picCrop = frameInfo->pExtInfo->FrmCropRect;
+  m_outputFrame.imxOutputFrame = outputFrame;
 
-  /* Force cropping dimensions to be aligned */
-  destRect.c.top    &= 0xFFFFFFF8;
-  destRect.c.left   &= 0xFFFFFFF8;
-  destRect.c.width  &= 0xFFFFFFF8;
-  destRect.c.height &= 0xFFFFFFF8;
-  if ((m_crop.c.top != destRect.c.top) ||
-      (m_crop.c.left != destRect.c.left) ||
-      (m_crop.c.width != destRect.c.width) ||
-      (m_crop.c.height !=  destRect.c.height))
-  {
-     CLog::Log(LOGNOTICE, "%s - Newcrop : %d % d %d %d\n",
-              __FUNCTION__, destRect.c.top, destRect.c.left, destRect.c.width, destRect.c.height);
-
-    m_crop.c = destRect.c;
-    crop_update = true;
-  }
-
-  if (!m_streamon)
-  {
-    if (outputFrame.field != m_current_field)
-    {
-      CLog::Log(LOGNOTICE, "%s - New field is %d\n",
-                __FUNCTION__, outputFrame.field);
-
-      /* Handle interlace field */
-      fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-      ret = ioctl (m_v4lfd, VIDIOC_G_FMT, &fmt);
-      if (ret < 0) {
-        CLog::Log(LOGERROR, "%s - V4L VIDIOC_G_FMT failed (ret %d : %s)\n",
-                __FUNCTION__, ret, strerror(errno));
-      } else {
-        switch (outputFrame.field)
-        {
-        case VPU_FIELD_TOP:
-          fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE; /* V4L2_FIELD_TOP */
-          break;
-        case VPU_FIELD_BOTTOM:
-          fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE; /* V4L2_FIELD_BOTTOM */
-          break;
-        case VPU_FIELD_TB:
-          fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_TB;
-          break;
-        case VPU_FIELD_BT:
-          fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_BT;
-          break;
-        case VPU_FIELD_NONE:
-        default:
-          fmt.fmt.pix.field = V4L2_FIELD_NONE;
-          break;
-        }
-
-        /* Take into account cropping from decoded video (for input picture) */
-        rect.left =  m_initInfo.PicCropRect.nLeft;
-        rect.top =  m_initInfo.PicCropRect.nTop;
-        rect.width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
-        rect.height = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
-        fmt.fmt.pix.priv = (unsigned int)&rect;
-
-        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        ret = ioctl (m_v4lfd, VIDIOC_S_FMT, &fmt);
-        if (ret < 0)
-        {
-          CLog::Log(LOGERROR, "%s - V4L VIDIOC_S_FMT failed (ret %d : %s)\n",
-                  __FUNCTION__, ret, strerror(errno));
-        }
-        else
-          m_current_field = outputFrame.field;
-      }
-    }
-    if (m_current_field  == VPU_FIELD_NONE)
-      stream_trigger = 1;
-    else {
-      stream_trigger = 2;
-
-      /* FIXME : How to select the most appropriate motion type ? */
-      ctrl.id = V4L2_CID_MXC_MOTION;
-      ctrl.value = 1; /* 2 stands for high motion */
-      ret = ioctl (m_v4lfd, VIDIOC_S_CTRL, &ctrl);
-      if (ret < 0)
-      {
-        CLog::Log(LOGERROR, "%s - Error while setting V4L motion (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
-      }
-    }
-    CLog::Log(LOGDEBUG, "%s - Number of required frames before steaming : %d\n",
-              __FUNCTION__, stream_trigger);
-
-    if (m_pushed_frames >= stream_trigger) {
-      //ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-      type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-      ret = ioctl(m_v4lfd, VIDIOC_STREAMON, &type);
-      if (ret < 0)
-      {
-        CLog::Log(LOGERROR, "%s - V4L Stream ON failed (ret %d : %s)\n",
-                __FUNCTION__, ret, strerror(errno));
-      }
-      else
-      {
-        CLog::Log(LOGDEBUG, "%s - V4L Stream ON OK\n",
-                __FUNCTION__);
-        m_streamon = true;
-      }
-      /* We have to repeat crop command after streamon for some vids
-      * FIXME check why in drivers...
-      */
-      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-      if (ret < 0)
-      {
-        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
-                __FUNCTION__, ret, strerror(errno));
-      }
-    }
-  }
-  else
-  {
-    if (crop_update)
-    {
-      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-      if (ret < 0)
-      {
-        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
-                __FUNCTION__, ret, strerror(errno));
-      }
-    }
-  }
-#endif
+  m_outputFrame.pts = pts;
+  m_outputFrame.dts = DVD_NOPTS_VALUE;
+  /*
+  m_outputFrame.iWidth = frameInfo->pExtInfo->nFrmWidth;
+  m_outputFrame.iHeight  = frameInfo->pExtInfo->nFrmHeight;
+  */
+  m_outputFrame.iWidth  = frameInfo->pExtInfo->FrmCropRect.nRight - frameInfo->pExtInfo->FrmCropRect.nLeft;
+  m_outputFrame.iHeight = frameInfo->pExtInfo->FrmCropRect.nBottom - frameInfo->pExtInfo->FrmCropRect.nTop;
+  /* FIXME plug aspect ratio correction here frameInfo->nQ16ShiftWidthDivHeightRatio */
+  m_outputFrame.iDisplayWidth = m_display_width;
+  m_outputFrame.iDisplayHeight =  m_display_height;
+  m_outputFrame.format = RENDER_FMT_IMX;
+  m_outputFrameReady = true;
 
 #ifdef IMX_PROFILE
-  render_ts[outputFrame.v4l2_buffer->index] = get_time();
-  CLog::Log(LOGDEBUG, "%s - Time push to render (%d) %llu\n",
-              __FUNCTION__, outputFrame.v4l2_buffer->index, render_ts[outputFrame.v4l2_buffer->index] - outputFrame.push_ts);
+  m_outputFrame.imxOutputFrame.pushTS = get_time();
+  CLog::Log(LOGDEBUG, "%s - Time between push %llu\n",
+              __FUNCTION__,  m_outputFrame.imxOutputFrame.pushTS - previous_ts);
+  previous_ts =m_outputFrame.imxOutputFrame.pushTS;
 #endif
 
-  //CLog::Log(LOGERROR, "%s - render frame called on buffer %d (size : %d) \n", __FUNCTION__, buffer->index, m_outputFrames.size());
-  m_outputFrames.pop(); 
-#ifdef NO_V4L_RENDERING
-  VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[outputFrame.v4l2_buffer->index]);
-  m_outputBuffers[outputFrame.v4l2_buffer->index] = NULL;
-#endif
+  return true;
+
 }
-
 
 int CDVDVideoCodecIMX::GetAvailableBufferNb(void)
 {
   int i, nb;
+
   nb = 0;
-  for (i=0; i<m_vpuFrameBufferNum; i++)
+  for (i = 0; i < m_vpuFrameBufferNum; i++)
   {
     if (m_outputBuffers[i] == NULL)
       nb++;
@@ -708,18 +895,21 @@ int CDVDVideoCodecIMX::GetAvailableBufferNb(void)
 
 bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
 {
-  int ret;
-  int status;
-  struct v4l2_buffer buf;
+  int idx;
+  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
 
-  
-  if ((m_v4lfd == -1) ||
-      (!m_streamon))
+  idx = renderingFrames.DeQueue(wait);
+  if (idx != -1)
+  {
+    VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[idx]);
+    m_outputBuffers[idx] = NULL;
+    return true;
+  }
+  else
   {
 #ifdef NO_V4L_RENDERING
-    {
       int i;
-      for (i=0; i<m_vpuFrameBufferNum; i++)
+      for (i = 0; i < m_vpuFrameBufferNum; i++)
       {
         if (m_outputBuffers[i] != NULL)
         {
@@ -727,51 +917,21 @@ bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
           m_outputBuffers[i] = NULL;
         }
       }
-    }
 #endif
     return false;
   }
-  if (wait) {
-    status = fcntl(m_v4lfd, F_GETFL);
-    fcntl(m_v4lfd, F_SETFL, status & (~O_NONBLOCK));
-  }
-  buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-  buf.memory = V4L2_MEMORY_MMAP;
-  ret = ioctl(m_v4lfd, VIDIOC_DQBUF, &buf);
-  if (wait)
-    fcntl(m_v4lfd, F_SETFL, status | O_NONBLOCK);
-  if (ret != 0)
-  {
-    if (errno != EAGAIN)
-      CLog::Log(LOGERROR, "%s - Dequeue buffer error (ret %d : %s)\n",
-              __FUNCTION__, ret, strerror(errno));
-    return false;
-  }
-
-  // Mark frame as displayed for VPU
-#ifdef IMX_PROFILE
-          CLog::Log(LOGDEBUG, "%s - Time render to dequeue (%d) %llu\n",
-              __FUNCTION__, buf.index, get_time() - render_ts[buf.index]);
-#endif
-  VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[buf.index]);
-  m_outputBuffers[buf.index] = NULL;
-  return true;  
 }
-
 
 CDVDVideoCodecIMX::CDVDVideoCodecIMX()
 {
   m_pFormatName = "iMX-xxx";
   memset(&m_decMemInfo, 0, sizeof(DecMemInfo));
   m_vpuHandle = 0;
-  m_v4lfd = -1;
   m_vpuFrameBuffers = NULL;
   m_outputBuffers = NULL;
-  m_v4lBuffers = NULL;
   m_extraMem = NULL;
   m_vpuFrameBufferNum = 0;
-  m_streamon = false;   
-  m_tsSyncRequired = true;  
+  m_tsSyncRequired = true;
   m_dropState = false;
   m_tsm = NULL;
   m_convert_bitstream = false;
@@ -790,8 +950,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     return false;
   }
 
-  m_current_field = VPU_FIELD_UNKNOWN;
-  m_pushed_frames = 0;
+  m_outputFrameReady = false;
   m_hints = hints;
   CLog::Log(LOGDEBUG, "Let's decode with iMX VPU\n");    
   
@@ -915,9 +1074,11 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
 void CDVDVideoCodecIMX::Dispose(void)
 {
   VpuDecRetCode  ret;
-  int i, type;
+  int i;
   bool VPU_loaded = m_vpuHandle;
+  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   
+  FlushOutputFrame();
   if (m_vpuHandle)
   {    
     ret = VPU_DecFlushAll(m_vpuHandle);
@@ -935,62 +1096,39 @@ void CDVDVideoCodecIMX::Dispose(void)
 
   VpuFreeBuffers();
 
-  if (m_v4lfd >= 0)
+  if (m_outputBuffers != NULL)
   {
     while (VpuDeQueueFrame(false));
-    /* stream off */
-    type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-    ioctl (m_v4lfd, VIDIOC_STREAMOFF, &type);
-    m_streamon = false;
-    /* unmap vpuFrameBuffers  */
-    if ((m_vpuFrameBuffers != NULL) && (m_v4lBuffers != NULL))
-    {
-      for (i = 0; i < m_vpuFrameBufferNum; i++)
-      {
-        munmap (m_vpuFrameBuffers[i].pbufVirtY, m_v4lBuffers[i].length);
-      }
-    }
-    if (m_vpuFrameBuffers != NULL)
-    {
-      delete m_vpuFrameBuffers;
-      m_vpuFrameBuffers = NULL;
-    }
-    if (m_v4lBuffers != NULL)
-    {
-      delete m_v4lBuffers;
-      m_v4lBuffers = NULL;
-    }    
-    if (m_outputBuffers != NULL)
-    {
-      delete m_outputBuffers;
-      m_outputBuffers = NULL;
-    }    
-    /* Free extramem */
-    if (m_extraMem != NULL)
-    {
-      for (i = 0; i < m_vpuFrameBufferNum; i++)
-      {
-        if (m_extraMem[i].nSize > 0)
-        {
-          ret = VPU_DecFreeMem(&m_extraMem[i]);
-          if (ret != VPU_DEC_RET_SUCCESS)
-          {
-            CLog::Log(LOGERROR, "%s - Release extra mem failed with error code %d.\n", __FUNCTION__, ret);
-          }
-          m_extraMem[i].nSize = 0;
-        }
-      }
-      delete m_extraMem;
-      m_extraMem = NULL;
-      
-    }
-    m_vpuFrameBufferNum = 0;
-
-    /* vpuFrameBuffers (V4L buffers) will be released by this close ? */
-    close(m_v4lfd);
-    m_v4lfd = -1;   
+    renderingFrames.ReleaseBuffers();
     RestoreFB();
-    
+    delete m_outputBuffers;
+    m_outputBuffers = NULL;
+  }
+
+  /* Free extramem */
+  if (m_extraMem != NULL)
+  {
+    for (i = 0; i < m_vpuFrameBufferNum; i++)
+    {
+      if (m_extraMem[i].nSize > 0)
+      {
+        ret = VPU_DecFreeMem(&m_extraMem[i]);
+        if (ret != VPU_DEC_RET_SUCCESS)
+        {
+          CLog::Log(LOGERROR, "%s - Release extra mem failed with error code %d.\n", __FUNCTION__, ret);
+        }
+        m_extraMem[i].nSize = 0;
+      }
+    }
+    delete m_extraMem;
+    m_extraMem = NULL;
+  }
+  m_vpuFrameBufferNum = 0;
+
+  if (m_vpuFrameBuffers != NULL)
+  {
+    delete m_vpuFrameBuffers;
+    m_vpuFrameBuffers = NULL;
   }
 
   if (VPU_loaded)
@@ -1048,11 +1186,15 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   CLog::Log(LOGDEBUG, "%s - delta time decode : %llu - demux size : %d  dts : %f - pts : %f\n", __FUNCTION__, current - previous, iSize, dts, pts);
   previous = current;
 #endif
+/* FIXME tests
+  CLog::Log(LOGDEBUG, "%s - demux size : %d  dts : %f - pts : %f - %x %x %x %x\n", __FUNCTION__, iSize, dts, pts, ((unsigned int *)pData)[0], ((unsigned int *)pData)[1], ((unsigned int *)pData)[2], ((unsigned int *)pData)[3]);
+  ((unsigned int *)pData)[0] = htonl(iSize-4);
+*/
 
   while (VpuDeQueueFrame(false));
 
   if (pData && iSize)
-  {  
+  {
     if (m_convert_bitstream)
     {
       // convert demuxer packet from bitstream to bytestream (AnnexB)
@@ -1191,7 +1333,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           CLog::Log(LOGERROR, "%s - VPU Cannot get output frame(%d).\n", __FUNCTION__, ret);
           goto out_error;
         }
-        if (VpuPushFrame(frameInfo.pDisplayFrameBuf, frameInfo.eFieldType))
+        if (VpuPushFrame(&frameInfo))
         {
           retSatus |= VC_PICTURE;
         }        
@@ -1209,7 +1351,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
       if (decRet & VPU_DEC_NO_ENOUGH_BUF)
       {
-          CLog::Log(LOGERROR, "%s - No frame buffer available. Queued frame : %d.\n", __FUNCTION__, m_outputFrames.size());
+          CLog::Log(LOGERROR, "%s - No frame buffer available.\n", __FUNCTION__);
       }
       if (decRet & VPU_DEC_SKIP)
       {
@@ -1237,7 +1379,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
       if (!(decRet & VPU_DEC_INPUT_USED))
       {
-        CLog::Log(LOGERROR, "%s - input not used : addr %x  size :%d!\n", __FUNCTION__, inData.pVirAddr, inData.nSize);
+        CLog::Log(LOGERROR, "%s - input not used : addr %p  size :%d!\n", __FUNCTION__, inData.pVirAddr, inData.nSize);
         TSManagerSend(m_tsm);
       }
 
@@ -1292,8 +1434,8 @@ void CDVDVideoCodecIMX::Reset()
   /* We have to resync timestamp manager */
   m_tsSyncRequired = true;
 
-  /* Flush the output frames */
-  FlushOutputFrames();
+  /* Flush the output frame */
+  FlushOutputFrame();
 
   /* Flush VPU */
   ret = VPU_DecFlushAll(m_vpuHandle);
@@ -1322,29 +1464,25 @@ static double GetPlayerPtsSeconds()
 
 bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 { 
-  outputFrameType outputFrame;
   double currentPlayerPts;
   double ts = DVD_NOPTS_VALUE;
-  //static int displayedFrames = 0;
-  //static double previous;
 
-  if (m_outputFrames.size() == 0)
+  if (!m_outputFrameReady)
   {
-    CLog::Log(LOGERROR, "%s called while no picture ready\n", __FUNCTION__);    
+    CLog::Log(LOGERROR, "%s called while no picture ready\n", __FUNCTION__);
     return false;
   }
-  outputFrame = m_outputFrames.back();
-  ts = outputFrame.pts;
 
   pDvdVideoPicture->iFlags &= DVP_FLAG_DROPPED;
   if ((pDvdVideoPicture->iFlags != 0) || (m_dropState))
   {
+    CLog::Log(LOGERROR, "%s - Flushing video picture\n", __FUNCTION__);
     pDvdVideoPicture->iFlags = DVP_FLAG_DROPPED;
-    FlushOutputFrames();
+    FlushOutputFrame();
   }
   else
   {
-    //displayedFrames++;
+    ts = m_outputFrame.pts;
     currentPlayerPts = GetPlayerPtsSeconds() * (double)DVD_TIME_BASE;
     if (currentPlayerPts > ts)
     {
@@ -1352,17 +1490,21 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     }
     //CLog::Log(LOGINFO, "%s - idx : %d - delta call %f - delta ts %f \n", __FUNCTION__, outputFrame.v4l2_buffer->index,ts - previous, ts - currentPlayerPts);
   }
-   
-  //previous = ts;
-  //pDvdVideoPicture->iFlags |= DVP_FLAG_ALLOCATED;
-  pDvdVideoPicture->pts = ts;
-  pDvdVideoPicture->dts = DVD_NOPTS_VALUE;
-  pDvdVideoPicture->iWidth = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
-  pDvdVideoPicture->iHeight = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
-  pDvdVideoPicture->iDisplayWidth = m_display_width;
-  pDvdVideoPicture->iDisplayHeight =  m_display_height;
-  pDvdVideoPicture->format = RENDER_FMT_IMX;
-  pDvdVideoPicture->imx = this;
+
+#ifdef NO_V4L_RENDERING
+  VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[m_outputFrame.imxOutputFrame->v4l2BufferIdx]);
+  m_outputBuffers[m_outputFrame.imxOutputFrame->v4l2BufferIdx] = NULL;
+#endif
+
+  pDvdVideoPicture->pts = m_outputFrame.pts;
+  pDvdVideoPicture->dts = m_outputFrame.dts;
+  pDvdVideoPicture->iWidth = m_outputFrame.iWidth;
+  pDvdVideoPicture->iHeight = m_outputFrame.iHeight;
+  pDvdVideoPicture->iDisplayWidth = m_outputFrame.iDisplayWidth;
+  pDvdVideoPicture->iDisplayHeight = m_outputFrame.iDisplayHeight;
+  pDvdVideoPicture->format = m_outputFrame.format;
+  pDvdVideoPicture->imxOutputFrame = m_outputFrame.imxOutputFrame;
+  m_outputFrameReady = false;
   return true;
 }
 
@@ -1474,6 +1616,7 @@ bool CDVDVideoCodecIMX::bitstream_convert(BYTE* pData, int iSize, uint8_t **pout
     else
       nal_size = buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
 
+    // FIXME CLog::Log(LOGERROR, "%s - nal_size : %d \n", __FUNCTION__, nal_size);
     buf += m_sps_pps_context.length_size;
     unit_type = *buf & 0x1f;
 
@@ -1603,4 +1746,3 @@ uint8_t *CDVDVideoCodecIMX::parse_mpeg2_aspect_ratio(uint8_t *pData, int iSize)
 
   return 0;
 }
-

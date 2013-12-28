@@ -38,8 +38,7 @@ namespace VDPAU { class CVdpauRenderPicture; }
 class COpenMax;
 class COpenMaxVideo;
 struct OpenMaxVideoBuffer;
-/* FIXME dont use directly this class in final implementtaion */
-class CDVDVideoCodecIMX;
+class CIMXOutputFrame;
 class CDVDVideoCodecStageFright;
 
 class CDVDMediaCodecInfo;
@@ -76,7 +75,7 @@ struct DVDVideoPicture
     };
 
     struct {
-      CDVDVideoCodecIMX *imx;
+      CIMXOutputFrame *imxOutputFrame;
     };
 
     struct {

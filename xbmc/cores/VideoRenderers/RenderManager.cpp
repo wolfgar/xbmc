@@ -922,7 +922,7 @@ int CXBMCRenderManager::AddVideoPicture(DVDVideoPicture& pic)
 #endif
 #ifdef HAS_IMXVPU
   else if(pic.format == RENDER_FMT_IMX)
-    m_pRenderer->AddProcessor(pic.imx, index);
+    m_pRenderer->AddProcessor(pic.imxOutputFrame, index);
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
   else if(pic.format == RENDER_FMT_EGLIMG)

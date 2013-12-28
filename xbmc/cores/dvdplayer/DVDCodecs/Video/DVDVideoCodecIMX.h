@@ -44,22 +44,54 @@ typedef struct
   unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];      
 } DecMemInfo;
 
-typedef struct {
-  struct v4l2_buffer *v4l2_buffer;
+/* Output frame properties */
+struct CIMXOutputFrame {
+  int v4l2BufferIdx;
   VpuFieldType field;
-  double pts;
+  VpuRect picCrop;
 #ifdef IMX_PROFILE
-  unsigned long long push_ts;
+  unsigned long long pushTS;
 #endif
-} outputFrameType;
+};
+
+class CIMXRenderingFrames
+{
+public:
+  static CIMXRenderingFrames& GetInstance();
+  bool AllocateBuffers(const struct v4l2_format *, int);
+  void *GetVirtAddr(int idx);
+  void *GetPhyAddr(int idx);
+  void ReleaseBuffers();
+  int FindBuffer(void *);
+  int DeQueue(bool wait);
+  void Queue(CIMXOutputFrame *, struct v4l2_crop &);
+
+private:
+  CIMXRenderingFrames();
+  void __ReleaseBuffers();
+
+  static const char  *m_v4lDeviceName;     // V4L2 device Name
+  static CIMXRenderingFrames* m_instance;  // Unique instance of the class
   
+  CCriticalSection    m_renderingFramesLock; // Lock to ensure multithreading safety for class fields
+  bool                m_ready;             // Buffers are allocated and frames can be Queued/Dequeue
+  int                 m_v4lfd;             // fd on V4L2 device
+  struct v4l2_buffer *m_v4lBuffers;        // Table of V4L buffer info (as returned by VIDIOC_QUERYBUF)
+  int                 m_bufferNum;         // Number of allocated V4L2 buffers
+  struct v4l2_crop    m_crop;              // Current cropping properties
+  bool                m_streamOn;          // Flag that indicates whether streaming in on (from V4L point of view)
+  VpuFieldType        m_currentField;      // Current field type
+  int                 m_pushedFrames;      // Number of frames queued in V4L2
+  void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
+};
+
 class CDVDVideoCodecIMX : public CDVDVideoCodec
 {
 public:
   CDVDVideoCodecIMX();
   virtual ~CDVDVideoCodecIMX();
 
-  // Required overrides
+  // Methods from CDVDVideoCodec which require overrides
   virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
   virtual void Dispose(void);
   virtual int  Decode(BYTE *pData, int iSize, double dts, double pts);
@@ -68,58 +100,42 @@ public:
   virtual void SetDropState(bool bDrop);
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
   virtual unsigned GetAllowedReferences();
-  
-  void RenderFrame(struct v4l2_crop &);
+
 protected:
 
-  CDVDStreamInfo      m_hints;
-  DVDVideoPicture     m_picture;
-  const char         *m_pFormatName;
-
-
-  /* FIXME pure VPU  stuff : TO be moved in a dedicated class ? */
   bool VpuOpen(void);
   bool VpuAllocBuffers(VpuMemInfo *);
   bool VpuFreeBuffers(void);
-
-
-  VpuDecOpenParam     m_decOpenParam;
-  DecMemInfo          m_decMemInfo;
-  VpuDecHandle        m_vpuHandle;
-  VpuDecInitInfo      m_initInfo;
-  void               *m_tsm;               // fsl Timestamp manager
-  bool                m_tsSyncRequired;
-  bool                m_dropState;
-  /* FIXME V4L rendering stuff & Frame Buffers: To be moved in a dedicated class */
   bool VpuAllocFrameBuffers(void);
-  bool VpuPushFrame(VpuFrameBuffer *, VpuFieldType);
+  bool VpuPushFrame(VpuDecOutFrameInfo*);
   bool VpuDeQueueFrame(bool);
   int GetAvailableBufferNb(void);
   void InitFB(void);
   void RestoreFB(void);
-  void FlushOutputFrames(void);
-  
-  static const int    m_extraVpuBuffers;
-  static const char  *m_v4lDeviceName;
-  
-  struct v4l2_crop    m_crop;              // Current cropping properties 
-  int                 m_xscreen, m_yscreen;// Current screen resolution
-  int                 m_v4lfd;             // fd on V4L2 device
-  struct v4l2_format  m_v4l_fmt;
+  void FlushOutputFrame(void);
+
+  static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
+
+  CDVDStreamInfo      m_hints;             // Hints from demuxer at stream opening
+  const char         *m_pFormatName;       // Current decoder format name
+  VpuDecOpenParam     m_decOpenParam;      // Parameters required to call VPU_DecOpen
+  DecMemInfo          m_decMemInfo;        // VPU dedicated memory description
+  VpuDecHandle        m_vpuHandle;         // Handle for VPU library calls
+  VpuDecInitInfo      m_initInfo;          // Initial info returned from VPU at decoding start
+  void               *m_tsm;               // fsl Timestamp manager (from gstreamer implementation)
+  bool                m_tsSyncRequired;    // state whether timestamp manager has to be sync'ed
+  bool                m_dropState;         // Current drop state
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
-  struct v4l2_buffer *m_v4lBuffers;        // Table of V4L buffer info (as returned by VIDIOC_QUERYBUF)
-  VpuFrameBuffer    **m_outputBuffers;     // Output buffer pointers from VPU (table index is V4L buffer index). Enable to call VPU_DecOutFrameDisplayed
-  bool                m_streamon;          // Flag that indicates whether streaming in on (from V4L point of view)
-  int                 m_pushed_frames;     // Number of frames queued in V4L2
-  VpuFieldType        m_current_field;     // Current field type
+  VpuFrameBuffer    **m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
+  DVDVideoPicture     m_outputFrame;       // Decoded frame ready to be retrieved by GetPicture
+  bool                m_outputFrameReady;  // State whether m_outputFrame is available or not
 
-  CCriticalSection outputFrameQueueLock;
-  std::queue <outputFrameType> m_outputFrames;   // Frames to be displayed  
-  
-  
-  /* FIXME create a real class and share with openmax */
+
+  /* FIXME : Rework is still required for fields below this line */
+
+  /* create a real class and share with openmax ? */
   // bitstream to bytestream (Annex B) conversion support.
   bool bitstream_convert_init(void *in_extradata, int in_extrasize);
   bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);

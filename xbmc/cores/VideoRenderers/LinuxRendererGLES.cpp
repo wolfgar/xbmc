@@ -110,7 +110,7 @@ CLinuxRendererGLES::YUVBUFFER::YUVBUFFER()
   mediacodec = NULL;
 #endif
 #ifdef HAS_IMXVPU
-  imx = NULL;
+  imxOutputFrame = NULL;
 #endif
 
 }
@@ -541,15 +541,19 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     // FIXME : move in its own render mode instead of mixup with BYPASS
     if (m_format == RENDER_FMT_IMX)
     {
+      CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
       int index = m_iYV12RenderBuffer;
       struct v4l2_crop crop;
-
       crop.c.top = (int)m_destRect.y1;
       crop.c.left = (int)m_destRect.x1;
       crop.c.width =  (int)(m_destRect.x2 -  m_destRect.x1);
       crop.c.height = (int)(m_destRect.y2 - m_destRect.y1);
-      CDVDVideoCodecIMX *imx = m_buffers[index].imx;
-      imx->RenderFrame(crop);
+      CIMXOutputFrame *imxPicture = m_buffers[index].imxOutputFrame;
+      if (imxPicture != NULL)
+      {
+        renderingFrames.Queue(imxPicture, crop);
+        m_buffers[index].imxOutputFrame = NULL;
+      }
     }
     return;
   }
@@ -2685,20 +2689,10 @@ void CLinuxRendererGLES::AddProcessor(struct __CVBuffer *cvBufferRef, int index)
 #endif
 
 #ifdef HAS_IMXVPU
-void CLinuxRendererGLES::AddProcessor(CDVDVideoCodecIMX *imx, int index)
+void CLinuxRendererGLES::AddProcessor(CIMXOutputFrame *imx, int index)
 {
-  int i;
-
-  /* FIXME force all index for now - 
-   understand why render update is not called with correct index later */
-  for (i = 0; i < 3; i++)
-  {
-    YUVBUFFER &buf = m_buffers[i];
-    buf.imx = imx;
-  }
-
-/*  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
-  buf.imx = imx;*/
+  YUVBUFFER &buf = m_buffers[index];
+  buf.imxOutputFrame = imx;
 }
 #endif
 
