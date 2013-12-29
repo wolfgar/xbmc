@@ -3182,8 +3182,8 @@ bool CApplication::ProcessEventServer(float frameTime)
       newEvent.motion.yrel = 0;
       newEvent.motion.state = 0;
       newEvent.motion.which = 0x10;  // just a different value to distinguish between mouse and event client device.
-      newEvent.motion.x = pos.x;
-      newEvent.motion.y = pos.y;
+      newEvent.motion.x = (uint16_t)pos.x;
+      newEvent.motion.y = (uint16_t)pos.y;
       OnEvent(newEvent);  // had to call this to update g_Mouse position
       return OnAction(CAction(ACTION_MOUSE_MOVE, pos.x, pos.y));
     }
@@ -4349,6 +4349,9 @@ void CApplication::UpdateFileState()
           // Update with stream details from player, if any
           if (m_pPlayer->GetStreamDetails(details))
             m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails = details;
+
+          if (m_progressTrackingItem->IsStack())
+            m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails.SetVideoDuration(0, (int)GetTotalTime()); // Overwrite with CApp's totaltime as it takes into account total stack time
         }
 
         // Update bookmark for save
@@ -4514,14 +4517,17 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
     m_iScreenSaveLock = 0;
     ResetScreenSaverTimer();
 
-    if (m_screenSaver->ID() == "screensaver.xbmc.builtin.dim" || m_screenSaver->ID() == "screensaver.xbmc.builtin.black" || m_screenSaver->ID().empty())
+    if (m_screenSaver->ID() == "visualization")
+    {
+      // we can just continue as usual from vis mode
+      return false;
+    }
+    else if (m_screenSaver->ID() == "screensaver.xbmc.builtin.dim" || m_screenSaver->ID() == "screensaver.xbmc.builtin.black" || m_screenSaver->ID().empty())
       return true;
     else if (!m_screenSaver->ID().empty())
     { // we're in screensaver window
-      if (g_windowManager.GetActiveWindow() == WINDOW_SCREENSAVER
-          || g_windowManager.GetActiveWindow() == WINDOW_VISUALISATION)
+      if (g_windowManager.GetActiveWindow() == WINDOW_SCREENSAVER)
         g_windowManager.PreviousWindow();  // show the previous window
-
       if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW)
         CApplicationMessenger::Get().SendAction(CAction(ACTION_STOP), WINDOW_SLIDESHOW);
     }
@@ -4592,6 +4598,12 @@ void CApplication::CheckScreenSaverAndDPMS()
 // the type of screensaver displayed
 void CApplication::ActivateScreenSaver(bool forceType /*= false */)
 {
+  if (m_pPlayer->IsPlayingAudio() && CSettings::Get().GetBool("screensaver.usemusicvisinstead") && !CSettings::Get().GetString("musicplayer.visualisation").empty())
+  { // just activate the visualisation if user toggled the usemusicvisinstead option
+    g_windowManager.ActivateWindow(WINDOW_VISUALISATION);
+    return;
+  }
+
   m_bScreenSave = true;
 
   // Get Screensaver Mode
@@ -4610,15 +4622,6 @@ void CApplication::ActivateScreenSaver(bool forceType /*= false */)
     {
       if (!CAddonMgr::Get().GetAddon("screensaver.xbmc.builtin.dim", m_screenSaver))
         m_screenSaver.reset(new CScreenSaver(""));
-    }
-    // Check if we are Playing Audio and Vis instead Screensaver!
-    else if (m_pPlayer->IsPlayingAudio() && CSettings::Get().GetBool("screensaver.usemusicvisinstead") && !CSettings::Get().GetString("musicplayer.visualisation").empty())
-    { // activate the visualisation
-      m_screenSaver.reset(new CScreenSaver("visualization"));
-      // prevent music info popup if vis is already running
-      if (g_windowManager.GetActiveWindow() != WINDOW_VISUALISATION)
-        g_windowManager.ActivateWindow(WINDOW_VISUALISATION);
-      return;
     }
   }
   if (m_screenSaver->ID() == "screensaver.xbmc.builtin.dim" || m_screenSaver->ID().empty())
@@ -5125,6 +5128,7 @@ void CApplication::ProcessSlow()
     CAddonInstaller::Get().UpdateRepos();
 
   CAEFactory::GarbageCollect();
+
 }
 
 // Global Idle Time in Seconds
