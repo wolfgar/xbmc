@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.11], [http://trac.xbmc.org])
+AC_INIT([xbmc], [12.9.12], [http://issues.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
 m4_include([m4/ax_prog_cc_for_build.m4])
@@ -37,7 +37,7 @@ AC_DEFUN([XB_ADD_PLAYER],
 AC_DEFUN([XB_ADD_CODEC],
 [
   AC_MSG_CHECKING([for $2])
-  case $add_codecs in
+  case $3 in
     *$2*)
       use_codec_$2="yes"
       AC_SUBST([USE_$1], 1)
@@ -1968,27 +1968,30 @@ case $add_players in
 esac
 
 # additional internal codecs
-case $add_codecs in
-  *amcodec*)
-      AC_CHECK_HEADER([amcodec/codec_error.h],, AC_MSG_ERROR($missing_headers))
-      XB_ADD_CODEC([LIBAMCODEC], [amcodec])
-      ;;
-  *imxvpu*)
+# remember to convert commas to spaces
+for codecs in `echo $add_codecs | sed 's/,/ /g'`; do
+  case $codecs in
+    *amcodec*)
+        AC_CHECK_HEADER([amcodec/codec_error.h],, AC_MSG_ERROR($missing_headers))
+        XB_ADD_CODEC([LIBAMCODEC], [amcodec], [$codecs])
+        ;;
+    *libstagefright*)
+        XB_ADD_CODEC([LIBSTAGEFRIGHT], [libstagefright], [$codecs])
+        ;;
+    *imxvpu*)
       AC_CHECK_HEADER([imx-mm/vpu/vpu_wrapper.h],, AC_MSG_ERROR($missing_headers))
       AC_CHECK_LIB([vpu], main, LIBS="$LIBS -lfslvpuwrap -lvpu", AC_MSG_ERROR($missing_library))
-      XB_ADD_CODEC([IMXVPU], [imxvpu])
+      XB_ADD_CODEC([IMXVPU], [imxvpu], [$codecs])
       CXXFLAGS="$CXXFLAGS -Wno-psabi -DLINUX "
       CFLAGS="$CFLAGS -DLINUX"
       if test "$use_x11" = "no"; then
         CXXFLAGS="$CXXFLAGS -DEGL_API_FB"
         CFLAGS="$CFLAGS -DEGL_API_FB"
       fi
-      ;;
-  *libstagefright*)
-      XB_ADD_CODEC([LIBSTAGEFRIGHT], [libstagefright])
-      ;;
-  *)
-esac
+      ;;     
+    *)
+  esac
+done
 
 # platform specific bin utilities
 if test "$build_vendor" != "apple" ; then
