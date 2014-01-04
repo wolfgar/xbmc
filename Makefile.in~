@@ -14,11 +14,7 @@ XBMCTEX_DIRS= \
 
 DVDPCODECS_DIRS= \
 	lib \
-	lib/libdvd 
-
-ifeq (@USE_LIBSTAGEFRIGHT@,1)
-DVDPCODECS_DIRS += xbmc/cores/dvdplayer/DVDCodecs/Video/libstagefrightICS
-endif
+	lib/libdvd
 
 DVDPLAYER_ARCHIVES=xbmc/cores/dvdplayer/DVDPlayer.a \
                    xbmc/cores/dvdplayer/DVDCodecs/DVDCodecs.a \
@@ -63,7 +59,6 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/interfaces/interfaces.a \
                    xbmc/interfaces/json-rpc/json-rpc.a \
                    xbmc/linux/linux.a \
-                   xbmc/listproviders/listproviders.a \
                    xbmc/music/dialogs/musicdialogs.a \
                    xbmc/music/infoscanner/musicscanner.a \
                    xbmc/pictures/infoscanner/picturescanner.a \
@@ -80,7 +75,6 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/peripherals/dialogs/peripheral-dialogs.a \
                    xbmc/peripherals/peripherals.a \
                    xbmc/pictures/pictures.a \
-                   xbmc/contacts/contacts.a \
                    xbmc/playlists/playlists.a \
                    xbmc/powermanagement/powermanagement.a \
                    xbmc/profiles/profiles.a \
@@ -97,7 +91,6 @@ DIRECTORY_ARCHIVES=$(DVDPLAYER_ARCHIVES) \
                    xbmc/rendering/rendering.a \
                    xbmc/settings/settings.a \
                    xbmc/settings/dialogs/settings_dialogs.a \
-                   xbmc/settings/lib/settings_lib.a \
                    xbmc/settings/windows/settings_windows.a \
                    xbmc/storage/storage.a \
                    xbmc/utils/utils.a \
@@ -182,9 +175,12 @@ ifeq (@HAVE_XBMC_NONFREE@,1)
 DIRECTORY_ARCHIVES += lib/UnrarXLib/UnrarXLib.a
 endif
 
+BIN_DIRS = $(dir $(DIRECTORY_ARCHIVES)) $(dir $(NWAOBJSXBMC))
+
 ifeq (@USE_ANDROID@,1)
 DIRECTORY_ARCHIVES += xbmc/android/loader/AndroidDyload.a
 DIRECTORY_ARCHIVES += xbmc/windowing/android/windowing_android.a
+DIRECTORY_ARCHIVES += xbmc/android/activity/activity.a
 DIRECTORY_ARCHIVES += xbmc/android/bionic_supplement/bionic_supplement.a
 DIRECTORY_ARCHIVES += xbmc/android/jni/jni.a
 endif
@@ -198,6 +194,7 @@ DIRECTORY_ARCHIVES += lib/xbmc-libav-hacks/dll-libavhacks.a
 endif
 
 PAPCODECS_DIRS= \
+	lib/xbadpcm \
 	lib/nosefart \
 	lib/timidity \
 	lib/libsidplay2 \
@@ -273,6 +270,9 @@ TOUCHED_MEDIA=addons/skin.touched/media
 SKIN_DIRS+=$(TOUCHED_MEDIA)
 endif
 
+DIRS= $(BIN_DIRS) $(EC_DIRS) $(XBMCTEX_DIRS) $(DVDPCODECS_DIRS) $(PAPCODECS_DIRS) \
+	$(LIB_DIRS) $(SS_DIRS) $(VIS_DIRS) $(LIBADDON_DIRS) $(SKIN_DIRS) xbmc/main
+
 LIBS=@LIBS@
 CFLAGS=@CFLAGS@
 CXXFLAGS=@CXXFLAGS@
@@ -308,10 +308,8 @@ CHECK_LIBS = xbmc/filesystem/test/filesystemTest.a \
              xbmc/utils/test/utilsTest.a \
              xbmc/threads/test/threadTest.a \
              xbmc/interfaces/python/test/pythonSwigTest.a \
+             xbmc/windowing/tests/wayland/test_wayland.a \
              xbmc/test/xbmc-test.a
-
-ifeq (@USE_WAYLAND@,1)
-CHECK_LIBS += xbmc/windowing/tests/wayland/test_wayland.a
 
 ifeq (@USE_WAYLAND_TEST_EXTENSION@,1)
 WAYLAND_TEST_MODULE = xbmc/windowing/tests/wayland/xbmc-wayland-test-extension.so
@@ -319,7 +317,6 @@ $(WAYLAND_TEST_MODULE): force
 	$(MAKE) -C $(@D) $(@F)
 CHECK_EXTENSIONS = $(WAYLAND_TEST_MODULE)
 CHECK_LIBADD=@WAYLAND_TEST_LIBS@
-endif
 endif
 
 CHECK_PROGRAMS = xbmc-test
@@ -334,7 +331,7 @@ all : $(FINAL_TARGETS)
 include Makefile.include
 
 .PHONY : dllloader exports visualizations screensavers eventclients papcodecs \
-	dvdpcodecs dvdpextcodecs imagelib codecs externals force skins libaddon check \
+	dvdpcodecs imagelib codecs externals force skins libaddon check \
 	testframework testsuite
 
 # hack targets to keep build system up to date
@@ -359,6 +356,12 @@ endif
 # Setup some dependencies for subdir makes
 xbmc/cores/paplayer/paplayer.a: papcodecs
 $(DVDPLAYER_ARCHIVES)         : dvdpcodecs
+
+$(NWAOBJSXBMC): force
+	@$(MAKE) $(if $(V),,-s) -C $(@D)
+
+$(DIRECTORY_ARCHIVES): force
+	@$(MAKE) $(if $(V),,-s) -C $(@D)
 
 lib/cpluff/libcpluff/.libs/libcpluff.a: force
 	$(MAKE) -C lib/cpluff/libcpluff
@@ -401,14 +404,6 @@ libaddon: exports
 dvdpcodecs: dllloader
 	$(MAKE) -C lib
 	$(MAKE) -C lib/libdvd
-
-ifeq (@USE_LIBSTAGEFRIGHT@,1)
-dvdpextcodecs: libxbmc.so 
-	$(MAKE) -C xbmc/cores/dvdplayer/DVDCodecs/Video/libstagefrightICS
-else
-dvdpextcodecs:
-endif
-
 eventclients:
 ifeq ($(findstring osx,@ARCH@), osx)
 ifneq ($(findstring arm,@ARCH@), arm)
@@ -425,6 +420,7 @@ libhdhomerun: dllloader
 	$(MAKE) -C lib/libhdhomerun
 papcodecs: dllloader dvdpcodecs
 	test -d system/players/paplayer || mkdir system/players/paplayer
+	$(MAKE) -C lib/xbadpcm
 	$(MAKE) -C lib/vgmstream
 	$(MAKE) -C lib/timidity
 	$(MAKE) -C lib/nosefart
@@ -448,7 +444,7 @@ ifeq (@USE_PVR_ADDONS@,1)
 	$(MAKE) -C pvr-addons
 endif
 
-codecs: papcodecs dvdpcodecs dvdpextcodecs
+codecs: papcodecs dvdpcodecs
 
 libs: libhdhomerun imagelib libexif system/libcpluff-@ARCH@.so $(CMYTH)
 
@@ -460,6 +456,8 @@ xcode_depends: \
 	lib/libRTV/librtv.a \
 	lib/libXDAAP/libxdaap.a \
 	lib/SlingboxLib/SlingboxLib.a
+
+OBJSXBMC =$(DIRECTORY_ARCHIVES)
 
 DYNOBJSXBMC= \
 	xbmc/linux/linux.a \
@@ -478,39 +476,15 @@ ifeq ($(findstring freebsd,@ARCH@),freebsd)
 DYNOBJSXBMC+= xbmc/freebsd/freebsd.a
 endif
 
-ifeq (@USE_STATIC_FFMPEG@,1)
-FFMPEGOBJS = lib/ffmpeg/libavcodec/libavcodec.a \
-             lib/ffmpeg/libavfilter/libavfilter.a \
-             lib/ffmpeg/libswresample/libswresample.a \
-             lib/ffmpeg/libavformat/libavformat.a \
-             lib/ffmpeg/libavutil/libavutil.a \
-             lib/ffmpeg/libpostproc/libpostproc.a \
-             lib/ffmpeg/libswscale/libswscale.a
-DYNOBJSXBMC+= $(FFMPEGOBJS)
-LIBS+= @GNUTLS_ALL_LIBS@ @VORBISENC_ALL_LIBS@
-
-$(FFMPEGOBJS): dvdpcodecs
-endif
-
-ifneq (@USE_LIBXBMC@,1)
-MAINOBJS+=xbmc/main/main.a
-else
-ifeq (@USE_ANDROID@,1)
-MAINOBJS+=xbmc/android/activity/activity.a
-endif # USE_ANDROID
-endif # USE_LIBXBMC
-
-
-OBJSXBMC =$(DIRECTORY_ARCHIVES)
 OBJSXBMC:=$(filter-out $(DYNOBJSXBMC), $(OBJSXBMC))
 
-BIN_DIRS = $(dir $(DIRECTORY_ARCHIVES)) $(dir $(NWAOBJSXBMC)) $(dir $(MAINOBJS))
-
-DIRS= $(BIN_DIRS) $(EC_DIRS) $(XBMCTEX_DIRS) $(DVDPCODECS_DIRS) $(PAPCODECS_DIRS) \
-	$(LIB_DIRS) $(SS_DIRS) $(VIS_DIRS) $(LIBADDON_DIRS) $(SKIN_DIRS) xbmc/main
-
-$(NWAOBJSXBMC) $(DIRECTORY_ARCHIVES) $(MAINOBJS): force
-	@$(MAKE) $(if $(V),,-s) -C $(@D)
+MAINOBJS=xbmc/xbmc.o
+ifeq (@USE_ANDROID@,1)
+MAINOBJS+=xbmc/android/activity/android_main.o
+endif
+ifneq (@USE_LIBXBMC@,1)
+MAINOBJS+=xbmc/main/main.o
+endif
 
 # sync these entries manually with tools/depends/target/xbmc-addon-bindings/Makefile
 BINDINGS =xbmc/addons/include/xbmc_addon_cpp_dll.h
@@ -533,17 +507,20 @@ BINDINGS+=xbmc/cores/dvdplayer/DVDDemuxers/DVDDemuxPacket.h
 
 libxbmc.so: $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(MAINOBJS)
 ifeq ($(findstring osx,@ARCH@), osx)
-	$(SILENT_LD) $(CXX) $(LDFLAGS) -bundle -o $@ $(MAINOBJS) -Wl,-all_load,-ObjC $(MAINOBJS) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) $(LIBS) -read_only_relocs suppress
+	$(SILENT_LD) $(CXX) $(LDFLAGS) -bundle -o $@ -Wl,-all_load,-ObjC $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) $(LIBS)
 else
-	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -o $@ -Wl,--whole-archive $(MAINOBJS) -Wl,--no-whole-archive,--start-group $(MAINOBJS) $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--end-group -Wl,--no-undefined $(NWAOBJSXBMC) $(LIBS)
+	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -o $@ $(MAINOBJS) -Wl,--start-group $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--end-group -Wl,--no-undefined $(NWAOBJSXBMC) $(LIBS)
 endif
 
-xbmc.bin: $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(MAINOBJS)
+xbmc/main/main.a:
+	$(MAKE) -C xbmc/main
+
+xbmc.bin: $(OBJSXBMC) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(MAINOBJS) xbmc/main/main.a
 
 ifeq ($(findstring osx,@ARCH@), osx)
-	$(SILENT_LD) $(CXX) $(LDFLAGS) -o xbmc.bin $(MAINOBJS) -Wl,-all_load,-ObjC $(MAINOBJS) $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) $(LIBS) -rdynamic
+	$(SILENT_LD) $(CXX) $(LDFLAGS) -o xbmc.bin -Wl,-all_load,-ObjC $(DYNOBJSXBMC) $(NWAOBJSXBMC) $(OBJSXBMC) $(LIBS) -rdynamic
 else
-	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -o xbmc.bin $(MAINOBJS) -Wl,--start-group $(MAINOBJS) $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--end-group $(NWAOBJSXBMC) $(LIBS) -rdynamic
+	$(SILENT_LD) $(CXX) $(CXXFLAGS) $(LDFLAGS) -o xbmc.bin $(MAINOBJS) -Wl,--start-group $(DYNOBJSXBMC) $(OBJSXBMC) -Wl,--end-group $(NWAOBJSXBMC) $(LIBS) -rdynamic
 endif
 
 xbmc-xrandr: xbmc-xrandr.c
@@ -567,10 +544,10 @@ ifeq ($(findstring osx,@ARCH@), osx)
 else
 install: install-binaries install-arch install-datas
 
-apk: apk-clean install
+apk: install
 	make -C tools/android/packaging
 
-apk-clean:
+apk-clean: 
 	make -C tools/android/packaging clean
 
 install-binaries: install-scripts
