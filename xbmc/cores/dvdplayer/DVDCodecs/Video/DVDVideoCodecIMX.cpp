@@ -34,6 +34,21 @@
 
 //#define NO_V4L_RENDERING
 
+#ifdef IMX_PROFILE
+static unsigned long long render_ts[30];
+static unsigned long long get_time()
+{
+  struct timespec ts;
+  unsigned long long now;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  now = (((unsigned long long)ts.tv_sec) * 1000000000ULL) +
+           ((unsigned long long)ts.tv_nsec);
+
+  return now;
+}
+#endif
+
 /* video device on which the video will be rendered (/dev/video17 => /dev/fb1) */
 const char *CIMXRenderingFrames::m_v4lDeviceName = "/dev/video17";
 static long sg_singleton_lock_variable = 0;
@@ -500,23 +515,6 @@ void CIMXRenderingFrames::__ReleaseBuffers()
 /* Experiments show that we need at least one more (+1) V4L buffer than the min value returned by the VPU */
 const int CDVDVideoCodecIMX::m_extraVpuBuffers = 8;
 
-
-
-#ifdef IMX_PROFILE
-static unsigned long long render_ts[30];
-static unsigned long long get_time()
-{
-  struct timespec ts;
-  unsigned long long now;
-
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  now = (((unsigned long long)ts.tv_sec) * 1000000000ULL) +
-           ((unsigned long long)ts.tv_nsec);
-
-  return now;
-}
-#endif
-
 void CDVDVideoCodecIMX::FlushOutputFrame(void)
 {
   if (m_outputFrameReady)
@@ -870,10 +868,10 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   m_outputFrameReady = true;
 
 #ifdef IMX_PROFILE
-  m_outputFrame.imxOutputFrame.pushTS = get_time();
+  m_outputFrame.imxOutputFrame->pushTS = get_time();
   CLog::Log(LOGDEBUG, "%s - Time between push %llu\n",
-              __FUNCTION__,  m_outputFrame.imxOutputFrame.pushTS - previous_ts);
-  previous_ts =m_outputFrame.imxOutputFrame.pushTS;
+              __FUNCTION__,  m_outputFrame.imxOutputFrame->pushTS - previous_ts);
+  previous_ts =m_outputFrame.imxOutputFrame->pushTS;
 #endif
 
   return true;
@@ -1411,7 +1409,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
 
 #ifdef IMX_PROFILE
-  CLog::Log(LOGDEBUG, "%s - returns %x - queue size : %d - duration %lld\n", __FUNCTION__, retSatus, m_outputFrames.size(), get_time() - previous);
+  CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retSatus, get_time() - previous);
 #endif
    
   if (bitstream_convered)
