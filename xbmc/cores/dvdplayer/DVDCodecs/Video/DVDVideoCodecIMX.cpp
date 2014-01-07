@@ -993,13 +993,11 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   case CODEC_ID_H264:
     m_decOpenParam.CodecFormat = VPU_V_AVC;
     m_pFormatName = "iMX-h264";
-    if (hints.extrasize < 7 || hints.extradata == NULL)
+    if (hints.extrasize >= 7)
     {
-      CLog::Log(LOGNOTICE, "%s - avcC data too small or missing", __func__);
-      return false;
-    }
     if ( *(char*)hints.extradata == 1 )
-      m_convert_bitstream = bitstream_convert_init(hints.extradata, hints.extrasize);
+      m_convert_bitstream = bitstream_convert_init(hints.extradata,hints.extrasize);
+    }
     break;
   case CODEC_ID_VC1:
     m_decOpenParam.CodecFormat = VPU_V_VC1_AP;
