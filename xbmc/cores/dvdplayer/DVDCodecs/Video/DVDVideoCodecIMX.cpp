@@ -300,6 +300,20 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
   }
   else
   {
+    /* Set field type for each buffer otherwise the mxc_vout driver reverts to progressive */
+    switch (picture->field)
+    {
+    case VPU_FIELD_TB:
+      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_INTERLACED_TB;
+      break;
+    case VPU_FIELD_BT:
+      m_v4lBuffers[picture->v4l2BufferIdx].field= V4L2_FIELD_INTERLACED_BT;
+      break;
+    case VPU_FIELD_NONE:
+    default:
+      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
+      break;
+    }
 
   /* mxc_vout driver does not display immediatly
    * if timestamp is set to 0
@@ -352,10 +366,10 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
         switch (picture->field)
         {
         case VPU_FIELD_TOP:
-          fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE; /* V4L2_FIELD_TOP */
-          break;
         case VPU_FIELD_BOTTOM:
-          fmt.fmt.pix.field = V4L2_FIELD_ALTERNATE; /* V4L2_FIELD_BOTTOM */
+          CLog::Log(LOGERROR, "%s - mxc_out driver does not handle this field type :%d\n",
+                  __FUNCTION__, picture->field);
+          fmt.fmt.pix.field = V4L2_FIELD_NONE;
           break;
         case VPU_FIELD_TB:
           fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_TB;
@@ -390,18 +404,18 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
     if (m_currentField  == VPU_FIELD_NONE)
       stream_trigger = 1;
     else {
-      stream_trigger = 2;
+      stream_trigger = 2; /* should be 3 if V4L2_CID_MXC_MOTION < 2 */
 
       /* FIXME : How to select the most appropriate motion type ? */
       ctrl.id = V4L2_CID_MXC_MOTION;
-      ctrl.value = 1; /* 2 stands for high motion */
+      ctrl.value = 2; /* 2 stands for high motion */
       ret = ioctl (m_v4lfd, VIDIOC_S_CTRL, &ctrl);
       if (ret < 0)
       {
         CLog::Log(LOGERROR, "%s - Error while setting V4L motion (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
       }
     }
-    CLog::Log(LOGDEBUG, "%s - Number of required frames before steaming : %d\n",
+    CLog::Log(LOGDEBUG, "%s - Number of required frames before streaming : %d\n",
               __FUNCTION__, stream_trigger);
 
     if (m_pushedFrames >= stream_trigger) {
