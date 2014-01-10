@@ -49,6 +49,7 @@ struct CIMXOutputFrame {
   int v4l2BufferIdx;
   VpuFieldType field;
   VpuRect picCrop;
+  unsigned int nQ16ShiftWidthDivHeightRatio;
 #ifdef IMX_PROFILE
   unsigned long long pushTS;
 #endif
@@ -158,7 +159,4 @@ protected:
   omx_bitstream_ctx m_sps_pps_context; 
   bool m_convert_bitstream;
 
-  uint8_t *parse_mpeg2_aspect_ratio(uint8_t *pData, int iSize);
-  int m_display_width;
-  int m_display_height;
 };

@@ -865,6 +865,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   outputFrame->v4l2BufferIdx = i;
   outputFrame->field = frameInfo->eFieldType;
   outputFrame->picCrop = frameInfo->pExtInfo->FrmCropRect;
+  outputFrame->nQ16ShiftWidthDivHeightRatio = frameInfo->pExtInfo->nQ16ShiftWidthDivHeightRatio;
   m_outputFrame.imxOutputFrame = outputFrame;
 
   m_outputFrame.pts = pts;
@@ -876,8 +877,6 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   m_outputFrame.iWidth  = frameInfo->pExtInfo->FrmCropRect.nRight - frameInfo->pExtInfo->FrmCropRect.nLeft;
   m_outputFrame.iHeight = frameInfo->pExtInfo->FrmCropRect.nBottom - frameInfo->pExtInfo->FrmCropRect.nTop;
   /* FIXME plug aspect ratio correction here frameInfo->nQ16ShiftWidthDivHeightRatio */
-  m_outputFrame.iDisplayWidth = m_display_width;
-  m_outputFrame.iDisplayHeight =  m_display_height;
   m_outputFrame.format = RENDER_FMT_IMX;
   m_outputFrameReady = true;
 
@@ -1269,16 +1268,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
     do // Decode as long as the VPU consumes data
     {
-      if (m_decOpenParam.CodecFormat == VPU_V_MPEG2)
-      {
-        parse_mpeg2_aspect_ratio(inData.pVirAddr, inData.nSize);
-      }
-      else
-      {
-        m_display_width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
-        m_display_height = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
-      }
-
       retry = false;
       ret = VPU_DecDecodeBuf(m_vpuHandle, &inData, &decRet);
       if (ret != VPU_DEC_RET_SUCCESS)
@@ -1510,8 +1499,8 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   pDvdVideoPicture->dts = m_outputFrame.dts;
   pDvdVideoPicture->iWidth = m_outputFrame.iWidth;
   pDvdVideoPicture->iHeight = m_outputFrame.iHeight;
-  pDvdVideoPicture->iDisplayWidth = m_outputFrame.iDisplayWidth;
-  pDvdVideoPicture->iDisplayHeight = m_outputFrame.iDisplayHeight;
+  pDvdVideoPicture->iDisplayWidth = ((pDvdVideoPicture->iWidth * m_outputFrame.imxOutputFrame->nQ16ShiftWidthDivHeightRatio) + 32767) >> 16;
+  pDvdVideoPicture->iDisplayHeight = pDvdVideoPicture->iHeight;
   pDvdVideoPicture->format = m_outputFrame.format;
   pDvdVideoPicture->imxOutputFrame = m_outputFrame.imxOutputFrame;
   m_outputFrameReady = false;
@@ -1694,65 +1683,4 @@ void CDVDVideoCodecIMX::bitstream_alloc_and_copy(
     (*poutbuf + offset + sps_pps_size)[1] = 0;
     (*poutbuf + offset + sps_pps_size)[2] = 1;
   }
-}
-
-
-static inline unsigned char *Seek4bytesCode(unsigned char *pData, int len, unsigned int n4byteCode)
-{
-  if(len >= 4)
-  {
-    unsigned int code = (pData[0]<<16) | (pData[1]<<8) | (pData[2]);
-    len -= 3;
-    pData += 3;
-    while(len > 0)
-    {
-      code = (code<<8) | *pData++ ;
-      len--;
-      if(code == n4byteCode)
-      {
-        return pData-4;
-      }
-    }
-  }
-  return NULL;
-}
-
-uint8_t *CDVDVideoCodecIMX::parse_mpeg2_aspect_ratio(uint8_t *pData, int iSize)
-{
-  uint8_t *pSeqHead = Seek4bytesCode(pData, iSize, 0x000001b3);
-
-  if (pSeqHead)
-  {
-    iSize -= pSeqHead - pData;
-
-    if (iSize >= 12)
-    {
-      int width, height, aspect_ratio_code;
-
-      width  = (pSeqHead[4] << 4) | (pSeqHead[5] >> 4);
-      height = ((pSeqHead[5] & 0x0f) << 8) | pSeqHead[6];
-      aspect_ratio_code = pSeqHead[7] >> 4;
-
-      switch (aspect_ratio_code)
-      {
-      case 2:                   // IAR 4:3
-          m_display_width = (height * 4) / 3;
-          break;
-      case 3:                   // IAR 16:9
-          m_display_width = (height * 16) / 9;
-          break;
-      case 4:                   // IAR 2.21:1
-          m_display_width = (height * 221) / 100;
-          break;
-      default:                  // PAR 1:1
-          m_display_width = width;
-      }
-
-      m_display_height = height;
-
-      return pSeqHead;
-    }
-  }
-
-  return 0;
 }
