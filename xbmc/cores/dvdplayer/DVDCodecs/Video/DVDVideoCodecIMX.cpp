@@ -826,7 +826,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   static unsigned long long previous_ts;
   #endif
   VpuFrameBuffer *frameBuffer = frameInfo->pDisplayFrameBuf;
-  CIMXOutputFrame *outputFrame = new CIMXOutputFrame();
+  CIMXOutputFrame *outputFrame;
   CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   int i;
   //outputFrameType outputFrame;
@@ -876,7 +876,6 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   */
   m_outputFrame.iWidth  = frameInfo->pExtInfo->FrmCropRect.nRight - frameInfo->pExtInfo->FrmCropRect.nLeft;
   m_outputFrame.iHeight = frameInfo->pExtInfo->FrmCropRect.nBottom - frameInfo->pExtInfo->FrmCropRect.nTop;
-  /* FIXME plug aspect ratio correction here frameInfo->nQ16ShiftWidthDivHeightRatio */
   m_outputFrame.format = RENDER_FMT_IMX;
   m_outputFrameReady = true;
 
