@@ -801,7 +801,7 @@ void CLinuxRendererGLES::LoadShaders(int field)
         m_renderMethod = RENDER_BYPASS;
         break;
       }
-      
+
       #if defined(TARGET_DARWIN_IOS)
       else if (ios_version < 5.0 && m_format == RENDER_FMT_YUV420P)
       {
@@ -967,6 +967,9 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
   }
 #endif
 #ifdef HAS_IMXVPU
+  // This is very important otherwise pushed frames which are discarded
+  // by the RenderManager (e.g. being too late) despite an explicit flush call
+  // will never free associated VPU buffers.
   CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   /*
   struct v4l2_crop crop;
@@ -1248,7 +1251,7 @@ void CLinuxRendererGLES::RenderMultiPass(int index, int field)
 //    imgwidth  *= planes[0].pixpertex_x;
 //    imgheight *= planes[0].pixpertex_y;
 //  }
-//  
+//
 //  glBegin(GL_QUADS);
 //
 //  glMultiTexCoord2fARB(GL_TEXTURE0, planes[0].rect.x1, planes[0].rect.y1);

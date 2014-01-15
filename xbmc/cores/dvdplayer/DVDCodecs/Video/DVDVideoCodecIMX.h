@@ -41,7 +41,7 @@ typedef struct
   unsigned int phyMem_virtAddr[VPU_DEC_MAX_NUM_MEM_NUM];
   unsigned int phyMem_phyAddr[VPU_DEC_MAX_NUM_MEM_NUM];
   unsigned int phyMem_cpuAddr[VPU_DEC_MAX_NUM_MEM_NUM];
-  unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];      
+  unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];
 } DecMemInfo;
 
 /* Output frame properties */
@@ -126,7 +126,7 @@ protected:
 
   void InitFB(void);
   void RestoreFB(void);
-  void FlushOutputFrame(void);
+  void FlushOutputFrame();
 
   struct VpuV4LFrameBuffer {
     bool unused() const { return buffer == NULL; }
@@ -139,13 +139,14 @@ protected:
 
     void clear() { store(NULL); }
 
-    VpuFrameBuffer *buffer;
-    bool            releaseRequested;
+    CIMXOutputFrame  outputFrame;
+    VpuFrameBuffer  *buffer;
+    bool             releaseRequested;
   };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
 
-  CIMXRenderingFrames&m_renderingFrames;   // The global RenderingFrames instance 
+  CIMXRenderingFrames&m_renderingFrames;   // The global RenderingFrames instance
   CDVDStreamInfo      m_hints;             // Hints from demuxer at stream opening
   const char         *m_pFormatName;       // Current decoder format name
   VpuDecOpenParam     m_decOpenParam;      // Parameters required to call VPU_DecOpen
@@ -172,7 +173,7 @@ protected:
   bool bitstream_convert_init(void *in_extradata, int in_extrasize);
   bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);
   static void bitstream_alloc_and_copy( uint8_t **poutbuf, int *poutbuf_size,
-  const uint8_t *sps_pps, uint32_t sps_pps_size, const uint8_t *in, uint32_t in_size);  
+  const uint8_t *sps_pps, uint32_t sps_pps_size, const uint8_t *in, uint32_t in_size);
   typedef struct omx_bitstream_ctx {
       uint8_t  length_size;
       uint8_t  first_idr;
@@ -187,7 +188,7 @@ protected:
       }
   } omx_bitstream_ctx;
   uint32_t          m_sps_pps_size;
-  omx_bitstream_ctx m_sps_pps_context; 
+  omx_bitstream_ctx m_sps_pps_context;
   bool m_convert_bitstream;
 
   friend class CIMXRenderingFrames;
