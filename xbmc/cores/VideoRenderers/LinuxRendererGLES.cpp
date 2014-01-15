@@ -966,6 +966,23 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
     SAFE_RELEASE(buf.mediacodec);
   }
 #endif
+#ifdef HAS_IMXVPU
+  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
+  /*
+  struct v4l2_crop crop;
+  crop.c.top = (int)m_destRect.y1;
+  crop.c.left = (int)m_destRect.x1;
+  crop.c.width =  (int)(m_destRect.x2 -  m_destRect.x1);
+  crop.c.height = (int)(m_destRect.y2 - m_destRect.y1);
+  */
+  CIMXOutputFrame *imxPicture = buf.imxOutputFrame;
+  if (imxPicture != NULL)
+  {
+    //renderingFrames.Queue(imxPicture, crop, false);
+    renderingFrames.Release(imxPicture);
+    buf.imxOutputFrame = NULL;
+  }
+#endif
 }
 
 void CLinuxRendererGLES::Render(DWORD flags, int index)

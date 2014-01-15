@@ -55,10 +55,16 @@ struct CIMXOutputFrame {
 #endif
 };
 
+
+class CDVDVideoCodecIMX;
+
+
 class CIMXRenderingFrames
 {
 public:
   static CIMXRenderingFrames& GetInstance();
+
+  void SetCodec(CDVDVideoCodecIMX *);
   bool AllocateBuffers(const struct v4l2_format *, int);
   void *GetVirtAddr(int idx);
   void *GetPhyAddr(int idx);
@@ -66,6 +72,9 @@ public:
   int FindBuffer(void *);
   int DeQueue(bool wait);
   void Queue(CIMXOutputFrame *, struct v4l2_crop &);
+  void Release(CIMXOutputFrame *);
+
+  CCriticalSection &GetLock() { return m_renderingFramesLock; }
 
 private:
   CIMXRenderingFrames();
@@ -73,7 +82,8 @@ private:
 
   static const char  *m_v4lDeviceName;     // V4L2 device Name
   static CIMXRenderingFrames* m_instance;  // Unique instance of the class
-  
+
+  CDVDVideoCodecIMX  *m_codec;
   CCriticalSection    m_renderingFramesLock; // Lock to ensure multithreading safety for class fields
   bool                m_ready;             // Buffers are allocated and frames can be Queued/Dequeue
   int                 m_v4lfd;             // fd on V4L2 device
@@ -110,13 +120,32 @@ protected:
   bool VpuAllocFrameBuffers(void);
   bool VpuPushFrame(VpuDecOutFrameInfo*);
   bool VpuDeQueueFrame(bool);
+  bool VpuReleaseBufferV4L(int);
   int GetAvailableBufferNb(void);
+  void ReleaseBufferV4L(int);
+
   void InitFB(void);
   void RestoreFB(void);
   void FlushOutputFrame(void);
 
+  struct VpuV4LFrameBuffer {
+    bool unused() const { return buffer == NULL; }
+    bool used() const { return buffer != NULL; }
+
+    void store(VpuFrameBuffer *b) {
+      buffer = b;
+      releaseRequested = false;
+    }
+
+    void clear() { store(NULL); }
+
+    VpuFrameBuffer *buffer;
+    bool            releaseRequested;
+  };
+
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
 
+  CIMXRenderingFrames&m_renderingFrames;   // The global RenderingFrames instance 
   CDVDStreamInfo      m_hints;             // Hints from demuxer at stream opening
   const char         *m_pFormatName;       // Current decoder format name
   VpuDecOpenParam     m_decOpenParam;      // Parameters required to call VPU_DecOpen
@@ -125,11 +154,11 @@ protected:
   VpuDecInitInfo      m_initInfo;          // Initial info returned from VPU at decoding start
   void               *m_tsm;               // fsl Timestamp manager (from gstreamer implementation)
   bool                m_tsSyncRequired;    // state whether timestamp manager has to be sync'ed
-  bool                m_dropState;         // Current drop state
+  int                 m_dropState;         // Current drop state
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
-  VpuFrameBuffer    **m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
+  VpuV4LFrameBuffer  *m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   DVDVideoPicture     m_outputFrame;       // Decoded frame ready to be retrieved by GetPicture
   bool                m_outputFrameReady;  // State whether m_outputFrame is available or not
 
@@ -138,6 +167,8 @@ protected:
 
   /* create a real class and share with openmax ? */
   // bitstream to bytestream (Annex B) conversion support.
+
+  // NOTE : Switch to utils/BitstreamConverter
   bool bitstream_convert_init(void *in_extradata, int in_extrasize);
   bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);
   static void bitstream_alloc_and_copy( uint8_t **poutbuf, int *poutbuf_size,
@@ -159,4 +190,5 @@ protected:
   omx_bitstream_ctx m_sps_pps_context; 
   bool m_convert_bitstream;
 
+  friend class CIMXRenderingFrames;
 };
