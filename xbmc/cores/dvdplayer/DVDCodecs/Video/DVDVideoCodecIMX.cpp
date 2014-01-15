@@ -1626,10 +1626,17 @@ void CDVDVideoCodecIMX::SetDropState(bool bDrop)
   if (bDrop)
   {
     // Flag endless dropping
-    m_dropState = -1;
+    if ( m_dropState >= 0 )
+    {
+      CLog::Log(LOGNOTICE, "%s : %d.\n", __FUNCTION__, bDrop);
+      m_dropState = -1;
+    }
   }
-  else if ( m_dropState < 0 )
+  else if (m_dropState < 0)
   {
+    CLog::Log(LOGNOTICE, "%s : %d.\n", __FUNCTION__, bDrop);
+    // 0 means that dropping is immediately stopped. Any positive number
+    // causes a delay before disabling dropping of N frames
     m_dropState = 0;
   }
 }
