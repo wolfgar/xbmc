@@ -64,7 +64,11 @@ class CIMXRenderingFrames
 public:
   static CIMXRenderingFrames& GetInstance();
 
-  void SetCodec(CDVDVideoCodecIMX *);
+  // Sets the current codec that utilizes this class.
+  // Necessary to flag states back to the decoder depending
+  // on the render state.
+  void SetCurrentCodec(CDVDVideoCodecIMX *);
+
   bool AllocateBuffers(const struct v4l2_format *, int);
   void *GetVirtAddr(int idx);
   void *GetPhyAddr(int idx);
@@ -73,8 +77,6 @@ public:
   int DeQueue(bool wait);
   void Queue(CIMXOutputFrame *, struct v4l2_crop &);
   void Release(CIMXOutputFrame *);
-
-  CCriticalSection &GetLock() { return m_renderingFramesLock; }
 
 private:
   CIMXRenderingFrames();
@@ -128,15 +130,26 @@ protected:
   void RestoreFB(void);
   void FlushOutputFrame();
 
+  /* Helper structure which holds a queued output frame
+     and its associated decoder frame buffer.
+     It stores additionally a flag that states if a
+     buffers needs to be released from the VPU. Although this
+     flag is being set from another thread sychronization is
+     not necessary.
+   */
   struct VpuV4LFrameBuffer {
+    // Returns whether the buffer is currently used (associated)
     bool unused() const { return buffer == NULL; }
+    // Returns whether the buffer is currently unused (unassociated)
     bool used() const { return buffer != NULL; }
 
+    // Associate a VPU frame buffer
     void store(VpuFrameBuffer *b) {
       buffer = b;
       releaseRequested = false;
     }
 
+    // Reset the state
     void clear() { store(NULL); }
 
     CIMXOutputFrame  outputFrame;
@@ -169,7 +182,7 @@ protected:
   /* create a real class and share with openmax ? */
   // bitstream to bytestream (Annex B) conversion support.
 
-  // NOTE : Switch to utils/BitstreamConverter
+  // NOTE <smallint>: Switch to utils/BitstreamConverter
   bool bitstream_convert_init(void *in_extradata, int in_extrasize);
   bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);
   static void bitstream_alloc_and_copy( uint8_t **poutbuf, int *poutbuf_size,

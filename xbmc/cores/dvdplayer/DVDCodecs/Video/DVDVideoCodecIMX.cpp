@@ -76,7 +76,7 @@ CIMXRenderingFrames::CIMXRenderingFrames()
   m_crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 }
 
-void CIMXRenderingFrames::SetCodec(CDVDVideoCodecIMX *codec)
+void CIMXRenderingFrames::SetCurrentCodec(CDVDVideoCodecIMX *codec)
 {
   m_codec = codec;
 }
@@ -381,9 +381,6 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
     return;
   } else
     m_pushedFrames++;
-
-  // If display is not requested (release call) do not update meta data for
-  // outdated frames unless the stream is not yet initialized
 
   /* Force cropping dimensions to be aligned */
   destRect.c.top    &= 0xFFFFFFF8;
@@ -825,7 +822,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     return false;
   }
 
-  m_renderingFrames.SetCodec(this);
+  m_renderingFrames.SetCurrentCodec(this);
   m_outputBuffers = new VpuV4LFrameBuffer[m_vpuFrameBufferNum];
   m_vpuFrameBuffers = new VpuFrameBuffer[m_vpuFrameBufferNum];
   m_extraMem = new VpuMemDesc[m_vpuFrameBufferNum];
@@ -956,6 +953,11 @@ int CDVDVideoCodecIMX::GetAvailableBufferNb(void)
 void CDVDVideoCodecIMX::ReleaseBufferV4L(int idx)
 {
   CLog::Log(LOGDEBUG, "%s - Request buffer release - idx : %d\n", __FUNCTION__, idx);
+  // This method is likely to be called from the render thread via
+  // the ReleaseBuffer method.
+  // No need to synchronize this operation as it is evaluated
+  // read-only in ::Decode. If the "wrong" value is used in Decode
+  // the only effect is that the buffer is free'd in the next loop.
   m_outputBuffers[idx].releaseRequested = true;
 }
 
@@ -1172,7 +1174,7 @@ void CDVDVideoCodecIMX::Dispose(void)
   {
     while (VpuDeQueueFrame(false));
     m_renderingFrames.ReleaseBuffers();
-    m_renderingFrames.SetCodec(NULL);
+    m_renderingFrames.SetCurrentCodec(NULL);
     RestoreFB();
     delete m_outputBuffers;
     m_outputBuffers = NULL;
