@@ -41,7 +41,7 @@ typedef struct
   unsigned int phyMem_virtAddr[VPU_DEC_MAX_NUM_MEM_NUM];
   unsigned int phyMem_phyAddr[VPU_DEC_MAX_NUM_MEM_NUM];
   unsigned int phyMem_cpuAddr[VPU_DEC_MAX_NUM_MEM_NUM];
-  unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];      
+  unsigned int phyMem_size[VPU_DEC_MAX_NUM_MEM_NUM];
 } DecMemInfo;
 
 /* Output frame properties */
@@ -74,7 +74,7 @@ private:
 
   static const char  *m_v4lDeviceName;     // V4L2 device Name
   static CIMXRenderingFrames* m_instance;  // Unique instance of the class
-  
+
   CCriticalSection    m_renderingFramesLock; // Lock to ensure multithreading safety for class fields
   bool                m_ready;             // Buffers are allocated and frames can be Queued/Dequeue
   int                 m_v4lfd;             // fd on V4L2 device
@@ -145,7 +145,7 @@ protected:
   bool bitstream_convert_init(void *in_extradata, int in_extrasize);
   bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);
   static void bitstream_alloc_and_copy( uint8_t **poutbuf, int *poutbuf_size,
-  const uint8_t *sps_pps, uint32_t sps_pps_size, const uint8_t *in, uint32_t in_size);  
+  const uint8_t *sps_pps, uint32_t sps_pps_size, const uint8_t *in, uint32_t in_size);
   typedef struct omx_bitstream_ctx {
       uint8_t  length_size;
       uint8_t  first_idr;
@@ -160,7 +160,7 @@ protected:
       }
   } omx_bitstream_ctx;
   uint32_t          m_sps_pps_size;
-  omx_bitstream_ctx m_sps_pps_context; 
+  omx_bitstream_ctx m_sps_pps_context;
   bool m_convert_bitstream;
 
 };
