@@ -85,6 +85,7 @@ private:
   VpuFieldType        m_currentField;      // Current field type
   int                 m_pushedFrames;      // Number of frames queued in V4L2
   void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
+  int                 m_motionCtrl;        // Current motion control algo
   std::queue <int>    m_V4L2Buffers;       // List of V4L2 buffers sent for rendering
   int                 m_lastDequeuedBuffer;// Keep last dequeued buffer index (while sync'ing with m_V4L2Buffers queue)
   int                 m_lastQueuedBuffer;  // Keep last queued buffer index

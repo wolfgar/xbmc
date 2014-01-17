@@ -73,6 +73,7 @@ CIMXRenderingFrames::CIMXRenderingFrames()
   m_v4lBuffers = NULL;
   memset(&m_crop, 0, sizeof(m_crop));
   m_crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  m_motionCtrl = -1;
   m_lastDequeuedBuffer = -1;
   m_lastQueuedBuffer = -1;
 }
@@ -83,6 +84,7 @@ bool CIMXRenderingFrames::AllocateBuffers(const struct v4l2_format *format, int 
   struct v4l2_requestbuffers bufReq;
   struct v4l2_format fmt;
   struct v4l2_buffer v4lBuf;
+  struct v4l2_control ctrl;
 
   CSingleLock lock(m_renderingFramesLock);
   if (m_ready)
@@ -105,6 +107,37 @@ bool CIMXRenderingFrames::AllocateBuffers(const struct v4l2_format *format, int 
     CLog::Log(LOGERROR, "%s - Error while setting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
     __ReleaseBuffers();
     return false;
+  }
+
+  if (format->fmt.pix.field != V4L2_FIELD_NONE)
+  {
+    char * motion_entry;
+    motion_entry =  getenv("IMX_DEINT_MOTION");
+    if (motion_entry != NULL)
+    {
+      errno = 0;
+      m_motionCtrl = strtol(motion_entry, NULL, 10);
+      if (errno != 0)
+        m_motionCtrl = -1;
+    }
+    if (m_motionCtrl == -1)
+      m_motionCtrl = 2; /* Default value : 2 stands for high motion */
+    
+    if ((m_motionCtrl >= 0) && (m_motionCtrl <=2))
+    {
+      ctrl.id = V4L2_CID_MXC_MOTION;
+      ctrl.value = m_motionCtrl;
+      ret = ioctl (m_v4lfd, VIDIOC_S_CTRL, &ctrl);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - Error while setting V4L motion (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
+      }
+    }
+    else
+    {      
+      CLog::Log(LOGNOTICE, "%s - IMX_DEINT_MOTION set to %d. Disabling deinterlacing.\n", __FUNCTION__, m_motionCtrl);
+      m_motionCtrl = -2;
+    }
   }
 
   fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
@@ -308,10 +341,7 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
 
   int ret, type;
   struct timeval queue_ts;
-  struct v4l2_format fmt;
   int stream_trigger;
-  struct v4l2_control ctrl;
-  struct v4l2_rect rect;
   bool crop_update = false;
 
   CSingleLock lock(m_renderingFramesLock);
@@ -351,8 +381,10 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
     default:
       m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
       break;
+    /* In case deinterlacing is was forced to disabled */
+    if (m_motionCtrl == -2)
+      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
     }
-
   /* mxc_vout driver does not display immediatly
    * if timestamp is set to 0
    * (instead this driver expects a 30fps rate)
@@ -393,74 +425,19 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
 
   if (!m_streamOn)
   {
-    if (picture->field != m_currentField)
-    {
-      CLog::Log(LOGNOTICE, "%s - New field is %d\n",
-                __FUNCTION__, picture->field);
-
-      /* Handle interlace field */
-      fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-      ret = ioctl (m_v4lfd, VIDIOC_G_FMT, &fmt);
-      if (ret < 0) {
-        CLog::Log(LOGERROR, "%s - V4L VIDIOC_G_FMT failed (ret %d : %s)\n",
-                __FUNCTION__, ret, strerror(errno));
-      } else {
-        switch (picture->field)
-        {
-        case VPU_FIELD_TOP:
-        case VPU_FIELD_BOTTOM:
-          CLog::Log(LOGERROR, "%s - mxc_out driver does not handle this field type :%d\n",
-                  __FUNCTION__, picture->field);
-          fmt.fmt.pix.field = V4L2_FIELD_NONE;
-          break;
-        case VPU_FIELD_TB:
-          fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_TB;
-          break;
-        case VPU_FIELD_BT:
-          fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_BT;
-          break;
-        case VPU_FIELD_NONE:
-        default:
-          fmt.fmt.pix.field = V4L2_FIELD_NONE;
-          break;
-        }
-
-        /* Take into account cropping from decoded video (for input picture) */
-        rect.left = picture->picCrop.nLeft;
-        rect.top =  picture->picCrop.nTop;
-        rect.width = picture->picCrop.nRight - picture->picCrop.nLeft;
-        rect.height = picture->picCrop.nBottom - picture->picCrop.nTop;
-        fmt.fmt.pix.priv = (unsigned int)&rect;
-
-        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        ret = ioctl (m_v4lfd, VIDIOC_S_FMT, &fmt);
-        if (ret < 0)
-        {
-          CLog::Log(LOGERROR, "%s - V4L VIDIOC_S_FMT failed (ret %d : %s)\n",
-                  __FUNCTION__, ret, strerror(errno));
-        }
-        else
-          m_currentField = picture->field;
-      }
-    }
     if (m_currentField  == VPU_FIELD_NONE)
       stream_trigger = 1;
     else {
-      stream_trigger = 2; /* should be 3 if V4L2_CID_MXC_MOTION < 2 */
-
-      /* FIXME : How to select the most appropriate motion type ? */
-      ctrl.id = V4L2_CID_MXC_MOTION;
-      ctrl.value = 2; /* 2 stands for high motion */
-      ret = ioctl (m_v4lfd, VIDIOC_S_CTRL, &ctrl);
-      if (ret < 0)
-      {
-        CLog::Log(LOGERROR, "%s - Error while setting V4L motion (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
-      }
+      if (m_motionCtrl < 2)
+        stream_trigger = 3;
+      else
+        stream_trigger = 2;
     }
-    CLog::Log(LOGDEBUG, "%s - Number of required frames before streaming : %d\n",
-              __FUNCTION__, stream_trigger);
 
     if (m_pushedFrames >= stream_trigger) {
+      CLog::Log(LOGDEBUG, "%s - Motion control is : %d - Number of required frames before streaming : %d\n",
+              __FUNCTION__, m_motionCtrl, stream_trigger);
+
       type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
       ret = ioctl(m_v4lfd, VIDIOC_STREAMON, &type);
       if (ret < 0)
@@ -828,6 +805,10 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
   fmt.fmt.pix.priv = (unsigned int)&rect;
 
   m_vpuFrameBufferNum =  m_initInfo.nMinFrameBufferCount + m_extraVpuBuffers;
+  if (m_initInfo.nInterlace)
+    fmt.fmt.pix.field = V4L2_FIELD_INTERLACED_TB;
+  else
+    fmt.fmt.pix.field = V4L2_FIELD_NONE;
   if (!renderingFrames.AllocateBuffers(&fmt, m_vpuFrameBufferNum))
   {
     return false;
@@ -1227,6 +1208,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
 #ifdef IMX_PROFILE
   static unsigned long long previous, current;
+  unsigned long long before_dec;
 #endif
 
   if (!m_vpuHandle)
@@ -1315,7 +1297,14 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     do // Decode as long as the VPU consumes data
     {
       retry = false;
+#ifdef IMX_PROFILE
+      before_dec = get_time();
+#endif
       ret = VPU_DecDecodeBuf(m_vpuHandle, &inData, &decRet);
+#ifdef IMX_PROFILE
+        CLog::Log(LOGDEBUG, "%s - VPU dec 0x%x decode takes : %lld\n\n", __FUNCTION__, decRet,  get_time() - before_dec);
+#endif
+
       if (ret != VPU_DEC_RET_SUCCESS)
       {
         CLog::Log(LOGERROR, "%s - VPU decode failed with error code %d.\n", __FUNCTION__, ret);
