@@ -118,8 +118,24 @@ protected:
   int GetAvailableBufferNb(void);
   void InitFB(void);
   void RestoreFB(void);
-  void FlushOutputFrame(CIMXOutputFrame *);
   void FlushDecodedFrames(void);
+  bool VpuReleaseBufferV4L(int);
+
+  /* Helper structure which holds a queued output frame
+   * and its associated decoder frame buffer.*/
+  struct VpuV4LFrameBuffer
+  {
+    
+    // Returns whether the buffer is currently used (associated)
+    bool used() const { return buffer != NULL; }
+    // Associate a VPU frame buffer
+    void store(VpuFrameBuffer *b) { buffer = b; }
+    // Reset the state
+    void clear() { store(NULL); }
+
+    VpuFrameBuffer *buffer;
+    CIMXOutputFrame  outputFrame;
+  };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
 
@@ -135,7 +151,7 @@ protected:
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
-  VpuFrameBuffer    **m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
+  VpuV4LFrameBuffer  *m_outputBuffers;     // Table of V4L buffers out of VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   std::queue <DVDVideoPicture> m_decodedFrames;   // Decoded Frames ready to be retrieved by GetPicture
 
   /* FIXME : Rework is still required for fields below this line */

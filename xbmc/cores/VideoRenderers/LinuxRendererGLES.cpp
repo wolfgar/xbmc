@@ -966,13 +966,7 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
   }
 #endif
 #ifdef HAS_IMXVPU
-  CIMXOutputFrame *imxPicture = buf.imxOutputFrame;
-  if (imxPicture != NULL)
-  {
-    //CLog::Log(LOGERROR, "%s - Release buffer (%d)\n", __FUNCTION__, imxPicture->v4l2BufferIdx);
-    delete imxPicture;
-    buf.imxOutputFrame = NULL;
-  }
+  buf.imxOutputFrame = NULL;
 #endif
 }
 

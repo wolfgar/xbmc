@@ -573,20 +573,13 @@ static double GetPlayerPtsSeconds()
   return clock_pts;
 }
 
-void CDVDVideoCodecIMX::FlushOutputFrame(CIMXOutputFrame *imxFrame)
-{
-  VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[imxFrame->v4l2BufferIdx]);
-  m_outputBuffers[imxFrame->v4l2BufferIdx] = NULL;
-  delete imxFrame;
-}
-
 void CDVDVideoCodecIMX::FlushDecodedFrames(void)
 {
   DVDVideoPicture DVDFrame;
   while (m_decodedFrames.size() > 0)
   {
     DVDFrame = m_decodedFrames.front();
-    FlushOutputFrame(DVDFrame.imxOutputFrame);
+    VpuReleaseBufferV4L(DVDFrame.imxOutputFrame->v4l2BufferIdx);
     m_decodedFrames.pop();
   }
 }
@@ -814,7 +807,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     return false;
   }
 
-  m_outputBuffers = new VpuFrameBuffer*[m_vpuFrameBufferNum];
+  m_outputBuffers = new VpuV4LFrameBuffer[m_vpuFrameBufferNum];
   m_vpuFrameBuffers = new VpuFrameBuffer[m_vpuFrameBufferNum];
   m_extraMem = new VpuMemDesc[m_vpuFrameBufferNum];
   ySize = fmt.fmt.pix.width * fmt.fmt.pix.height;
@@ -834,7 +827,7 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     m_vpuFrameBuffers[i].pbufCb_tilebot = 0;
     m_vpuFrameBuffers[i].pbufVirtY_tilebot = 0;
     m_vpuFrameBuffers[i].pbufVirtCb_tilebot = 0;
-    m_outputBuffers[i] = NULL;
+    m_outputBuffers[i].clear();
   }
 
   /* Allocate physical extra memory */
@@ -877,16 +870,16 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
     CLog::Log(LOGERROR, "%s - V4L buffer not found\n", __FUNCTION__);
     return false;
   }
-  if (m_outputBuffers[i] != NULL)
+  if (m_outputBuffers[i].used())
   {
     CLog::Log(LOGERROR, "%s - Try to reuse buffer which was not dequeued !\n", __FUNCTION__);
     return false;
   }
 
   /* Store the pointer to be able to invoke VPU_DecOutFrameDisplayed when the buffer will be dequeued */
-  m_outputBuffers[i] = frameBuffer;
+  m_outputBuffers[i].store(frameBuffer);
 
-  outputFrame = new CIMXOutputFrame();
+  outputFrame = &m_outputBuffers[i].outputFrame;
   outputFrame->v4l2BufferIdx = i;
   outputFrame->field = frameInfo->eFieldType;
   outputFrame->picCrop = frameInfo->pExtInfo->FrmCropRect;
@@ -926,10 +919,23 @@ int CDVDVideoCodecIMX::GetAvailableBufferNb(void)
   nb = 0;
   for (i = 0; i < m_vpuFrameBufferNum; i++)
   {
-    if (m_outputBuffers[i] == NULL)
+    if (!m_outputBuffers[i].used())
       nb++;
   }
   return nb;
+}
+
+bool CDVDVideoCodecIMX::VpuReleaseBufferV4L(int idx)
+{
+  if (idx < 0 || idx >= m_vpuFrameBufferNum)
+  {
+    CLog::Log(LOGERROR, "%s - Invalid index - idx : %d\n", __FUNCTION__, idx);
+    return false;
+  }
+
+  VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[idx].buffer);
+  m_outputBuffers[idx].clear();
+  return true;
 }
 
 bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
@@ -940,22 +946,19 @@ bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
   idx = renderingFrames.DeQueue(wait);
   if (idx != -1)
   {
-    VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[idx]);
-    m_outputBuffers[idx] = NULL;
-    return true;
+    return VpuReleaseBufferV4L(idx);
   }
   else
   {
 #ifdef NO_V4L_RENDERING
-      int i;
-      for (i = 0; i < m_vpuFrameBufferNum; i++)
+    int i;
+    for (i = 0; i < m_vpuFrameBufferNum; i++)
+    {
+      if (m_outputBuffers[i].used())
       {
-        if (m_outputBuffers[i] != NULL)
-        {
-          VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[i]);
-          m_outputBuffers[i] = NULL;
-        }
+        VpuReleaseBufferV4L(idx);
       }
+    }
 #endif
     return false;
   }
@@ -1512,7 +1515,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   {
     CLog::Log(LOGNOTICE, "%s - Flushing video picture\n", __FUNCTION__);
     pDvdVideoPicture->iFlags = DVP_FLAG_DROPPED;
-    FlushOutputFrame(DVDFrame.imxOutputFrame);
+    VpuReleaseBufferV4L(DVDFrame.imxOutputFrame->v4l2BufferIdx);
     DVDFrame.imxOutputFrame = NULL;
   }
   else
@@ -1529,8 +1532,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 #ifdef NO_V4L_RENDERING
   if (!m_dropState)
   {
-    VPU_DecOutFrameDisplayed(m_vpuHandle, m_outputBuffers[DVDFrame.imxOutputFrame->v4l2BufferIdx]);
-    m_outputBuffers[DVDFrame.imxOutputFrame->v4l2BufferIdx] = NULL;
+    VpuReleaseBufferV4L(DVDFrame.imxOutputFrame->v4l2BufferIdx);
   }
 #endif
 
