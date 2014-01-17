@@ -63,10 +63,9 @@ public:
   void *GetVirtAddr(int idx);
   void *GetPhyAddr(int idx);
   void ReleaseBuffers();
-  int  FindBuffer(void *);
-  int  DeQueue(bool wait);
+  int FindBuffer(void *);
+  int DeQueue(bool wait);
   void Queue(CIMXOutputFrame *, struct v4l2_crop &);
-  void BufferSubmitted(int idx);
 
 private:
   CIMXRenderingFrames();
@@ -85,8 +84,6 @@ private:
   VpuFieldType        m_currentField;      // Current field type
   int                 m_pushedFrames;      // Number of frames queued in V4L2
   void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
-  int                 m_motionCtrl;        // Current motion control algo
-  std::queue <int>    m_V4L2Buffers;       // List of V4L2 buffers sent for rendering
 };
 
 class CDVDVideoCodecIMX : public CDVDVideoCodec
@@ -116,8 +113,7 @@ protected:
   int GetAvailableBufferNb(void);
   void InitFB(void);
   void RestoreFB(void);
-  void FlushOutputFrame(CIMXOutputFrame *);
-  void FlushDecodedFrames(void);
+  void FlushOutputFrame(void);
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
 
@@ -134,7 +130,9 @@ protected:
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   VpuFrameBuffer    **m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
-  std::queue <DVDVideoPicture> m_decodedFrames;   // Decoded Frames ready to be retrieved by GetPicture
+  DVDVideoPicture     m_outputFrame;       // Decoded frame ready to be retrieved by GetPicture
+  bool                m_outputFrameReady;  // State whether m_outputFrame is available or not
+
 
   /* FIXME : Rework is still required for fields below this line */
 

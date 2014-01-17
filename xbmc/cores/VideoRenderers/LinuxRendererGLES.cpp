@@ -572,6 +572,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
       if (imxPicture != NULL)
       {
         renderingFrames.Queue(imxPicture, crop);
+        m_buffers[index].imxOutputFrame = NULL;
       }
     }
     return;
@@ -963,15 +964,6 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
   if ( m_renderMethod & RENDER_MEDIACODEC )
   {
     SAFE_RELEASE(buf.mediacodec);
-  }
-#endif
-#ifdef HAS_IMXVPU
-  CIMXOutputFrame *imxPicture = buf.imxOutputFrame;
-  if (imxPicture != NULL)
-  {
-    //CLog::Log(LOGERROR, "%s - Release buffer (%d)\n", __FUNCTION__, imxPicture->v4l2BufferIdx);
-    delete imxPicture;
-    buf.imxOutputFrame = NULL;
   }
 #endif
 }
