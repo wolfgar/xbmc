@@ -82,7 +82,6 @@ private:
   int                 m_bufferNum;         // Number of allocated V4L2 buffers
   struct v4l2_crop    m_crop;              // Current cropping properties
   bool                m_streamOn;          // Flag that indicates whether streaming in on (from V4L point of view)
-  VpuFieldType        m_currentField;      // Current field type
   int                 m_pushedFrames;      // Number of frames queued in V4L2
   void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
   int                 m_motionCtrl;        // Current motion control algo

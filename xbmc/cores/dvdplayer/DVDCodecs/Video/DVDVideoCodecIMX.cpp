@@ -198,7 +198,6 @@ bool CIMXRenderingFrames::AllocateBuffers(const struct v4l2_format *format, int 
   m_crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
   m_pushedFrames = 0;
   m_streamOn = false;
-  m_currentField = VPU_FIELD_UNKNOWN;
   m_ready = true;
   return true;
 }
@@ -425,7 +424,7 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
 
   if (!m_streamOn)
   {
-    if (m_currentField  == VPU_FIELD_NONE)
+    if (picture->field == VPU_FIELD_NONE)
       stream_trigger = 1;
     else {
       if (m_motionCtrl < 2)
