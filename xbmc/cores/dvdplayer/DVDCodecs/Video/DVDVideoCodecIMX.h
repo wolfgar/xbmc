@@ -175,6 +175,7 @@ protected:
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   DVDVideoPicture     m_outputFrame;       // Decoded frame ready to be retrieved by GetPicture
   bool                m_outputFrameReady;  // State whether m_outputFrame is available or not
+  bool                m_blockFlush;
 
 
   /* FIXME : Rework is still required for fields below this line */

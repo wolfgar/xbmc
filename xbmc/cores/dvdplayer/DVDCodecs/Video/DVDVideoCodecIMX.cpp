@@ -1012,6 +1012,7 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX() : m_renderingFrames(CIMXRenderingFrames::
   m_dropState = 0;
   m_tsm = NULL;
   m_convert_bitstream = false;
+  m_blockFlush = false;
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1151,6 +1152,13 @@ void CDVDVideoCodecIMX::Dispose(void)
   VpuDecRetCode  ret;
   int i;
   bool VPU_loaded = m_vpuHandle;
+
+  // For safety reset this flag
+  if (m_blockFlush)
+  {
+    CLog::Log(LOGERROR, "%s - Flushing still blocked, this should not happen!\n", __FUNCTION__);
+    m_blockFlush = false;
+  }
 
   FlushOutputFrame();
   if (m_vpuHandle)
@@ -1478,14 +1486,21 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   } //(pData && iSize)
 
 
-  if (GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers))
+  if (GetAvailableBufferNb() > (m_vpuFrameBufferNum - m_extraVpuBuffers))
     retSatus |= VC_BUFFER;
   else if (retSatus == 0) {
-    // If in drop state tell the player to discard all queued frames otherwise
-    // we would block until the next frame is displayed and loose our buffers
     if (m_dropState)
     {
       CLog::Log(LOGNOTICE, "%s - flush\n", __FUNCTION__);
+      // Do not flush the VPU itself, just force the renderer
+      // to discard all its queued buffers. This is sort of a hack
+      // because the interface does not allow to synchronize otherwise.
+      //
+      // Acutally this should not happen because in drop state VpuPushFrame
+      // releases the buffer immediately so there should be always
+      // one buffer left. This path is still there from earlier experiments
+      // and needs further checks if still required.
+      m_blockFlush = true;
       retSatus = VC_FLUSHED;
     }
     else
@@ -1523,7 +1538,16 @@ void CDVDVideoCodecIMX::Reset()
 {
   int ret;
 
-  CLog::Log(LOGDEBUG, "%s - called\n", __FUNCTION__);
+  if (m_blockFlush)
+  {
+    CLog::Log(LOGDEBUG, "%s - called but blocked\n", __FUNCTION__);
+    // Reset this flag since it is a one timer triggered
+    // from CDVDVideoCodecIMX::Decode()
+    m_blockFlush = false;
+    return;
+  }
+  else
+    CLog::Log(LOGDEBUG, "%s - called\n", __FUNCTION__);
 
   /* We have to resync timestamp manager */
   m_tsSyncRequired = true;
