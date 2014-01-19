@@ -24,7 +24,7 @@
 #include "DVDVideoCodec.h"
 #include "DVDStreamInfo.h"
 #include "threads/CriticalSection.h"
-#include "utils/BitstreamConverter.h"
+
 
 //#define IMX_PROFILE
 
@@ -124,6 +124,7 @@ protected:
    * and its associated decoder frame buffer.*/
   struct VpuV4LFrameBuffer
   {
+    
     // Returns whether the buffer is currently used (associated)
     bool used() const { return buffer != NULL; }
     // Associate a VPU frame buffer
@@ -151,5 +152,30 @@ protected:
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of V4L buffers out of VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   std::queue <DVDVideoPicture> m_decodedFrames;   // Decoded Frames ready to be retrieved by GetPicture
-  CBitstreamConverter *m_bsConverter;      // annex B to avcc converter 
+
+  /* FIXME : Rework is still required for fields below this line */
+
+  /* create a real class and share with openmax ? */
+  // bitstream to bytestream (Annex B) conversion support.
+  bool bitstream_convert_init(void *in_extradata, int in_extrasize);
+  bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);
+  static void bitstream_alloc_and_copy( uint8_t **poutbuf, int *poutbuf_size,
+  const uint8_t *sps_pps, uint32_t sps_pps_size, const uint8_t *in, uint32_t in_size);
+  typedef struct omx_bitstream_ctx {
+      uint8_t  length_size;
+      uint8_t  first_idr;
+      uint8_t *sps_pps_data;
+      uint32_t size;
+      omx_bitstream_ctx()
+      {
+        length_size = 0;
+        first_idr = 0;
+        sps_pps_data = NULL;
+        size = 0;
+      }
+  } omx_bitstream_ctx;
+  uint32_t          m_sps_pps_size;
+  omx_bitstream_ctx m_sps_pps_context;
+  bool m_convert_bitstream;
+
 };

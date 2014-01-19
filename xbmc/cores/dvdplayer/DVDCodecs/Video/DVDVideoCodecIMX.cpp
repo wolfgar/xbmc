@@ -31,7 +31,6 @@
 #include "DVDClock.h"
 #include "mfw_gst_ts.h"
 #include "threads/Atomics.h"
-#include "utils/BitstreamConverter.h"
 
 //#define NO_V4L_RENDERING
 
@@ -976,7 +975,7 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX()
   m_tsSyncRequired = true;
   m_dropState = false;
   m_tsm = NULL;
-  m_bsConverter = NULL;
+  m_convert_bitstream = false;
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1021,6 +1020,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   CLog::Log(LOGDEBUG, "Decode: aspect %f - forced aspect %d\n", m_hints.aspect, m_hints.forced_aspect);
 #endif
 
+  m_convert_bitstream = false;
   switch(m_hints.codec)
   {
   case CODEC_ID_MPEG2VIDEO:
@@ -1038,8 +1038,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     if (hints.extrasize >= 7)
     {
     if ( *(char*)hints.extradata == 1 )
-      m_bsConverter = new CBitstreamConverter;
-      m_bsConverter->Open(m_hints.codec, (uint8_t*)m_hints.extradata, m_hints.extrasize, true);
+      m_convert_bitstream = bitstream_convert_init(hints.extradata,hints.extrasize);
     }
     break;
   case CODEC_ID_VC1:
@@ -1185,13 +1184,14 @@ void CDVDVideoCodecIMX::Dispose(void)
     m_tsm = NULL;
   }
 
-  if (m_bsConverter)
+  if (m_convert_bitstream)
   {
-    m_bsConverter->Close();
-    delete m_bsConverter;
-    m_bsConverter = NULL;
+    if (m_sps_pps_context.sps_pps_data)
+    {
+      free(m_sps_pps_context.sps_pps_data);
+      m_sps_pps_context.sps_pps_data = NULL;
+    }
   }
-
   return;
 }
 
@@ -1205,6 +1205,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   int retSatus = 0;
   int demuxer_bytes = iSize;
   uint8_t *demuxer_content = pData;
+  bool bitstream_convered  = false;
   bool retry = false;
 
 #ifdef IMX_PROFILE
@@ -1233,15 +1234,24 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
   if (pData && iSize)
   {
-    if (m_bsConverter)
+    if (m_convert_bitstream)
     {
-      if (!m_bsConverter->Convert(pData, iSize))
+      // convert demuxer packet from bitstream to bytestream (AnnexB)
+      int bytestream_size = 0;
+      uint8_t *bytestream_buff = NULL;
+
+      if (!bitstream_convert(demuxer_content, demuxer_bytes, &bytestream_buff, &bytestream_size))
       {
         CLog::Log(LOGERROR, "%s - bitstream convert error...\n", __FUNCTION__);
-        return VC_ERROR;
+        return  VC_ERROR;
       }
-      demuxer_content = m_bsConverter->GetConvertBuffer();
-      demuxer_bytes = m_bsConverter->GetConvertSize();
+
+      if (bytestream_buff && (bytestream_size > 0))
+      {
+        bitstream_convered = true;
+        demuxer_bytes = bytestream_size;
+        demuxer_content = bytestream_buff;
+      }
     }
 
     if (pts != DVD_NOPTS_VALUE)
@@ -1435,6 +1445,9 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       usleep(5000);
     }
 
+  if (bitstream_convered)
+      free(demuxer_content);
+
   retSatus &= (~VC_PICTURE);
   if (m_decodedFrames.size() >= IMX_MAX_QUEUE_SIZE)
     retSatus |= VC_PICTURE;
@@ -1445,6 +1458,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   return retSatus;
 
 out_error:
+ if (bitstream_convered)
+      free(demuxer_content);
  return VC_ERROR;
 }
 
@@ -1551,5 +1566,170 @@ void CDVDVideoCodecIMX::SetDropState(bool bDrop)
   {
     m_dropState = bDrop;
     CLog::Log(LOGNOTICE, "%s : %d\n", __FUNCTION__, bDrop);
+  }
+}
+
+/* bitstream convert : Shameless copy from openmax */
+/* TODO : Have a look at it as  the malloc/copy/free strategy is obviously not the most efficient one */
+
+bool CDVDVideoCodecIMX::bitstream_convert_init(void *in_extradata, int in_extrasize)
+{
+  // based on h264_mp4toannexb_bsf.c (ffmpeg)
+  // which is Copyright (c) 2007 Benoit Fouet <benoit.fouet@free.fr>
+  // and Licensed GPL 2.1 or greater
+
+  m_sps_pps_size = 0;
+  m_sps_pps_context.sps_pps_data = NULL;
+
+  // nothing to filter
+  if (!in_extradata || in_extrasize < 6)
+    return false;
+
+  uint16_t unit_size;
+  uint32_t total_size = 0;
+  uint8_t *out = NULL, unit_nb, sps_done = 0;
+  const uint8_t *extradata = (uint8_t*)in_extradata + 4;
+  static const uint8_t nalu_header[4] = {0, 0, 0, 1};
+
+  // retrieve length coded size
+  m_sps_pps_context.length_size = (*extradata++ & 0x3) + 1;
+  if (m_sps_pps_context.length_size == 3)
+    return false;
+
+  // retrieve sps and pps unit(s)
+  unit_nb = *extradata++ & 0x1f;  // number of sps unit(s)
+  if (!unit_nb)
+  {
+    unit_nb = *extradata++;       // number of pps unit(s)
+    sps_done++;
+  }
+  while (unit_nb--)
+  {
+    unit_size = extradata[0] << 8 | extradata[1];
+    total_size += unit_size + 4;
+    if ( (extradata + 2 + unit_size) > ((uint8_t*)in_extradata + in_extrasize) )
+    {
+      free(out);
+      return false;
+    }
+    uint8_t* new_out = (uint8_t*)realloc(out, total_size);
+    if (new_out)
+    {
+      out = new_out;
+    }
+    else
+    {
+      CLog::Log(LOGERROR, "bitstream_convert_init failed - %s : could not realloc the buffer out",  __FUNCTION__);
+      free(out);
+      return false;
+    }
+
+    memcpy(out + total_size - unit_size - 4, nalu_header, 4);
+    memcpy(out + total_size - unit_size, extradata + 2, unit_size);
+    extradata += 2 + unit_size;
+
+    if (!unit_nb && !sps_done++)
+      unit_nb = *extradata++;     // number of pps unit(s)
+  }
+
+  m_sps_pps_context.sps_pps_data = out;
+  m_sps_pps_context.size = total_size;
+  m_sps_pps_context.first_idr = 1;
+
+  return true;
+}
+
+bool CDVDVideoCodecIMX::bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size)
+{
+  // based on h264_mp4toannexb_bsf.c (ffmpeg)
+  // which is Copyright (c) 2007 Benoit Fouet <benoit.fouet@free.fr>
+  // and Licensed GPL 2.1 or greater
+
+  uint8_t *buf = pData;
+  uint32_t buf_size = iSize;
+  uint8_t  unit_type;
+  int32_t  nal_size;
+  uint32_t cumul_size = 0;
+  const uint8_t *buf_end = buf + buf_size;
+
+  do
+  {
+    if (buf + m_sps_pps_context.length_size > buf_end)
+      goto fail;
+
+    if (m_sps_pps_context.length_size == 1)
+      nal_size = buf[0];
+    else if (m_sps_pps_context.length_size == 2)
+      nal_size = buf[0] << 8 | buf[1];
+    else
+      nal_size = buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
+
+    // FIXME CLog::Log(LOGERROR, "%s - nal_size : %d \n", __FUNCTION__, nal_size);
+    buf += m_sps_pps_context.length_size;
+    unit_type = *buf & 0x1f;
+
+    if (buf + nal_size > buf_end || nal_size < 0)
+      goto fail;
+
+    // prepend only to the first type 5 NAL unit of an IDR picture
+    if (m_sps_pps_context.first_idr && unit_type == 5)
+    {
+      bitstream_alloc_and_copy(poutbuf, poutbuf_size,
+        m_sps_pps_context.sps_pps_data, m_sps_pps_context.size, buf, nal_size);
+      m_sps_pps_context.first_idr = 0;
+    }
+    else
+    {
+      bitstream_alloc_and_copy(poutbuf, poutbuf_size, NULL, 0, buf, nal_size);
+      if (!m_sps_pps_context.first_idr && unit_type == 1)
+          m_sps_pps_context.first_idr = 1;
+    }
+
+    buf += nal_size;
+    cumul_size += nal_size + m_sps_pps_context.length_size;
+  } while (cumul_size < buf_size);
+
+  return true;
+
+fail:
+  free(*poutbuf);
+  *poutbuf = NULL;
+  *poutbuf_size = 0;
+  return false;
+}
+
+void CDVDVideoCodecIMX::bitstream_alloc_and_copy(
+  uint8_t **poutbuf,      int *poutbuf_size,
+  const uint8_t *sps_pps, uint32_t sps_pps_size,
+  const uint8_t *in,      uint32_t in_size)
+{
+  // based on h264_mp4toannexb_bsf.c (ffmpeg)
+  // which is Copyright (c) 2007 Benoit Fouet <benoit.fouet@free.fr>
+  // and Licensed GPL 2.1 or greater
+
+  #define CHD_WB32(p, d) { \
+    ((uint8_t*)(p))[3] = (d); \
+    ((uint8_t*)(p))[2] = (d) >> 8; \
+    ((uint8_t*)(p))[1] = (d) >> 16; \
+    ((uint8_t*)(p))[0] = (d) >> 24; }
+
+  uint32_t offset = *poutbuf_size;
+  uint8_t nal_header_size = offset ? 3 : 4;
+
+  *poutbuf_size += sps_pps_size + in_size + nal_header_size;
+  *poutbuf = (uint8_t*)realloc(*poutbuf, *poutbuf_size);
+  if (sps_pps)
+    memcpy(*poutbuf + offset, sps_pps, sps_pps_size);
+
+  memcpy(*poutbuf + sps_pps_size + nal_header_size + offset, in, in_size);
+  if (!offset)
+  {
+    CHD_WB32(*poutbuf + sps_pps_size, 1);
+  }
+  else
+  {
+    (*poutbuf + offset + sps_pps_size)[0] = 0;
+    (*poutbuf + offset + sps_pps_size)[1] = 0;
+    (*poutbuf + offset + sps_pps_size)[2] = 1;
   }
 }
