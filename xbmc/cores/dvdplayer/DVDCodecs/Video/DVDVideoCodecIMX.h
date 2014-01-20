@@ -46,6 +46,15 @@ typedef struct
 
 /* Output frame properties */
 struct CIMXOutputFrame {
+  CIMXOutputFrame() : released(false) {}
+
+  // Render a picture. Calls RenderingFrames.Queue
+  void Render(struct v4l2_crop &);
+
+  // Releases a picture to signal the codec to release
+  // the associated VPU buffer
+  void Release();
+
   int v4l2BufferIdx;
   VpuFieldType field;
   VpuRect picCrop;
@@ -53,6 +62,7 @@ struct CIMXOutputFrame {
 #ifdef IMX_PROFILE
   unsigned long long pushTS;
 #endif
+  bool released;
 };
 
 
@@ -64,19 +74,13 @@ class CIMXRenderingFrames
 public:
   static CIMXRenderingFrames& GetInstance();
 
-  // Sets the current codec that utilizes this class.
-  // Necessary to flag states back to the decoder depending
-  // on the render state.
-  void SetCurrentCodec(CDVDVideoCodecIMX *);
-
   bool AllocateBuffers(const struct v4l2_format *, int);
   void *GetVirtAddr(int idx);
   void *GetPhyAddr(int idx);
   void ReleaseBuffers();
-  int FindBuffer(void *);
-  int DeQueue(bool wait);
+  int  FindBuffer(void *);
+  int  DeQueue(bool wait);
   void Queue(CIMXOutputFrame *, struct v4l2_crop &);
-  void Release(CIMXOutputFrame *);
 
 private:
   CIMXRenderingFrames();
@@ -85,7 +89,6 @@ private:
   static const char  *m_v4lDeviceName;     // V4L2 device Name
   static CIMXRenderingFrames* m_instance;  // Unique instance of the class
 
-  CDVDVideoCodecIMX  *m_codec;
   CCriticalSection    m_renderingFramesLock; // Lock to ensure multithreading safety for class fields
   bool                m_ready;             // Buffers are allocated and frames can be Queued/Dequeue
   int                 m_v4lfd;             // fd on V4L2 device
@@ -93,9 +96,9 @@ private:
   int                 m_bufferNum;         // Number of allocated V4L2 buffers
   struct v4l2_crop    m_crop;              // Current cropping properties
   bool                m_streamOn;          // Flag that indicates whether streaming in on (from V4L point of view)
-  VpuFieldType        m_currentField;      // Current field type
   int                 m_pushedFrames;      // Number of frames queued in V4L2
   void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
+  int                 m_motionCtrl;        // Current motion control algo
 };
 
 class CDVDVideoCodecIMX : public CDVDVideoCodec
@@ -124,37 +127,27 @@ protected:
   bool VpuDeQueueFrame(bool);
   bool VpuReleaseBufferV4L(int);
   int GetAvailableBufferNb(void);
-  void ReleaseBufferV4L(int);
 
   void InitFB(void);
   void RestoreFB(void);
-  void FlushOutputFrame();
+  void FlushOutputFrame(void);
 
   /* Helper structure which holds a queued output frame
-     and its associated decoder frame buffer.
-     It stores additionally a flag that states if a
-     buffers needs to be released from the VPU. Although this
-     flag is being set from another thread sychronization is
-     not necessary.
-   */
-  struct VpuV4LFrameBuffer {
+   * and its associated decoder frame buffer.*/
+  struct VpuV4LFrameBuffer
+  {
+    
     // Returns whether the buffer is currently used (associated)
-    bool unused() const { return buffer == NULL; }
-    // Returns whether the buffer is currently unused (unassociated)
     bool used() const { return buffer != NULL; }
 
     // Associate a VPU frame buffer
-    void store(VpuFrameBuffer *b) {
-      buffer = b;
-      releaseRequested = false;
-    }
+    void store(VpuFrameBuffer *b) { buffer = b; outputFrame.released = false; }
 
     // Reset the state
     void clear() { store(NULL); }
 
+    VpuFrameBuffer *buffer;
     CIMXOutputFrame  outputFrame;
-    VpuFrameBuffer  *buffer;
-    bool             releaseRequested;
   };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
@@ -168,14 +161,13 @@ protected:
   VpuDecInitInfo      m_initInfo;          // Initial info returned from VPU at decoding start
   void               *m_tsm;               // fsl Timestamp manager (from gstreamer implementation)
   bool                m_tsSyncRequired;    // state whether timestamp manager has to be sync'ed
-  int                 m_dropState;         // Current drop state
+  bool                m_dropState;         // Current drop state
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   DVDVideoPicture     m_outputFrame;       // Decoded frame ready to be retrieved by GetPicture
   bool                m_outputFrameReady;  // State whether m_outputFrame is available or not
-
 
   /* FIXME : Rework is still required for fields below this line */
 
@@ -203,6 +195,4 @@ protected:
   uint32_t          m_sps_pps_size;
   omx_bitstream_ctx m_sps_pps_context;
   bool m_convert_bitstream;
-
-  friend class CIMXRenderingFrames;
 };
