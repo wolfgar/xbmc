@@ -965,17 +965,6 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
     SAFE_RELEASE(buf.mediacodec);
   }
 #endif
-#ifdef HAS_IMXVPU
-  // This is very important otherwise pushed frames which are discarded
-  // by the RenderManager (e.g. being too late) despite an explicit flush call
-  // will never free associated VPU buffers.
-  CIMXOutputFrame *imxPicture = buf.imxOutputFrame;
-  if (imxPicture != NULL)
-  {
-    imxPicture->Release();
-    buf.imxOutputFrame = NULL;
-  }
-#endif
 }
 
 void CLinuxRendererGLES::Render(DWORD flags, int index)

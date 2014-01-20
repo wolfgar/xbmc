@@ -46,14 +46,8 @@ typedef struct
 
 /* Output frame properties */
 struct CIMXOutputFrame {
-  CIMXOutputFrame() : released(false) {}
-
   // Render a picture. Calls RenderingFrames.Queue
   void Render(struct v4l2_crop &);
-
-  // Releases a picture to signal the codec to release
-  // the associated VPU buffer
-  void Release();
 
   int v4l2BufferIdx;
   VpuFieldType field;
@@ -62,7 +56,6 @@ struct CIMXOutputFrame {
 #ifdef IMX_PROFILE
   unsigned long long pushTS;
 #endif
-  bool released;
 };
 
 
@@ -123,7 +116,7 @@ protected:
   bool VpuAllocBuffers(VpuMemInfo *);
   bool VpuFreeBuffers(void);
   bool VpuAllocFrameBuffers(void);
-  bool VpuDeQueueFrame(bool);
+  int VpuDeQueueFrame(bool);
   bool VpuReleaseBufferV4L(int);
   int GetAvailableBufferNb(void);
 
@@ -135,18 +128,24 @@ protected:
    * and its associated decoder frame buffer.*/
   struct VpuV4LFrameBuffer
   {
-    
     // Returns whether the buffer is currently used (associated)
     bool used() const { return buffer != NULL; }
 
+    bool expired(int frameNo) const
+    { return (buffer != NULL) && (this->frameNo < frameNo); }
+
     // Associate a VPU frame buffer
-    void store(VpuFrameBuffer *b) { buffer = b; outputFrame.released = false; }
+    void store(VpuFrameBuffer *b, int frameNo) {
+      this->buffer = b;
+      this->frameNo = frameNo;
+    }
 
     // Reset the state
-    void clear() { store(NULL); }
+    void clear() { store(NULL, 0); }
 
-    VpuFrameBuffer *buffer;
+    VpuFrameBuffer  *buffer;
     CIMXOutputFrame  outputFrame;
+    int              frameNo;
   };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
@@ -167,6 +166,7 @@ protected:
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   VpuDecOutFrameInfo  m_currentFrame;      // Stores the current decoded frame
   bool                m_currentFrameReady; // Debug flag to check if the current frame is queued more than once
+  int                 m_frameCounter;
 
   /* FIXME : Rework is still required for fields below this line */
 
