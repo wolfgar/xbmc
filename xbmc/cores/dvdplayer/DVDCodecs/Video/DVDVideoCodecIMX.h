@@ -123,7 +123,6 @@ protected:
   bool VpuAllocBuffers(VpuMemInfo *);
   bool VpuFreeBuffers(void);
   bool VpuAllocFrameBuffers(void);
-  bool VpuPushFrame(VpuDecOutFrameInfo*);
   bool VpuDeQueueFrame(bool);
   bool VpuReleaseBufferV4L(int);
   int GetAvailableBufferNb(void);
@@ -166,8 +165,8 @@ protected:
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
-  DVDVideoPicture     m_outputFrame;       // Decoded frame ready to be retrieved by GetPicture
-  bool                m_outputFrameReady;  // State whether m_outputFrame is available or not
+  VpuDecOutFrameInfo  m_currentFrame;      // Stores the current decoded frame
+  bool                m_currentFrameReady; // Debug flag to check if the current frame is queued more than once
 
   /* FIXME : Rework is still required for fields below this line */
 
