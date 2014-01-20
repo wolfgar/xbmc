@@ -280,31 +280,39 @@ int CIMXRenderingFrames::DeQueue(bool wait)
   struct v4l2_buffer buf;
 
   CSingleLock lock(m_renderingFramesLock);
+
   if (!m_ready)
   {
-      CLog::Log(LOGNOTICE, "%s - Cannot dequeue frame as buffers were released !\n",
+    CLog::Log(LOGNOTICE, "%s - Cannot dequeue frame as buffers were released !\n",
               __FUNCTION__);
     return -1;
   }
+
   if (!m_streamOn)
   {
     return -1;
   }
 
-  if (wait) {
+  if (wait)
+  {
     status = fcntl(m_v4lfd, F_GETFL);
     fcntl(m_v4lfd, F_SETFL, status & (~O_NONBLOCK));
   }
+
   buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
   buf.memory = V4L2_MEMORY_MMAP;
   ret = ioctl(m_v4lfd, VIDIOC_DQBUF, &buf);
+
   if (wait)
+  {
     fcntl(m_v4lfd, F_SETFL, status | O_NONBLOCK);
+  }
+
   if (ret != 0)
   {
     if (errno != EAGAIN)
       CLog::Log(LOGERROR, "%s - Dequeue buffer error (ret %d : %s)\n",
-              __FUNCTION__, ret, strerror(errno));
+                __FUNCTION__, ret, strerror(errno));
     return -1;
   }
 
@@ -335,7 +343,7 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
   if (!m_ready)
   {
     /* Release the pictures resources */
-   picture->Release();
+    picture->Release();
 
     CLog::Log(LOGNOTICE, "%s - Cannot queue frame as buffers were released !\n",
               __FUNCTION__);
@@ -349,127 +357,123 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
   {
     CLog::Log(LOGERROR, "%s - Invalid buffer index : %d - picture address : %p\n",
               __FUNCTION__, picture->v4l2BufferIdx, picture);
+    return;
+  }
+
+  /* Set field type for each buffer otherwise the mxc_vout driver reverts to progressive */
+  switch (picture->field)
+  {
+  case VPU_FIELD_TB:
+    m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_INTERLACED_TB;
+    break;
+  case VPU_FIELD_BT:
+    m_v4lBuffers[picture->v4l2BufferIdx].field= V4L2_FIELD_INTERLACED_BT;
+    break;
+  case VPU_FIELD_NONE:
+  default:
+    m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
+    break;
+  /* In case deinterlacing is was forced to disabled */
+  if (m_motionCtrl == -2)
+    m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
+  }
+
+  /* mxc_vout driver does not display immediatly
+   * if timestamp is set to 0
+   * (instead this driver expects a 30fps rate)
+   * So we explicitly set current time for immediate display
+   */
+  gettimeofday (&queue_ts, NULL);
+  m_v4lBuffers[picture->v4l2BufferIdx].timestamp = queue_ts;
+
+#ifndef NO_V4L_RENDERING
+  ret = ioctl(m_v4lfd, VIDIOC_QBUF, &m_v4lBuffers[picture->v4l2BufferIdx]);
+  if (ret < 0)
+  {
+    /* Free picture's resources, the associated Vpu buffer */
+    picture->Release();
+
+    CLog::Log(LOGERROR, "%s - V4L Queue buffer failed (ret %d : %s)\n",
+              __FUNCTION__, ret, strerror(errno));
+    /* If it fails odds are very high picture is invalid so just exit now */
+    return;
   }
   else
   {
-    /* Set field type for each buffer otherwise the mxc_vout driver reverts to progressive */
-    switch (picture->field)
-    {
-    case VPU_FIELD_TB:
-      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_INTERLACED_TB;
-      break;
-    case VPU_FIELD_BT:
-      m_v4lBuffers[picture->v4l2BufferIdx].field= V4L2_FIELD_INTERLACED_BT;
-      break;
-    case VPU_FIELD_NONE:
-    default:
-      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
-      break;
-    /* In case deinterlacing is was forced to disabled */
-    if (m_motionCtrl == -2)
-      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
+    m_pushedFrames++;
+  }
+
+  /* Force cropping dimensions to be aligned */
+  destRect.c.top    &= 0xFFFFFFF8;
+  destRect.c.left   &= 0xFFFFFFF8;
+  destRect.c.width  &= 0xFFFFFFF8;
+  destRect.c.height &= 0xFFFFFFF8;
+  if ((m_crop.c.top != destRect.c.top) ||
+      (m_crop.c.left != destRect.c.left) ||
+      (m_crop.c.width != destRect.c.width) ||
+      (m_crop.c.height !=  destRect.c.height))
+  {
+    CLog::Log(LOGNOTICE, "%s - Newcrop : %d % d %d %d\n",
+              __FUNCTION__, destRect.c.top, destRect.c.left, destRect.c.width, destRect.c.height);
+    m_crop.c = destRect.c;
+    crop_update = true;
+  }
+
+  if (!m_streamOn)
+  {
+    if (picture->field == VPU_FIELD_NONE)
+      stream_trigger = 1;
+    else {
+      if (m_motionCtrl < 2)
+        stream_trigger = 3;
+      else
+        stream_trigger = 2;
     }
 
-    /* mxc_vout driver does not display immediatly
-     * if timestamp is set to 0
-     * (instead this driver expects a 30fps rate)
-     * So we explicitly set current time for immediate display
-     */
-    gettimeofday (&queue_ts, NULL);
-    m_v4lBuffers[picture->v4l2BufferIdx].timestamp = queue_ts;
+    if (m_pushedFrames >= stream_trigger) {
+      CLog::Log(LOGDEBUG, "%s - Motion control is : %d - Number of required frames before streaming : %d\n",
+                __FUNCTION__, m_motionCtrl, stream_trigger);
 
-#ifndef NO_V4L_RENDERING
-    ret = ioctl(m_v4lfd, VIDIOC_QBUF, &m_v4lBuffers[picture->v4l2BufferIdx]);
+      type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+      ret = ioctl(m_v4lfd, VIDIOC_STREAMON, &type);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - V4L Stream ON failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
+      else
+      {
+        CLog::Log(LOGDEBUG, "%s - V4L Stream ON OK\n",
+                __FUNCTION__);
+        m_streamOn = true;
+      }
+      /* We have to repeat crop command after streamon for some vids
+      * FIXME : Check why in drivers...
+      */
+      ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
+      if (ret < 0)
+      {
+        CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
+                __FUNCTION__, ret, strerror(errno));
+      }
+    }
+  }
+  else if (crop_update)
+  {
+    ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
     if (ret < 0)
     {
-      /* Free picture's resources, the associated Vpu buffer */
-      picture->Release();
-
-      CLog::Log(LOGERROR, "%s - V4L Queue buffer failed (ret %d : %s)\n",
+      CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
                 __FUNCTION__, ret, strerror(errno));
-      /* If it fails odds are very high picture is invalid so just exit now */
-      return;
     }
-    else
-    {
-      m_pushedFrames++;
-    }
-
-    /* Force cropping dimensions to be aligned */
-    destRect.c.top    &= 0xFFFFFFF8;
-    destRect.c.left   &= 0xFFFFFFF8;
-    destRect.c.width  &= 0xFFFFFFF8;
-    destRect.c.height &= 0xFFFFFFF8;
-    if ((m_crop.c.top != destRect.c.top) ||
-        (m_crop.c.left != destRect.c.left) ||
-        (m_crop.c.width != destRect.c.width) ||
-        (m_crop.c.height !=  destRect.c.height))
-    {
-      CLog::Log(LOGNOTICE, "%s - Newcrop : %d % d %d %d\n",
-                __FUNCTION__, destRect.c.top, destRect.c.left, destRect.c.width, destRect.c.height);
-      m_crop.c = destRect.c;
-      crop_update = true;
-    }
-
-    if (!m_streamOn)
-    {
-      if (picture->field == VPU_FIELD_NONE)
-        stream_trigger = 1;
-      else {
-        if (m_motionCtrl < 2)
-          stream_trigger = 3;
-        else
-          stream_trigger = 2;
-      }
-
-      if (m_pushedFrames >= stream_trigger) {
-        CLog::Log(LOGDEBUG, "%s - Motion control is : %d - Number of required frames before streaming : %d\n",
-                  __FUNCTION__, m_motionCtrl, stream_trigger);
-
-        type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        ret = ioctl(m_v4lfd, VIDIOC_STREAMON, &type);
-        if (ret < 0)
-        {
-          CLog::Log(LOGERROR, "%s - V4L Stream ON failed (ret %d : %s)\n",
-                  __FUNCTION__, ret, strerror(errno));
-        }
-        else
-        {
-          CLog::Log(LOGDEBUG, "%s - V4L Stream ON OK\n",
-                  __FUNCTION__);
-          m_streamOn = true;
-        }
-        /* We have to repeat crop command after streamon for some vids
-        * FIXME : Check why in drivers...
-        */
-        ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-        if (ret < 0)
-        {
-          CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
-                  __FUNCTION__, ret, strerror(errno));
-        }
-      }
-    }
-    else
-    {
-      if (crop_update)
-      {
-        ret = ioctl(m_v4lfd, VIDIOC_S_CROP, &m_crop);
-        if (ret < 0)
-        {
-          CLog::Log(LOGERROR, "%s - S_CROP failed (ret %d : %s)\n",
-                    __FUNCTION__, ret, strerror(errno));
-        }
-      }
-    }
+  }
 #endif
 
 #ifdef IMX_PROFILE
-    render_ts[picture->v4l2BufferIdx] = get_time();
-    CLog::Log(LOGDEBUG, "%s - Time push to render (%d) %llu\n",
-              __FUNCTION__, picture->v4l2BufferIdx, render_ts[picture->v4l2BufferIdx] - picture->pushTS);
+  render_ts[picture->v4l2BufferIdx] = get_time();
+  CLog::Log(LOGDEBUG, "%s - Time push to render (%d) %llu\n",
+            __FUNCTION__, picture->v4l2BufferIdx, render_ts[picture->v4l2BufferIdx] - picture->pushTS);
 #endif
-  }
 }
 
 void CIMXRenderingFrames::ReleaseBuffers()
@@ -521,6 +525,7 @@ void CIMXRenderingFrames::__ReleaseBuffers()
   }
 
   m_bufferNum = 0;
+  m_pushedFrames = 0;
   m_ready = false;
   m_motionCtrl = -1;
 }
@@ -842,7 +847,19 @@ bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
   idx = m_renderingFrames.DeQueue(wait);
   if (idx != -1)
   {
-    return VpuReleaseBufferV4L(idx);
+    if (!m_outputBuffers[idx].used())
+    {
+      CLog::Log(LOGERROR, "%s - associated buffer does not exist anymore\n",
+                __FUNCTION__);
+    }
+    else
+    {
+      VpuReleaseBufferV4L(idx);
+    }
+
+    // Always return true to continue the dequeuing from V4L because
+    // a valid index has been returned from CIMXRenderingFrames.
+    return true;
   }
   else
   {
@@ -1014,6 +1031,7 @@ void CDVDVideoCodecIMX::Dispose(void)
   bool VPU_loaded = m_vpuHandle;
 
   FlushOutputFrame();
+
   if (m_vpuHandle)
   {
     ret = VPU_DecFlushAll(m_vpuHandle);
@@ -1267,12 +1285,18 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
       }//VPU_DEC_ONE_FRM_CONSUMED
 
-      if ((decRet & VPU_DEC_OUTPUT_DIS) ||
-          (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS))
+      if (decRet & (VPU_DEC_OUTPUT_DIS | VPU_DEC_OUTPUT_MOSAIC_DIS))
       /* Frame ready to be displayed */
       {
         if (retSatus & VC_PICTURE)
             CLog::Log(LOGERROR, "%s - Second picture in the same decode call !\n", __FUNCTION__);
+
+        if (m_currentFrameReady)
+        {
+          // Release buffer
+          VPU_DecOutFrameDisplayed(m_vpuHandle, m_currentFrame.pDisplayFrameBuf);
+          CLog::Log(LOGERROR, "%s - Got new picture while GetPicture has not consumed previous frame, drop last\n", __FUNCTION__);
+        }
 
         ret = VPU_DecGetOutputFrame(m_vpuHandle, &m_currentFrame);
         if(ret != VPU_DEC_RET_SUCCESS)
@@ -1280,12 +1304,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           CLog::Log(LOGERROR, "%s - VPU Cannot get output frame(%d).\n", __FUNCTION__, ret);
           goto out_error;
         }
-        if (m_currentFrameReady)
-        {
-          // Release buffer
-          VPU_DecOutFrameDisplayed(m_vpuHandle, m_currentFrame.pDisplayFrameBuf);
-          CLog::Log(LOGERROR, "%s - Called while GetPicture has not consumed previous frame\n", __FUNCTION__);
-        }
+
         m_currentFrameReady = true;
         retSatus |= VC_PICTURE;
       } //VPU_DEC_OUTPUT_DIS
@@ -1377,13 +1396,29 @@ out_error:
 
 void CDVDVideoCodecIMX::Reset()
 {
-  int ret;
+  int ret, i;
 
   /* We have to resync timestamp manager */
   m_tsSyncRequired = true;
 
-  /* Flush decoded frames */
+  /* Flush decoded frame if any */
   FlushOutputFrame();
+
+  CLog::Log(LOGNOTICE, "%s - %d buffers still in use\n", __FUNCTION__, GetAvailableBufferNb());
+
+  /*
+   Release all buffers still used. But this means that if a frame is still being
+   hold by the RenderManager and rendered later it could happen that a wrong or invalid
+   frame in the decode buffer is going to be released.
+   */
+  for (i = 0; i < m_vpuFrameBufferNum; ++i)
+  {
+    if (m_outputBuffers[i].used())
+    {
+      CLog::Log(LOGDEBUG, "%s - Release buffer - idx : %d\n", __FUNCTION__, i);
+      VpuReleaseBufferV4L(i);
+    }
+  }
 
   /* Flush VPU */
   ret = VPU_DecFlushAll(m_vpuHandle);
@@ -1391,7 +1426,6 @@ void CDVDVideoCodecIMX::Reset()
   {
     CLog::Log(LOGERROR, "%s - VPU flush failed with error code %d.\n", __FUNCTION__, ret);
   }
-
 }
 
 unsigned CDVDVideoCodecIMX::GetAllowedReferences()
@@ -1467,11 +1501,8 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   DVDFrame.imxOutputFrame->picCrop = m_currentFrame.pExtInfo->FrmCropRect;
   DVDFrame.imxOutputFrame->nQ16ShiftWidthDivHeightRatio = m_currentFrame.pExtInfo->nQ16ShiftWidthDivHeightRatio;
 
-  //double currentPlayerPts;
-  //double ts = DVD_NOPTS_VALUE;
-
   DVDFrame.iFlags &= DVP_FLAG_DROPPED;
-  if (DVDFrame.iFlags || m_dropState)
+  if (m_dropState)
   {
     // Dropping a picture means flagging it as dropped but
     // removing it immediately from the VPU. The DVDPlayer will not
@@ -1480,8 +1511,8 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   }
 
   /*
-  ts = m_outputFrame.pts;
-  currentPlayerPts = GetPlayerPts();
+  double ts = m_outputFrame.pts;
+  double currentPlayerPts = GetPlayerPts();
   if (currentPlayerPts > ts)
   {
     ts = DVDFrame.pts;
@@ -1511,7 +1542,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   DVDFrame.iDisplayHeight = DVDFrame.iHeight;
 
 #ifndef NO_V4L_RENDERING
-  // If frame should be dropped, release it immediately
+  // If frame is dropped, release it immediately
   if (DVDFrame.iFlags & DVP_FLAG_DROPPED)
   {
 #endif
