@@ -1280,12 +1280,14 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           CLog::Log(LOGERROR, "%s - VPU Cannot get output frame(%d).\n", __FUNCTION__, ret);
           goto out_error;
         }
-        retSatus |= VC_PICTURE;
         if (m_currentFrameReady)
         {
+          // Release buffer
+          VPU_DecOutFrameDisplayed(m_vpuHandle, m_currentFrame.pDisplayFrameBuf);
           CLog::Log(LOGERROR, "%s - Called while GetPicture has not consumed previous frame\n", __FUNCTION__);
         }
         m_currentFrameReady = true;
+        retSatus |= VC_PICTURE;
       } //VPU_DEC_OUTPUT_DIS
 
       if (decRet & VPU_DEC_OUTPUT_REPEAT)
