@@ -172,8 +172,6 @@ protected:
 
   /* create a real class and share with openmax ? */
   // bitstream to bytestream (Annex B) conversion support.
-
-  // NOTE <smallint>: Switch to utils/BitstreamConverter
   bool bitstream_convert_init(void *in_extradata, int in_extrasize);
   bool bitstream_convert(BYTE* pData, int iSize, uint8_t **poutbuf, int *poutbuf_size);
   static void bitstream_alloc_and_copy( uint8_t **poutbuf, int *poutbuf_size,
