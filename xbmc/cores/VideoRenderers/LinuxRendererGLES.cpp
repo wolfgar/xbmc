@@ -572,6 +572,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
       if (imxPicture != NULL)
       {
         renderingFrames.Queue(imxPicture, crop);
+        m_buffers[index].imxOutputFrame = NULL;
       }
     }
     return;
@@ -964,9 +965,6 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
   {
     SAFE_RELEASE(buf.mediacodec);
   }
-#endif
-#ifdef HAS_IMXVPU
-  buf.imxOutputFrame = NULL;
 #endif
 }
 
