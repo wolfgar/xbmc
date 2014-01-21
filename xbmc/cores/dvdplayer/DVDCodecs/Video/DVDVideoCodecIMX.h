@@ -46,6 +46,9 @@ typedef struct
 
 /* Output frame properties */
 struct CIMXOutputFrame {
+  // Render a picture. Calls RenderingFrames.Queue
+  void Render(struct v4l2_crop &);
+
   int v4l2BufferIdx;
   VpuFieldType field;
   VpuRect picCrop;
@@ -66,7 +69,6 @@ public:
   int  FindBuffer(void *);
   int  DeQueue(bool wait);
   void Queue(CIMXOutputFrame *, struct v4l2_crop &);
-  void BufferSubmitted(int idx);
 
 private:
   CIMXRenderingFrames();
@@ -85,9 +87,6 @@ private:
   int                 m_pushedFrames;      // Number of frames queued in V4L2
   void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
   int                 m_motionCtrl;        // Current motion control algo
-  std::queue <int>    m_V4L2Buffers;       // List of V4L2 buffers sent for rendering
-  int                 m_lastDequeuedBuffer;// Keep last dequeued buffer index (while sync'ing with m_V4L2Buffers queue)
-  int                 m_lastQueuedBuffer;  // Keep last queued buffer index
 };
 
 class CDVDVideoCodecIMX : public CDVDVideoCodec
@@ -124,20 +123,26 @@ protected:
    * and its associated decoder frame buffer.*/
   struct VpuV4LFrameBuffer
   {
-    
     // Returns whether the buffer is currently used (associated)
     bool used() const { return buffer != NULL; }
+    bool expired(int frameNo) const
+    { return (buffer != NULL) && (this->frameNo < frameNo); }
     // Associate a VPU frame buffer
-    void store(VpuFrameBuffer *b) { buffer = b; }
+    void store(VpuFrameBuffer *b, int frameNo) {
+      this->buffer = b;
+      this->frameNo = frameNo;
+    }
     // Reset the state
-    void clear() { store(NULL); }
+    void clear() { store(NULL, 0); }
 
     VpuFrameBuffer *buffer;
-    CIMXOutputFrame  outputFrame;
+    CIMXOutputFrame outputFrame;
+    int frameNo;
   };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
 
+  CIMXRenderingFrames&m_renderingFrames;   // The global RenderingFrames instance
   CDVDStreamInfo      m_hints;             // Hints from demuxer at stream opening
   const char         *m_pFormatName;       // Current decoder format name
   VpuDecOpenParam     m_decOpenParam;      // Parameters required to call VPU_DecOpen
@@ -152,6 +157,7 @@ protected:
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of V4L buffers out of VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   std::queue <DVDVideoPicture> m_decodedFrames;   // Decoded Frames ready to be retrieved by GetPicture
+  int                 m_frameCounter;      // Decoded frames counter
 
   /* FIXME : Rework is still required for fields below this line */
 

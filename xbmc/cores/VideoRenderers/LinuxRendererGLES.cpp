@@ -561,7 +561,6 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     // FIXME : move in its own render mode instead of mixup with BYPASS
     if (m_format == RENDER_FMT_IMX)
     {
-      CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
       int index = m_iYV12RenderBuffer;
       struct v4l2_crop crop;
       crop.c.top = (int)m_destRect.y1;
@@ -571,7 +570,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
       CIMXOutputFrame *imxPicture = m_buffers[index].imxOutputFrame;
       if (imxPicture != NULL)
       {
-        renderingFrames.Queue(imxPicture, crop);
+        imxPicture->Render(crop);
         m_buffers[index].imxOutputFrame = NULL;
       }
     }
