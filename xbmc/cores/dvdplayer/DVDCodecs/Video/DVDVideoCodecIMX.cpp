@@ -33,6 +33,7 @@
 #include "threads/Atomics.h"
 
 //#define NO_V4L_RENDERING
+#define V4L_OUTPUT_PROFILE
 
 #ifdef IMX_PROFILE
 static unsigned long long render_ts[30];
@@ -912,7 +913,7 @@ bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
     }
     else
     {
-      frameNo = m_outputBuffers[idx].frameNo;
+      frameNo = m_outputBuffers[idx].frameNo();
       VpuReleaseBufferV4L(idx);
       if (frameNo > 0)
       {
@@ -1417,6 +1418,16 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     } while (retry == true);
   } //(pData && iSize)
 
+#ifdef V4L_OUTPUT_PROFILE
+  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HWfre : %d/%d/%d\n",
+            (int)m_decodedFrames.size(), GetAvailableBufferNb(),
+            m_extraVpuBuffers, m_vpuFrameBufferNum);
+#endif
+
+  retSatus &= (~VC_PICTURE);
+  if (!m_decodedFrames.empty())
+    retSatus |= VC_PICTURE;
+
   if (GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers))
   {
     retSatus |= VC_BUFFER;
@@ -1425,7 +1436,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   {
     if (retSatus == 0) {
       /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
-      CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 5ms\n", __FUNCTION__);
+      //CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 5ms\n", __FUNCTION__);
       /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
       usleep(5000);
     }
@@ -1433,10 +1444,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
   if (bitstream_convered)
       free(demuxer_content);
-
-  retSatus &= (~VC_PICTURE);
-  if (m_decodedFrames.size() >= IMX_MAX_QUEUE_SIZE)
-    retSatus |= VC_PICTURE;
 
 #ifdef IMX_PROFILE
   CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retSatus, get_time() - previous);
@@ -1479,8 +1486,8 @@ unsigned CDVDVideoCodecIMX::GetAllowedReferences()
 
 bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 {
-  double currentPlayerPts;
-  double ts = DVD_NOPTS_VALUE;
+  //double currentPlayerPts;
+  //double ts = DVD_NOPTS_VALUE;
   DVDVideoPicture DVDFrame;
 
   if (m_decodedFrames.size() == 0)
@@ -1502,6 +1509,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     VpuReleaseBufferV4L(DVDFrame.imxOutputFrame->v4l2BufferIdx);
     DVDFrame.imxOutputFrame = NULL;
   }
+  /*
   else
   {
     ts = DVDFrame.pts;
@@ -1512,6 +1520,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     }
     //CLog::Log(LOGINFO, "%s - idx : %d - delta call %f - delta ts %f \n", __FUNCTION__, outputFrame.v4l2_buffer->index,ts - previous, ts - currentPlayerPts);
   }
+  */
 
 #ifdef NO_V4L_RENDERING
   if (!m_dropState)
@@ -1536,6 +1545,12 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   }
   pDvdVideoPicture->format = DVDFrame.format;
   pDvdVideoPicture->imxOutputFrame = DVDFrame.imxOutputFrame;
+
+#ifdef V4L_OUTPUT_PROFILE
+  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HWfre : %d/%d/%d\n",
+            (int)m_decodedFrames.size(), GetAvailableBufferNb(),
+            m_extraVpuBuffers, m_vpuFrameBufferNum);
+#endif
   return true;
 }
 

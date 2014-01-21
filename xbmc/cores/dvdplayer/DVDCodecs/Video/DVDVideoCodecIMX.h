@@ -48,11 +48,14 @@ typedef struct
 struct CIMXOutputFrame {
   // Render a picture. Calls RenderingFrames.Queue
   void Render(struct v4l2_crop &);
+  // Clear a picture by settings the frameNo to "expired"
+  void Release() { frameNo = 0; }
 
   int v4l2BufferIdx;
   VpuFieldType field;
   VpuRect picCrop;
   unsigned int nQ16ShiftWidthDivHeightRatio;
+  int frameNo;
 #ifdef IMX_PROFILE
   unsigned long long pushTS;
 #endif
@@ -125,19 +128,19 @@ protected:
   {
     // Returns whether the buffer is currently used (associated)
     bool used() const { return buffer != NULL; }
+    int frameNo() const { return outputFrame.frameNo; }
     bool expired(int frameNo) const
-    { return (buffer != NULL) && (this->frameNo < frameNo); }
+    { return (buffer != NULL) && (outputFrame.frameNo < frameNo); }
     // Associate a VPU frame buffer
     void store(VpuFrameBuffer *b, int frameNo) {
-      this->buffer = b;
-      this->frameNo = frameNo;
+      buffer = b;
+      outputFrame.frameNo = frameNo;
     }
     // Reset the state
     void clear() { store(NULL, 0); }
 
     VpuFrameBuffer *buffer;
     CIMXOutputFrame outputFrame;
-    int frameNo;
   };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
