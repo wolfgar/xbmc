@@ -815,10 +815,8 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   CIMXOutputFrame *outputFrame;
   CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   int i;
-  double pts;
   DVDVideoPicture DVDFrame;
 
-  pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
   /* Find Frame given physical address */
   i = renderingFrames.FindBuffer(frameBuffer->pbufY);
   if (i == -1)
@@ -842,7 +840,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   outputFrame->nQ16ShiftWidthDivHeightRatio = frameInfo->pExtInfo->nQ16ShiftWidthDivHeightRatio;
   DVDFrame.imxOutputFrame = outputFrame;
 
-  DVDFrame.pts = pts;
+  DVDFrame.pts = DVD_NOPTS_VALUE;
   DVDFrame.dts = DVD_NOPTS_VALUE;
   /*
   m_outputFrame.iWidth = frameInfo->pExtInfo->nFrmWidth;
@@ -1498,6 +1496,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   //double currentPlayerPts;
   //double ts = DVD_NOPTS_VALUE;
   DVDVideoPicture DVDFrame;
+  double pts;
 
   if (m_decodedFrames.size() == 0)
   {
@@ -1509,6 +1508,8 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   DVDFrame = m_decodedFrames.front();
   m_decodedFrames.pop();
   //CLog::Log(LOGNOTICE, "%s - buffer(%d)\n", __FUNCTION__, DVDFrame.imxOutputFrame->v4l2BufferIdx);
+
+  pts = (double)TSManagerSend2(m_tsm, m_outputBuffers[DVDFrame.imxOutputFrame->v4l2BufferIdx].buffer) / (double)1000.0;
 
   pDvdVideoPicture->iFlags &= DVP_FLAG_DROPPED;
   if ((pDvdVideoPicture->iFlags != 0) || (m_dropState))
@@ -1538,7 +1539,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   }
 #endif
 
-  pDvdVideoPicture->pts = DVDFrame.pts;
+  pDvdVideoPicture->pts = pts;
   pDvdVideoPicture->dts = DVDFrame.dts;
   pDvdVideoPicture->iWidth = DVDFrame.iWidth;
   pDvdVideoPicture->iHeight = DVDFrame.iHeight;
