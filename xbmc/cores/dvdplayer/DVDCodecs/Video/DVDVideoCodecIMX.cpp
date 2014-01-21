@@ -337,27 +337,26 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
   {
     CLog::Log(LOGERROR, "%s - Invalid buffer index : %d - picture address : %p\n",
               __FUNCTION__, picture->v4l2BufferIdx, picture);
+    return;
   }
-  else
-  {
 
-    /* Set field type for each buffer otherwise the mxc_vout driver reverts to progressive */
-    switch (picture->field)
-    {
-    case VPU_FIELD_TB:
-      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_INTERLACED_TB;
-      break;
-    case VPU_FIELD_BT:
-      m_v4lBuffers[picture->v4l2BufferIdx].field= V4L2_FIELD_INTERLACED_BT;
-      break;
-    case VPU_FIELD_NONE:
-    default:
-      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
-      break;
-    /* In case deinterlacing is forced to disabled */
-    if (m_motionCtrl == -2)
-      m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
-    }
+  /* Set field type for each buffer otherwise the mxc_vout driver reverts to progressive */
+  switch (picture->field)
+  {
+  case VPU_FIELD_TB:
+    m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_INTERLACED_TB;
+    break;
+  case VPU_FIELD_BT:
+    m_v4lBuffers[picture->v4l2BufferIdx].field= V4L2_FIELD_INTERLACED_BT;
+    break;
+  case VPU_FIELD_NONE:
+  default:
+    m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
+    break;
+  /* In case deinterlacing is forced to disabled */
+  if (m_motionCtrl == -2)
+    m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
+  }
   /* mxc_vout driver does not display immediatly
    * if timestamp is set to 0
    * (instead this driver expects a 30fps rate)
@@ -453,7 +452,6 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
   CLog::Log(LOGDEBUG, "%s - Time push to render (%d) %llu\n",
               __FUNCTION__, picture->v4l2BufferIdx, render_ts[picture->v4l2BufferIdx] - picture->pushTS);
 #endif
-  }
 }
 
 void CIMXRenderingFrames::ReleaseBuffers()
