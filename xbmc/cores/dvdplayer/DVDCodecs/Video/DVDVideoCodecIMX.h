@@ -58,15 +58,10 @@ struct CIMXOutputFrame {
 #endif
 };
 
-
-class CDVDVideoCodecIMX;
-
-
 class CIMXRenderingFrames
 {
 public:
   static CIMXRenderingFrames& GetInstance();
-
   bool AllocateBuffers(const struct v4l2_format *, int);
   void *GetVirtAddr(int idx);
   void *GetPhyAddr(int idx);
@@ -116,13 +111,13 @@ protected:
   bool VpuAllocBuffers(VpuMemInfo *);
   bool VpuFreeBuffers(void);
   bool VpuAllocFrameBuffers(void);
-  int VpuDeQueueFrame(bool);
-  bool VpuReleaseBufferV4L(int);
+  bool VpuPushFrame(VpuDecOutFrameInfo*);
+  bool VpuDeQueueFrame(bool);
   int GetAvailableBufferNb(void);
-
   void InitFB(void);
   void RestoreFB(void);
-  void FlushOutputFrame(void);
+  void FlushDecodedFrames(void);
+  bool VpuReleaseBufferV4L(int);
 
   /* Helper structure which holds a queued output frame
    * and its associated decoder frame buffer.*/
@@ -130,22 +125,19 @@ protected:
   {
     // Returns whether the buffer is currently used (associated)
     bool used() const { return buffer != NULL; }
-
     bool expired(int frameNo) const
     { return (buffer != NULL) && (this->frameNo < frameNo); }
-
     // Associate a VPU frame buffer
     void store(VpuFrameBuffer *b, int frameNo) {
       this->buffer = b;
       this->frameNo = frameNo;
     }
-
     // Reset the state
     void clear() { store(NULL, 0); }
 
-    VpuFrameBuffer  *buffer;
-    CIMXOutputFrame  outputFrame;
-    int              frameNo;
+    VpuFrameBuffer *buffer;
+    CIMXOutputFrame outputFrame;
+    int frameNo;
   };
 
   static const int    m_extraVpuBuffers;   // Number of additional buffers for VPU
@@ -163,10 +155,9 @@ protected:
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
-  VpuV4LFrameBuffer  *m_outputBuffers;     // Table of buffer pointers from VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
-  VpuDecOutFrameInfo  m_currentFrame;      // Stores the current decoded frame
-  bool                m_currentFrameReady; // Debug flag to check if the current frame is queued more than once
-  int                 m_frameCounter;
+  VpuV4LFrameBuffer  *m_outputBuffers;     // Table of V4L buffers out of VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
+  std::queue <DVDVideoPicture> m_decodedFrames;   // Decoded Frames ready to be retrieved by GetPicture
+  int                 m_frameCounter;      // Decoded frames counter
 
   /* FIXME : Rework is still required for fields below this line */
 
@@ -192,4 +183,5 @@ protected:
   uint32_t          m_sps_pps_size;
   omx_bitstream_ctx m_sps_pps_context;
   bool m_convert_bitstream;
+
 };
