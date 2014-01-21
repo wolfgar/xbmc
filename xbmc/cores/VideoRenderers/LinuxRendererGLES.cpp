@@ -558,6 +558,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     g_graphicsContext.SetScissors(old);
     g_graphicsContext.EndPaint();
 
+#ifdef HAS_IMXVPU
     // FIXME : move in its own render mode instead of mixup with BYPASS
     if (m_format == RENDER_FMT_IMX)
     {
@@ -575,6 +576,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
       }
     }
     return;
+#endif
   }
 
   // this needs to be checked after texture validation
@@ -965,6 +967,17 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
     SAFE_RELEASE(buf.mediacodec);
   }
 #endif
+#ifdef HAS_IMXVPU
+  if (buf.imxOutputFrame != NULL)
+  {
+    // Release the picture as early as possible to release
+    // blocked decoder frame buffers.
+    buf.imxOutputFrame->Release();
+    buf.imxOutputFrame = NULL;
+  }
+  return;
+#endif
+
 }
 
 void CLinuxRendererGLES::Render(DWORD flags, int index)

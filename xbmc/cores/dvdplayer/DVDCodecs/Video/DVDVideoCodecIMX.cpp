@@ -912,7 +912,7 @@ bool CDVDVideoCodecIMX::VpuDeQueueFrame(bool wait)
     }
     else
     {
-      frameNo = m_outputBuffers[idx].frameNo;
+      frameNo = m_outputBuffers[idx].frameNo();
       VpuReleaseBufferV4L(idx);
       if (frameNo > 0)
       {
@@ -1536,6 +1536,12 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   }
   pDvdVideoPicture->format = DVDFrame.format;
   pDvdVideoPicture->imxOutputFrame = DVDFrame.imxOutputFrame;
+
+#ifdef V4L_OUTPUT_PROFILE
+  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HWfre : %d/%d/%d\n",
+            (int)m_decodedFrames.size(), GetAvailableBufferNb(),
+            m_extraVpuBuffers, m_vpuFrameBufferNum);
+#endif
   return true;
 }
 
