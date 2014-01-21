@@ -353,10 +353,11 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
   default:
     m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
     break;
+  }
   /* In case deinterlacing is forced to disabled */
   if (m_motionCtrl == -2)
     m_v4lBuffers[picture->v4l2BufferIdx].field = V4L2_FIELD_NONE;
-  }
+
   /* mxc_vout driver does not display immediatly
    * if timestamp is set to 0
    * (instead this driver expects a 30fps rate)
@@ -364,6 +365,7 @@ void CIMXRenderingFrames::Queue(CIMXOutputFrame *picture, struct v4l2_crop &dest
    */
   gettimeofday (&queue_ts, NULL);
   m_v4lBuffers[picture->v4l2BufferIdx].timestamp = queue_ts;
+
 #ifndef NO_V4L_RENDERING
   ret = ioctl(m_v4lfd, VIDIOC_QBUF, &m_v4lBuffers[picture->v4l2BufferIdx]);
   if (ret < 0)
