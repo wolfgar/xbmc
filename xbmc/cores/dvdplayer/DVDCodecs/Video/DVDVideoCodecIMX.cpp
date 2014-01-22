@@ -33,6 +33,7 @@
 #include "threads/Atomics.h"
 
 //#define NO_V4L_RENDERING
+//#define V4L_OUTPUT_PROFILE
 
 #ifdef IMX_PROFILE
 static unsigned long long render_ts[30];
@@ -852,10 +853,6 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   DVDFrame.format = RENDER_FMT_IMX;
 
   m_decodedFrames.push(DVDFrame);
-  if (m_decodedFrames.size() > IMX_MAX_QUEUE_SIZE)
-  {
-      CLog::Log(LOGERROR, "%s - Too many enqueued decoded frames : %d (Max %d)\n", __FUNCTION__, m_decodedFrames.size(), IMX_MAX_QUEUE_SIZE);
-  }
 
 #ifdef IMX_PROFILE
   DVDFrame.imxOutputFrame->pushTS = get_time();
@@ -1190,6 +1187,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   uint8_t *demuxer_content = pData;
   bool bitstream_convered  = false;
   bool retry = false;
+  bool bufAvail;
 
 #ifdef IMX_PROFILE
   static unsigned long long previous, current;
@@ -1208,6 +1206,9 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   CLog::Log(LOGDEBUG, "%s - delta time decode : %llu - demux size : %d  dts : %f - pts : %f\n", __FUNCTION__, current - previous, iSize, dts, pts);
   previous = current;
 #endif
+
+  CLog::Log(LOGDEBUG, "%s - demux size : %d\n", __FUNCTION__, iSize);
+
 /* FIXME tests
   CLog::Log(LOGDEBUG, "%s - demux size : %d  dts : %f - pts : %f - %x %x %x %x\n", __FUNCTION__, iSize, dts, pts, ((unsigned int *)pData)[0], ((unsigned int *)pData)[1], ((unsigned int *)pData)[2], ((unsigned int *)pData)[3]);
   ((unsigned int *)pData)[0] = htonl(iSize-4);
@@ -1417,26 +1418,35 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     } while (retry == true);
   } //(pData && iSize)
 
-  if (GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers))
+#ifdef V4L_OUTPUT_PROFILE
+  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HW : %d/%d/%d\n", __FUNCTION__,
+            (int)m_decodedFrames.size(), GetAvailableBufferNb(),
+            m_extraVpuBuffers, m_vpuFrameBufferNum);
+#endif
+
+  bufAvail = GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers);
+  retSatus &= (~VC_PICTURE);
+
+  // If there are still buffers left, fill them
+  if (bufAvail)
   {
     retSatus |= VC_BUFFER;
+    CLog::Log(LOGDEBUG, "%s - want more data\n", __FUNCTION__);
   }
   else
   {
-    if (retSatus == 0) {
+    if (!m_decodedFrames.empty())
+      retSatus |= VC_PICTURE;
+    else if (retSatus == 0) {
       /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
       CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 5ms\n", __FUNCTION__);
       /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
-      usleep(5000);
+      usleep(2000);
     }
   }
 
   if (bitstream_convered)
-      free(demuxer_content);
-
-  retSatus &= (~VC_PICTURE);
-  if (m_decodedFrames.size() >= IMX_MAX_QUEUE_SIZE)
-    retSatus |= VC_PICTURE;
+    free(demuxer_content);
 
 #ifdef IMX_PROFILE
   CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retSatus, get_time() - previous);
@@ -1538,7 +1548,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   pDvdVideoPicture->imxOutputFrame = DVDFrame.imxOutputFrame;
 
 #ifdef V4L_OUTPUT_PROFILE
-  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HWfre : %d/%d/%d\n",
+  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HW : %d/%d/%d\n", __FUNCTION__,
             (int)m_decodedFrames.size(), GetAvailableBufferNb(),
             m_extraVpuBuffers, m_vpuFrameBufferNum);
 #endif
