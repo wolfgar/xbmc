@@ -1207,8 +1207,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   previous = current;
 #endif
 
-  CLog::Log(LOGDEBUG, "%s - demux size : %d\n", __FUNCTION__, iSize);
-
 /* FIXME tests
   CLog::Log(LOGDEBUG, "%s - demux size : %d  dts : %f - pts : %f - %x %x %x %x\n", __FUNCTION__, iSize, dts, pts, ((unsigned int *)pData)[0], ((unsigned int *)pData)[1], ((unsigned int *)pData)[2], ((unsigned int *)pData)[3]);
   ((unsigned int *)pData)[0] = htonl(iSize-4);
