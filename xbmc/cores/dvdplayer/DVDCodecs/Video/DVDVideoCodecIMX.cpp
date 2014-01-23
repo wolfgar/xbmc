@@ -819,7 +819,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
 #ifdef USE_FSL_TS_MANAGER
   double pts;
 
-  pts = (double)TSManagerSend2(m_tsm, m_outputBuffers[DVDFrame.imxOutputFrame->v4l2BufferIdx].buffer) / (double)1000.0;
+  pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
 #endif
 
   /* Find Frame given physical address */
