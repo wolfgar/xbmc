@@ -27,6 +27,7 @@
 
 
 //#define IMX_PROFILE
+//#define USE_FSL_TS_MANAGER
 
 /* FIXME TODO Develop real proper CVPUBuffer class */
 #define VPU_DEC_MAX_NUM_MEM_NUM 20
@@ -152,8 +153,10 @@ protected:
   DecMemInfo          m_decMemInfo;        // VPU dedicated memory description
   VpuDecHandle        m_vpuHandle;         // Handle for VPU library calls
   VpuDecInitInfo      m_initInfo;          // Initial info returned from VPU at decoding start
+#ifdef USE_FSL_TS_MANAGER
   void               *m_tsm;               // fsl Timestamp manager (from gstreamer implementation)
   bool                m_tsSyncRequired;    // state whether timestamp manager has to be sync'ed
+#endif
   bool                m_dropState;         // Current drop state
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
