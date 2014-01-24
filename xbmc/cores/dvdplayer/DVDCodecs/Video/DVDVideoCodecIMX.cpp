@@ -957,6 +957,11 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX() : m_renderingFrames(CIMXRenderingFrames::
   m_tsm = NULL;
   m_convert_bitstream = false;
   m_frameCounter = 0;
+  m_usePTS = true;
+  if (getenv("IMX_NOPTS") != NULL)
+  {
+    m_usePTS = false;
+  }
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1529,6 +1534,10 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 #endif
 
   pDvdVideoPicture->pts = DVDFrame.pts;
+  if (!m_usePTS)
+  {
+    pDvdVideoPicture->pts = DVD_NOPTS_VALUE;
+  }
   pDvdVideoPicture->dts = DVDFrame.dts;
   pDvdVideoPicture->iWidth = DVDFrame.iWidth;
   pDvdVideoPicture->iHeight = DVDFrame.iHeight;

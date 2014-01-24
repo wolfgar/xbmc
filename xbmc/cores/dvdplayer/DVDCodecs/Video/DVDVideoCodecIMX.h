@@ -161,6 +161,7 @@ protected:
   VpuV4LFrameBuffer  *m_outputBuffers;     // Table of V4L buffers out of VPU (index is V4L buf index) (used to call properly VPU_DecOutFrameDisplayed)
   std::queue <DVDVideoPicture> m_decodedFrames;   // Decoded Frames ready to be retrieved by GetPicture
   int                 m_frameCounter;      // Decoded frames counter
+  bool                m_usePTS;            // State whether pts out of decoding process should be used
 
   /* FIXME : Rework is still required for fields below this line */
 
