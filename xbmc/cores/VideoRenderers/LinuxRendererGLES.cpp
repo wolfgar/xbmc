@@ -970,8 +970,9 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
 #ifdef HAS_IMXVPU
   if (buf.imxOutputFrame != NULL)
   {
-    // Release the picture as early as possible to release
-    // blocked decoder frame buffers.
+    // If we take that branch the buffer was not queued to V4L2
+    // So release the picture now so that VPU will be given
+    // the buffer back as soon as next ::Decode() call
     buf.imxOutputFrame->Release();
     buf.imxOutputFrame = NULL;
   }

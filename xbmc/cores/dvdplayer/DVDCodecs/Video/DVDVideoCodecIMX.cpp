@@ -33,7 +33,7 @@
 #include "threads/Atomics.h"
 
 //#define NO_V4L_RENDERING
-#define V4L_OUTPUT_PROFILE
+//#define V4L_OUTPUT_PROFILE
 
 #ifdef IMX_PROFILE
 static unsigned long long render_ts[30];
@@ -813,17 +813,14 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   #endif
   VpuFrameBuffer *frameBuffer = frameInfo->pDisplayFrameBuf;
   CIMXOutputFrame *outputFrame;
-  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   int i;
   DVDVideoPicture DVDFrame;
-#ifdef USE_FSL_TS_MANAGER
   double pts;
 
   pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
-#endif
 
   /* Find Frame given physical address */
-  i = renderingFrames.FindBuffer(frameBuffer->pbufY);
+  i = m_renderingFrames.FindBuffer(frameBuffer->pbufY);
   if (i == -1)
   {
     CLog::Log(LOGERROR, "%s - V4L buffer not found\n", __FUNCTION__);
@@ -845,12 +842,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   outputFrame->nQ16ShiftWidthDivHeightRatio = frameInfo->pExtInfo->nQ16ShiftWidthDivHeightRatio;
   DVDFrame.imxOutputFrame = outputFrame;
 
-#ifdef USE_FSL_TS_MANAGER
   DVDFrame.pts = pts;
-#else
-  // Rely on DVDPlayer pts calculation
-  DVDFrame.pts = DVD_NOPTS_VALUE;
-#endif
   DVDFrame.dts = DVD_NOPTS_VALUE;
   /*
   m_outputFrame.iWidth = frameInfo->pExtInfo->nFrmWidth;
@@ -861,12 +853,6 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   DVDFrame.format = RENDER_FMT_IMX;
 
   m_decodedFrames.push(DVDFrame);
-  /*
-  if (m_decodedFrames.size() > IMX_MAX_QUEUE_SIZE)
-  {
-      CLog::Log(LOGERROR, "%s - Too many enqueued decoded frames : %d (Max %d)\n", __FUNCTION__, m_decodedFrames.size(), IMX_MAX_QUEUE_SIZE);
-  }
-  */
 
 #ifdef IMX_PROFILE
   DVDFrame.imxOutputFrame->pushTS = get_time();
@@ -967,12 +953,15 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX() : m_renderingFrames(CIMXRenderingFrames::
   m_extraMem = NULL;
   m_vpuFrameBufferNum = 0;
   m_dropState = false;
-#ifdef USE_FSL_TS_MANAGER
   m_tsm = NULL;
   m_tsSyncRequired = true;
-#endif
   m_convert_bitstream = false;
   m_frameCounter = 0;
+  m_usePTS = true;
+  if (getenv("IMX_NOPTS") != NULL)
+  {
+    m_usePTS = false;
+  }
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1101,10 +1090,8 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     return false;
   }
 
-#ifdef USE_FSL_TS_MANAGER
   m_tsm = createTSManager(0);
   setTSManagerFrameRate(m_tsm, m_hints.fpsrate, m_hints.fpsscale);
-#endif
   return true;
 }
 
@@ -1176,13 +1163,11 @@ void CDVDVideoCodecIMX::Dispose(void)
     }
   }
 
-#ifdef USE_FSL_TS_MANAGER
   if (m_tsm != NULL)
   {
     destroyTSManager(m_tsm);
     m_tsm = NULL;
   }
-#endif
 
   if (m_convert_bitstream)
   {
@@ -1256,7 +1241,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
     }
 
-#ifdef USE_FSL_TS_MANAGER
     if (pts != DVD_NOPTS_VALUE)
     {
       if (m_tsSyncRequired)
@@ -1282,7 +1266,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
     //CLog::Log(LOGDEBUG, "%s - Query2 : %lld\n", __FUNCTION__, TSManagerQuery2(m_tsm, NULL));
     TSManagerQuery2(m_tsm, NULL);
-#endif
     inData.nSize = demuxer_bytes;
     inData.pPhyAddr = NULL;
     inData.pVirAddr = demuxer_content;
@@ -1356,9 +1339,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         {
           CLog::Log(LOGERROR, "%s - VPU error retireving info about consummed frame (%d).\n", __FUNCTION__, ret);
         }
-#ifdef USE_FSL_TS_MANAGER
         TSManagerValid2(m_tsm, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
-#endif
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
       }//VPU_DEC_ONE_FRM_CONSUMED
 
@@ -1383,19 +1364,12 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
       if (decRet & VPU_DEC_OUTPUT_REPEAT)
       {
-#ifdef USE_FSL_TS_MANAGER
         TSManagerSend(m_tsm);
-#else
-        // Should we push a dropped frame here because the player
-        // doesn't know otherwise about the repeated frame
-#endif
         CLog::Log(LOGDEBUG, "%s - Frame repeat.\n", __FUNCTION__);
       }
       if (decRet & VPU_DEC_OUTPUT_DROPPED)
       {
-#ifdef USE_FSL_TS_MANAGER
         TSManagerSend(m_tsm);
-#endif
         CLog::Log(LOGDEBUG, "%s - Frame dropped.\n", __FUNCTION__);
       }
       if (decRet & VPU_DEC_NO_ENOUGH_BUF)
@@ -1404,9 +1378,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
       if (decRet & VPU_DEC_SKIP)
       {
-#ifdef USE_FSL_TS_MANAGER
         TSManagerSend(m_tsm);
-#endif
         CLog::Log(LOGDEBUG, "%s - Frame skipped.\n", __FUNCTION__);
       }
       if (decRet & VPU_DEC_FLUSH)
@@ -1431,9 +1403,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       if (!(decRet & VPU_DEC_INPUT_USED))
       {
         CLog::Log(LOGERROR, "%s - input not used : addr %p  size :%d!\n", __FUNCTION__, inData.pVirAddr, inData.nSize);
-#ifdef USE_FSL_TS_MANAGER
         TSManagerSend(m_tsm);
-#endif
       }
 
 
@@ -1474,7 +1444,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
       CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 5ms\n", __FUNCTION__);
       /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
-      usleep(5000);
+      usleep(2000);
     }
   }
 
@@ -1498,10 +1468,8 @@ void CDVDVideoCodecIMX::Reset()
 
   CLog::Log(LOGDEBUG, "%s - called\n", __FUNCTION__);
 
-#ifdef USE_FSL_TS_MANAGER
   /* We have to resync timestamp manager */
   m_tsSyncRequired = true;
-#endif
 
   /* Flush decoded frames */
   FlushDecodedFrames();
@@ -1568,6 +1536,10 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 #endif
 
   pDvdVideoPicture->pts = DVDFrame.pts;
+  if (!m_usePTS)
+  {
+    pDvdVideoPicture->pts = DVD_NOPTS_VALUE;
+  }
   pDvdVideoPicture->dts = DVDFrame.dts;
   pDvdVideoPicture->iWidth = DVDFrame.iWidth;
   pDvdVideoPicture->iHeight = DVDFrame.iHeight;
