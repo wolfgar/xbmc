@@ -813,14 +813,13 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   #endif
   VpuFrameBuffer *frameBuffer = frameInfo->pDisplayFrameBuf;
   CIMXOutputFrame *outputFrame;
-  CIMXRenderingFrames &renderingFrames = CIMXRenderingFrames::GetInstance();
   int i;
   double pts;
   DVDVideoPicture DVDFrame;
 
   pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
   /* Find Frame given physical address */
-  i = renderingFrames.FindBuffer(frameBuffer->pbufY);
+  i = m_renderingFrames.FindBuffer(frameBuffer->pbufY);
   if (i == -1)
   {
     CLog::Log(LOGERROR, "%s - V4L buffer not found\n", __FUNCTION__);
