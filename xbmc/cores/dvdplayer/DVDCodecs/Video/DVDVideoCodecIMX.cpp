@@ -817,7 +817,8 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   double pts;
   DVDVideoPicture DVDFrame;
 
-  pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
+  // FIXME pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
+  pts = (double)TSManagerSend(m_tsm) / (double)1000.0;
   /* Find Frame given physical address */
   i = m_renderingFrames.FindBuffer(frameBuffer->pbufY);
   if (i == -1)
@@ -1247,7 +1248,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         m_tsSyncRequired = false;
         resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);
       }
-      TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize);
+      //TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize);
+      TSManagerReceive(m_tsm, llrint(pts) * 1000);
     }
     else
     {
@@ -1263,8 +1265,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
     }
 
-    //CLog::Log(LOGDEBUG, "%s - Query2 : %lld\n", __FUNCTION__, TSManagerQuery2(m_tsm, NULL));
-    TSManagerQuery2(m_tsm, NULL);
     inData.nSize = demuxer_bytes;
     inData.pPhyAddr = NULL;
     inData.pVirAddr = demuxer_content;
@@ -1338,7 +1338,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         {
           CLog::Log(LOGERROR, "%s - VPU error retireving info about consummed frame (%d).\n", __FUNCTION__, ret);
         }
-        TSManagerValid2(m_tsm, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
+        // FIXME TSManagerValid2(m_tsm, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
       }//VPU_DEC_ONE_FRM_CONSUMED
 
@@ -1433,7 +1433,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   if (bufAvail)
   {
     retSatus |= VC_BUFFER;
-    CLog::Log(LOGDEBUG, "%s - want more data\n", __FUNCTION__);
+    //CLog::Log(LOGDEBUG, "%s - want more data\n", __FUNCTION__);
   }
   else
   {
@@ -1441,7 +1441,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       retSatus |= VC_PICTURE;
     else if (retSatus == 0) {
       /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
-      CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 5ms\n", __FUNCTION__);
+      CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 2ms\n", __FUNCTION__);
       /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
       usleep(2000);
     }
