@@ -33,7 +33,7 @@
 #include "threads/Atomics.h"
 
 //#define NO_V4L_RENDERING
-//#define V4L_OUTPUT_PROFILE
+#define V4L_OUTPUT_PROFILE
 
 #ifdef IMX_PROFILE
 static unsigned long long render_ts[30];
@@ -817,8 +817,21 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   DVDVideoPicture DVDFrame;
   double pts;
 
+  // Increase frame counter
+  ++m_frameCounter;
+
   // FIXME pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
   pts = (double)TSManagerSend(m_tsm) / (double)1000.0;
+
+  /*
+  if (m_dropState)
+  {
+    ++m_droppedFrames;
+    VPU_DecOutFrameDisplayed(m_vpuHandle, frameBuffer);
+    return false;
+  }
+  */
+
   /* Find Frame given physical address */
   i = m_renderingFrames.FindBuffer(frameBuffer->pbufY);
   if (i == -1)
@@ -833,7 +846,7 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   }
 
   /* Store the pointer to be able to invoke VPU_DecOutFrameDisplayed when the buffer will be dequeued */
-  m_outputBuffers[i].store(frameBuffer, m_frameCounter++);
+  m_outputBuffers[i].store(frameBuffer, m_frameCounter);
 
   outputFrame = &m_outputBuffers[i].outputFrame;
   outputFrame->v4l2BufferIdx = i;
@@ -962,6 +975,19 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX() : m_renderingFrames(CIMXRenderingFrames::
   {
     m_usePTS = false;
   }
+
+  m_framesAhead = -1;
+  const char *ahead_entry = getenv("IMX_FRAMES_AHEAD");
+  if (ahead_entry != NULL)
+  {
+    errno = 0;
+    m_framesAhead = strtol(ahead_entry, NULL, 10);
+    if (errno != 0)
+      m_framesAhead = -1;
+  }
+
+  if (m_framesAhead == -1)
+    m_framesAhead = 0; /* Default value : 0 */
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1090,6 +1116,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     return false;
   }
 
+  m_droppedFrames = 0;
   m_tsm = createTSManager(0);
   setTSManagerFrameRate(m_tsm, m_hints.fpsrate, m_hints.fpsscale);
   return true;
@@ -1187,7 +1214,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   VpuDecRetCode  ret;
   VpuDecOutFrameInfo frameInfo;
   int decRet = 0;
-  int retSatus = 0;
+  int retStatus = 0;
   int demuxer_bytes = iSize;
   uint8_t *demuxer_content = pData;
   bool bitstream_convered  = false;
@@ -1261,7 +1288,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           m_tsSyncRequired = false;
           resyncTSManager(m_tsm, llrint(dts) * 1000, MODE_AI);
         }
-        TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
+        //TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
+        TSManagerReceive(m_tsm, llrint(dts) * 1000);
       }
     }
 
@@ -1346,7 +1374,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS))
       /* Frame ready to be displayed */
       {
-        if (retSatus & VC_PICTURE)
+        if (retStatus & VC_PICTURE)
             CLog::Log(LOGERROR, "%s - Second picture in the same decode call !\n", __FUNCTION__);
 
         ret = VPU_DecGetOutputFrame(m_vpuHandle, &frameInfo);
@@ -1357,7 +1385,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         }
         if (VpuPushFrame(&frameInfo))
         {
-          retSatus |= VC_PICTURE;
+          retStatus |= VC_PICTURE;
         }
       } //VPU_DEC_OUTPUT_DIS
 
@@ -1388,7 +1416,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         {
           CLog::Log(LOGERROR, "%s - VPU flush failed(%d).\n", __FUNCTION__, ret);
         }
-        retSatus = VC_FLUSHED;
+        retStatus = VC_FLUSHED;
       }
       if (decRet & VPU_DEC_OUTPUT_EOS)
       {
@@ -1420,40 +1448,55 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     } while (retry == true);
   } //(pData && iSize)
 
+  bufAvail = GetAvailableBufferNb() > (m_vpuFrameBufferNum - m_extraVpuBuffers);
+
 #ifdef V4L_OUTPUT_PROFILE
-  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HW : %d/%d/%d\n", __FUNCTION__,
+  CLog::Log(LOGDEBUG, "%s - QF : %d  -  HW : %d/%d/%d - avail : %d\n",
+            __FUNCTION__,
             (int)m_decodedFrames.size(), GetAvailableBufferNb(),
-            m_extraVpuBuffers, m_vpuFrameBufferNum);
+            m_extraVpuBuffers, m_vpuFrameBufferNum, bufAvail);
 #endif
 
-  bufAvail = GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers);
-  retSatus &= (~VC_PICTURE);
+  retStatus &= (~VC_PICTURE);
 
-  // If there are still buffers left, fill them
-  if (bufAvail && (4 + m_decodedFrames.size() < m_extraVpuBuffers))
+  if ((!pData || !iSize) && m_dropState)
   {
-    retSatus |= VC_BUFFER;
-    //CLog::Log(LOGDEBUG, "%s - want more data\n", __FUNCTION__);
+    if (!m_decodedFrames.empty())
+      retStatus |= VC_PICTURE;
+    else if (bufAvail)
+      retStatus |= VC_BUFFER;
   }
   else
   {
-    if (!m_decodedFrames.empty())
-      retSatus |= VC_PICTURE;
-    else if (retSatus == 0) {
-      /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
-      CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 2ms\n", __FUNCTION__);
-      /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
-      usleep(2000);
+    // If enough Hw buffers are available, ask for more data
+    if (bufAvail)
+    {
+      retStatus |= VC_BUFFER;
+      int framesAhead = m_dropState?0:m_framesAhead;
+      if (m_decodedFrames.size() > framesAhead)
+        retStatus |= VC_PICTURE;
     }
+    // Release pictures
+    else if (!m_decodedFrames.empty())
+      retStatus |= VC_PICTURE;
+  }
+
+  if (retStatus == 0) {
+    /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
+    /* smallint: this isn't actually an error */
+    CLog::Log(LOGDEBUG, "%s - Not hw buffer available. Waiting for 2ms. Frame : %d\n",
+              __FUNCTION__, m_frameCounter);
+    /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
+    usleep(2000);
   }
 
   if (bitstream_convered)
     free(demuxer_content);
 
 #ifdef IMX_PROFILE
-  CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retSatus, get_time() - previous);
+  CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retStatus, get_time() - previous);
 #endif
-  return retSatus;
+  return retStatus;
 
 out_error:
   if (bitstream_convered)
@@ -1509,7 +1552,8 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   pDvdVideoPicture->iFlags &= DVP_FLAG_DROPPED;
   if ((pDvdVideoPicture->iFlags != 0) || (m_dropState))
   {
-    CLog::Log(LOGNOTICE, "%s - Flushing video picture\n", __FUNCTION__);
+    //CLog::Log(LOGNOTICE, "%s - Flushing video picture\n", __FUNCTION__);
+    ++m_droppedFrames;
     pDvdVideoPicture->iFlags = DVP_FLAG_DROPPED;
     VpuReleaseBufferV4L(DVDFrame.imxOutputFrame->v4l2BufferIdx);
     DVDFrame.imxOutputFrame = NULL;
@@ -1560,6 +1604,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
             (int)m_decodedFrames.size(), GetAvailableBufferNb(),
             m_extraVpuBuffers, m_vpuFrameBufferNum);
 #endif
+
   return true;
 }
 
@@ -1573,7 +1618,7 @@ void CDVDVideoCodecIMX::SetDropState(bool bDrop)
   if (m_dropState != bDrop)
   {
     m_dropState = bDrop;
-    CLog::Log(LOGNOTICE, "%s : %d\n", __FUNCTION__, bDrop);
+    CLog::Log(LOGNOTICE, "%s : %d - frame : %d\n", __FUNCTION__, bDrop, m_frameCounter);
   }
 }
 
