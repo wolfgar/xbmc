@@ -1261,7 +1261,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           m_tsSyncRequired = false;
           resyncTSManager(m_tsm, llrint(dts) * 1000, MODE_AI);
         }
-        TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
+        //TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
+        TSManagerReceive(m_tsm, llrint(dts) * 1000);
       }
     }
 
