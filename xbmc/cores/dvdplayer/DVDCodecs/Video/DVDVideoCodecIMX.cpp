@@ -814,8 +814,8 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   VpuFrameBuffer *frameBuffer = frameInfo->pDisplayFrameBuf;
   CIMXOutputFrame *outputFrame;
   int i;
-  double pts;
   DVDVideoPicture DVDFrame;
+  double pts;
 
   // FIXME pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
   pts = (double)TSManagerSend(m_tsm) / (double)1000.0;
@@ -952,9 +952,9 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX() : m_renderingFrames(CIMXRenderingFrames::
   m_outputBuffers = NULL;
   m_extraMem = NULL;
   m_vpuFrameBufferNum = 0;
-  m_tsSyncRequired = true;
   m_dropState = false;
   m_tsm = NULL;
+  m_tsSyncRequired = true;
   m_convert_bitstream = false;
   m_frameCounter = 0;
   m_usePTS = true;
@@ -1431,7 +1431,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   retSatus &= (~VC_PICTURE);
 
   // If there are still buffers left, fill them
-  if (bufAvail)
+  if (bufAvail && (4 + m_decodedFrames.size() < m_extraVpuBuffers))
   {
     retSatus |= VC_BUFFER;
     //CLog::Log(LOGDEBUG, "%s - want more data\n", __FUNCTION__);
@@ -1492,8 +1492,8 @@ unsigned CDVDVideoCodecIMX::GetAllowedReferences()
 
 bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 {
-  double currentPlayerPts;
-  double ts = DVD_NOPTS_VALUE;
+  //double currentPlayerPts;
+  //double ts = DVD_NOPTS_VALUE;
   DVDVideoPicture DVDFrame;
 
   if (m_decodedFrames.size() == 0)
@@ -1515,6 +1515,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     VpuReleaseBufferV4L(DVDFrame.imxOutputFrame->v4l2BufferIdx);
     DVDFrame.imxOutputFrame = NULL;
   }
+  /*
   else
   {
     ts = DVDFrame.pts;
@@ -1525,6 +1526,7 @@ bool CDVDVideoCodecIMX::GetPicture(DVDVideoPicture* pDvdVideoPicture)
     }
     //CLog::Log(LOGINFO, "%s - idx : %d - delta call %f - delta ts %f \n", __FUNCTION__, outputFrame.v4l2_buffer->index,ts - previous, ts - currentPlayerPts);
   }
+  */
 
 #ifdef NO_V4L_RENDERING
   if (!m_dropState)
