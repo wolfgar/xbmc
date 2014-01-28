@@ -683,6 +683,10 @@ bool CDVDVideoCodecIMX::VpuOpen(void)
     goto VpuOpenError;
   }
 
+  /* Initialize ts manager */
+  m_tsm = createTSManager(0);
+  setTSManagerFrameRate(m_tsm, m_hints.fpsrate, m_hints.fpsscale);
+
   return true;
 
 VpuOpenError:
@@ -1093,8 +1097,6 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     return false;
   }
 
-  m_tsm = createTSManager(0);
-  setTSManagerFrameRate(m_tsm, m_hints.fpsrate, m_hints.fpsscale);
   return true;
 }
 
