@@ -1192,7 +1192,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   VpuDecRetCode  ret;
   VpuDecOutFrameInfo frameInfo;
   int decRet = 0;
-  int retSatus = 0;
+  int retStatus = 0;
   int demuxer_bytes = iSize;
   uint8_t *demuxer_content = pData;
   bool bitstream_convered  = false;
@@ -1351,7 +1351,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           (decRet & VPU_DEC_OUTPUT_MOSAIC_DIS))
       /* Frame ready to be displayed */
       {
-        if (retSatus & VC_PICTURE)
+        if (retStatus & VC_PICTURE)
             CLog::Log(LOGERROR, "%s - Second picture in the same decode call !\n", __FUNCTION__);
 
         ret = VPU_DecGetOutputFrame(m_vpuHandle, &frameInfo);
@@ -1362,7 +1362,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         }
         if (VpuPushFrame(&frameInfo))
         {
-          retSatus |= VC_PICTURE;
+          retStatus |= VC_PICTURE;
         }
       } //VPU_DEC_OUTPUT_DIS
 
@@ -1393,7 +1393,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         {
           CLog::Log(LOGERROR, "%s - VPU flush failed(%d).\n", __FUNCTION__, ret);
         }
-        retSatus = VC_FLUSHED;
+        retStatus = VC_FLUSHED;
       }
       if (decRet & VPU_DEC_OUTPUT_EOS)
       {
@@ -1427,29 +1427,29 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
 
   if (GetAvailableBufferNb() >  (m_vpuFrameBufferNum - m_extraVpuBuffers))
   {
-    retSatus |= VC_BUFFER;
+    retStatus |= VC_BUFFER;
   }
   else
   {
-    if (retSatus == 0) {
+    if (retStatus == 0) {
       /* No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error */
       CLog::Log(LOGERROR, "%s - Not hw buffer available. Waiting for 2ms\n", __FUNCTION__);
       /* Lets wait for the IPU to free a buffer. Anyway we have several decoded frames ready */
-      usleep(5000);
+      usleep(2000);
     }
   }
 
   if (bitstream_convered)
       free(demuxer_content);
 
-  retSatus &= (~VC_PICTURE);
+  retStatus &= (~VC_PICTURE);
   if (m_decodedFrames.size() >= IMX_MAX_QUEUE_SIZE)
-    retSatus |= VC_PICTURE;
+    retStatus |= VC_PICTURE;
 
 #ifdef IMX_PROFILE
-  CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retSatus, get_time() - previous);
+  CLog::Log(LOGDEBUG, "%s - returns %x - duration %lld\n", __FUNCTION__, retStatus, get_time() - previous);
 #endif
-  return retSatus;
+  return retStatus;
 
 out_error:
   if (bitstream_convered)
