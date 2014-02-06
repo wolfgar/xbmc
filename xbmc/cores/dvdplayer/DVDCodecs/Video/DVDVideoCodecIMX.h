@@ -27,6 +27,7 @@
 
 
 #define IMX_PROFILE
+#define IMX_TRACE_FRAMES
 
 /* FIXME TODO Develop real proper CVPUBuffer class */
 #define VPU_DEC_MAX_NUM_MEM_NUM 20
@@ -56,7 +57,7 @@ struct CIMXOutputFrame {
   VpuRect picCrop;
   unsigned int nQ16ShiftWidthDivHeightRatio;
   int frameNo;
-#ifdef IMX_PROFILE
+#if defined(IMX_PROFILE) || defined(IMX_TRACE_FRAMES)
   unsigned long long pushTS;
 #endif
 };
@@ -87,7 +88,7 @@ private:
   int                 m_bufferNum;         // Number of allocated V4L2 buffers
   struct v4l2_crop    m_crop;              // Current cropping properties
   bool                m_streamOn;          // Flag that indicates whether streaming in on (from V4L point of view)
-  int                 m_pushedFrames;      // Number of frames queued in V4L2
+  int                 m_pushedFrames;      // Number of total frames queued in V4L2
   void              **m_virtAddr;          // Table holding virtual adresses of mmaped V4L2 buffers
   int                 m_motionCtrl;        // Current motion control algo
 };
@@ -155,6 +156,7 @@ protected:
   void               *m_tsm;               // fsl Timestamp manager (from gstreamer implementation)
   bool                m_tsSyncRequired;    // state whether timestamp manager has to be sync'ed
   bool                m_dropState;         // Current drop state
+  bool                m_dropNextFrame;
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
   VpuMemDesc         *m_extraMem;          // Table of allocated extra Memory
