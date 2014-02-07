@@ -820,6 +820,10 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   double pts;
   DVDVideoPicture DVDFrame;
 
+  if ((frameInfo->eFieldType == VPU_FIELD_TB) ||  (frameInfo->eFieldType == VPU_FIELD_BT))
+  {
+    TSManagerSend(m_tsm);
+  }
   // FIXME pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
   pts = (double)TSManagerSend(m_tsm) / (double)1000.0;
   /* Find Frame given physical address */
