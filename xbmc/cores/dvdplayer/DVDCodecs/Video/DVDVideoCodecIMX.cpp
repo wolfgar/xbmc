@@ -820,10 +820,6 @@ bool CDVDVideoCodecIMX::VpuPushFrame(VpuDecOutFrameInfo *frameInfo)
   double pts;
   DVDVideoPicture DVDFrame;
 
-  if ((frameInfo->eFieldType == VPU_FIELD_TB) ||  (frameInfo->eFieldType == VPU_FIELD_BT))
-  {
-    TSManagerSend(m_tsm);
-  }
   // FIXME pts = (double)TSManagerSend2(m_tsm, frameBuffer) / (double)1000.0;
   pts = (double)TSManagerSend(m_tsm) / (double)1000.0;
   /* Find Frame given physical address */
@@ -1405,6 +1401,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
       if (decRet & VPU_DEC_NO_ENOUGH_INBUF)
       {
+        TSManagerSend(m_tsm);
         // We are done with VPU decoder that time
         break;
       }
