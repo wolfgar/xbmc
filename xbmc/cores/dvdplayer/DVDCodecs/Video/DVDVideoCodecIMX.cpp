@@ -1252,6 +1252,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   bool retry = false;
   bool bufAvail;
   int  numBufAvail;
+  bool frameConsumed = false;
 
 #ifdef IMX_PROFILE
   static unsigned long long previous, current;
@@ -1297,31 +1298,6 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         bitstream_convered = true;
         demuxer_bytes = bytestream_size;
         demuxer_content = bytestream_buff;
-      }
-    }
-
-    if (pts != DVD_NOPTS_VALUE)
-    {
-      if (m_tsSyncRequired)
-      {
-        m_tsSyncRequired = false;
-        resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);
-      }
-      //TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize);
-      TSManagerReceive(m_tsm, llrint(pts) * 1000);
-    }
-    else
-    {
-      //If no pts but dts available (AVI container for instance) then use this one
-      if (dts !=  DVD_NOPTS_VALUE)
-      {
-        if (m_tsSyncRequired)
-        {
-          m_tsSyncRequired = false;
-          resyncTSManager(m_tsm, llrint(dts) * 1000, MODE_AI);
-        }
-        //TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
-        TSManagerReceive(m_tsm, llrint(dts) * 1000);
       }
     }
 
@@ -1398,6 +1374,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
         {
           CLog::Log(LOGERROR, "%s - VPU error retireving info about consummed frame (%d).\n", __FUNCTION__, ret);
         }
+        frameConsumed = true;
         // FIXME TSManagerValid2(m_tsm, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
       }//VPU_DEC_ONE_FRM_CONSUMED
@@ -1454,17 +1431,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
       if (decRet & VPU_DEC_NO_ENOUGH_INBUF)
       {
-#ifdef IMX_TRACE_FRAMES
-        CLog::Log(LOGDEBUG, "D   pts : %f - demux : %d  -  need more data\n",
-                  pts, iSize);
-#endif
-        if (m_initInfo.nInterlace)
-        {
-#ifdef IMX_TRACE_FRAMES
-          CLog::Log(LOGDEBUG, "D   interlaced : update ts\n");
-#endif
-          TSManagerSend(m_tsm);
-        }
+        // We are done with VPU decoder that time
         break;
       }
       if (!(decRet & VPU_DEC_INPUT_USED))
@@ -1485,6 +1452,37 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
       }
 
     } while (retry == true);
+
+    /* Push ts only if a frame was consumed by the VPU
+     * as it will produce an output in future for sure */
+    if (frameConsumed)
+    {
+      if (pts != DVD_NOPTS_VALUE)
+      {
+        if (m_tsSyncRequired)
+        {
+          m_tsSyncRequired = false;
+          resyncTSManager(m_tsm, llrint(pts) * 1000, MODE_AI);
+        }
+        //TSManagerReceive2(m_tsm, llrint(pts) * 1000, iSize);
+        TSManagerReceive(m_tsm, llrint(pts) * 1000);
+      }
+      else
+      {
+        //If no pts but dts available (AVI container for instance) then use this one
+        if (dts !=  DVD_NOPTS_VALUE)
+        {
+          if (m_tsSyncRequired)
+          {
+            m_tsSyncRequired = false;
+            resyncTSManager(m_tsm, llrint(dts) * 1000, MODE_AI);
+          }
+          //TSManagerReceive2(m_tsm, llrint(dts) * 1000, iSize);
+          TSManagerReceive(m_tsm, llrint(dts) * 1000);
+        }
+      }
+    }
+
   } //(pData && iSize)
 
   numBufAvail = GetAvailableBufferNb();
