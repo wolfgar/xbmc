@@ -1006,19 +1006,6 @@ CDVDVideoCodecIMX::CDVDVideoCodecIMX() : m_renderingFrames(CIMXRenderingFrames::
   {
     m_usePTS = false;
   }
-
-  m_framesAhead = -1;
-  const char *ahead_entry = getenv("IMX_FRAMES_AHEAD");
-  if (ahead_entry != NULL)
-  {
-    errno = 0;
-    m_framesAhead = strtol(ahead_entry, NULL, 10);
-    if (errno != 0)
-      m_framesAhead = -1;
-  }
-
-  if (m_framesAhead == -1)
-    m_framesAhead = 0; /* Default value : 0 */
 }
 
 CDVDVideoCodecIMX::~CDVDVideoCodecIMX()
@@ -1508,33 +1495,8 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
   if (!m_decodedFrames.empty())
     retStatus |= VC_PICTURE;
 
-  /*
-  if ((!pData || !iSize) && m_dropState)
-  {
-    if (!m_decodedFrames.empty())
-      retStatus |= VC_PICTURE;
-    else if (bufAvail)
-      retStatus |= VC_BUFFER;
-  }
-  else
-  {
-    // If enough Hw buffers are available, ask for more data
-    if (bufAvail)
-    {
-      retStatus |= VC_BUFFER;
-      int minQueueSize = m_dropState?0:m_framesAhead;
-      if ((int)m_decodedFrames.size() > minQueueSize)
-        retStatus |= VC_PICTURE;
-    }
-    // Release pictures
-    else if (!m_decodedFrames.empty())
-      retStatus |= VC_PICTURE;
-  }
-  */
-
   if (retStatus == 0) {
-    // No Picture ready and Not enough VPU buffers. It should NOT happen so log dedicated error
-    // smallint: this isn't actually an error
+    // No Picture ready and Not enough VPU buffers. It should usually not happen so log it
     CLog::Log(LOGDEBUG, "%s - Not hw buffer available. Waiting for frames to be free'd. Frame : %d\n",
               __FUNCTION__, m_frameCounter);
     usleep(2000);

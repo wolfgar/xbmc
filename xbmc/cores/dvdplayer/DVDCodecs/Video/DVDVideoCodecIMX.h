@@ -165,7 +165,6 @@ protected:
   int                 m_frameCounter;      // Decoded frames counter
   bool                m_usePTS;            // State whether pts out of decoding process should be used
   int                 m_droppedFrames;     // How many frames were dropped
-  int                 m_framesAhead;       // How many frames we want to be ahead in normal mode
 
   /* FIXME : Rework is still required for fields below this line */
 
