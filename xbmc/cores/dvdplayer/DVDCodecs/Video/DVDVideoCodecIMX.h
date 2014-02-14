@@ -24,7 +24,7 @@
 #include "DVDVideoCodec.h"
 #include "DVDStreamInfo.h"
 #include "threads/CriticalSection.h"
-
+#include "DVDClock.h"
 
 //#define IMX_PROFILE
 
@@ -56,6 +56,7 @@ struct CIMXOutputFrame {
   VpuRect picCrop;
   unsigned int nQ16ShiftWidthDivHeightRatio;
   int frameNo;
+  double pts;
 #ifdef IMX_PROFILE
   unsigned long long pushTS;
 #endif
@@ -121,6 +122,7 @@ protected:
   void RestoreFB(void);
   void FlushDecodedFrames(void);
   bool VpuReleaseBufferV4L(int);
+  int FindFrame(void *);
 
   /* Helper structure which holds a queued output frame
    * and its associated decoder frame buffer.*/
@@ -136,8 +138,13 @@ protected:
       buffer = b;
       outputFrame.frameNo = frameNo;
     }
+    void setPts(double pts) {
+      outputFrame.pts = pts;
+    }
+    double getPts(void) const
+    { return outputFrame.pts; }
     // Reset the state
-    void clear() { store(NULL, 0); }
+    void clear() { store(NULL, 0); outputFrame.pts = DVD_NOPTS_VALUE;}
 
     VpuFrameBuffer *buffer;
     CIMXOutputFrame outputFrame;
@@ -152,8 +159,6 @@ protected:
   DecMemInfo          m_decMemInfo;        // VPU dedicated memory description
   VpuDecHandle        m_vpuHandle;         // Handle for VPU library calls
   VpuDecInitInfo      m_initInfo;          // Initial info returned from VPU at decoding start
-  void               *m_tsm;               // fsl Timestamp manager (from gstreamer implementation)
-  bool                m_tsSyncRequired;    // state whether timestamp manager has to be sync'ed
   bool                m_dropState;         // Current drop state
   int                 m_vpuFrameBufferNum; // Total number of allocated frame buffers
   VpuFrameBuffer     *m_vpuFrameBuffers;   // Table of VPU frame buffers description
