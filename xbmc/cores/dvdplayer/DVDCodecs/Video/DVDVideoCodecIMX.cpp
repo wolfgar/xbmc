@@ -29,7 +29,6 @@
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "DVDClock.h"
-#include "mfw_gst_ts.h"
 #include "threads/Atomics.h"
 
 //#define NO_V4L_RENDERING
@@ -1335,17 +1334,20 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           CLog::Log(LOGERROR, "%s - VPU error retireving info about consummed frame (%d).\n", __FUNCTION__, ret);
         }
 
-        i = FindFrame(frameLengthInfo.pFrame->pbufY);
-        if (i != -1)
+        if (frameLengthInfo.pFrame)
         {
-          if (pts != DVD_NOPTS_VALUE)
+          i = FindFrame(frameLengthInfo.pFrame->pbufY);
+          if (i != -1)
           {
-             m_outputBuffers[i].setPts(pts);
-             // FIXME pts CLog::Log(LOGDEBUG, "%s - store in idx (%d) pts %f\n", __FUNCTION__, i, pts);
-          }
-          else if (dts !=  DVD_NOPTS_VALUE)
-          {
-             m_outputBuffers[i].setPts(dts);
+            if (pts != DVD_NOPTS_VALUE)
+            {
+              m_outputBuffers[i].setPts(pts);
+              // FIXME pts CLog::Log(LOGDEBUG, "%s - store in idx (%d) pts %f\n", __FUNCTION__, i, pts);
+            }
+            else if (dts !=  DVD_NOPTS_VALUE)
+            {
+              m_outputBuffers[i].setPts(dts);
+            }
           }
         }
         //CLog::Log(LOGDEBUG, "%s - size : %d - key consummed : %x\n",  __FUNCTION__, frameLengthInfo.nFrameLength + frameLengthInfo.nStuffLength, frameLengthInfo.pFrame);
