@@ -47,10 +47,8 @@ CGUIWindowKaraokeLyrics::~ CGUIWindowKaraokeLyrics(void )
 bool CGUIWindowKaraokeLyrics::OnAction(const CAction &action)
 {
   CSingleLock lock (m_CritSection);
-
   if ( !m_Lyrics || !g_application.m_pPlayer->IsPlayingAudio() )
     return false;
-
   CGUIDialogKaraokeSongSelectorSmall * songSelector = (CGUIDialogKaraokeSongSelectorSmall *)
                                       g_windowManager.GetWindow( WINDOW_DIALOG_KARAOKE_SONGSELECT );
 

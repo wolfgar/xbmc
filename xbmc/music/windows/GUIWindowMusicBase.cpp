@@ -1012,7 +1012,6 @@ void CGUIWindowMusicBase::UpdateThumb(const CAlbum &album, const CStdString &pat
       }
     }
   }
-
   // Save this thumb as the directory thumb if it's the only album in the folder (files view nicety)
   // We do this by grabbing all the songs in the folder, and checking to see whether they come
   // from the same album.

@@ -77,7 +77,7 @@ void CURL::Parse(const CStdString& strURL1)
   // strURL can be one of the following:
   // format 1: protocol://[username:password]@hostname[:port]/directoryandfile
   // format 2: protocol://file
-  // format 3: drive:directoryandfile
+  // format 3: drive:directoryandfileict
   //
   // first need 2 check if this is a protocol or just a normal drive & path
   if (!strURL.size()) return ;
@@ -176,6 +176,8 @@ void CURL::Parse(const CStdString& strURL1)
      m_strProtocol.Equals("image") ||
      m_strProtocol.Equals("videodb") ||
      m_strProtocol.Equals("musicdb") ||
+     m_strProtocol.Equals("picturedb") ||
+     m_strProtocol.Equals("contactdb") ||
      m_strProtocol.Equals("androidapp"))
     sep = "?";
   else
@@ -301,6 +303,8 @@ void CURL::Parse(const CStdString& strURL1)
   if (m_strProtocol == "iso9660"
     || m_strProtocol == "musicdb"
     || m_strProtocol == "videodb"
+    || m_strProtocol == "picturedb"
+    || m_strProtocol == "contactdb"
     || m_strProtocol == "sources"
     || m_strProtocol == "pvr"
     || StringUtils::StartsWith(m_strProtocol, "mem"))

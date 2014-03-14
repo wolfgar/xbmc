@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,8 +34,10 @@ public:
   virtual ~CGUIWindowPictures(void);
   virtual bool OnMessage(CGUIMessage& message);
   virtual void OnInitWindow();
+  void DoScan(const CStdString &strPath);
 
 protected:
+  virtual void OnScan(int iItem);
   virtual bool GetDirectory(const CStdString &strDirectory, CFileItemList& items);
   virtual void OnInfo(int item);
   virtual bool OnClick(int iItem);

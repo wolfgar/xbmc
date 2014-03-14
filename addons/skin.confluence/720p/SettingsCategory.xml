@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<defaultcontrol>3</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
@@ -142,7 +141,7 @@
 				<left>290</left>
 				<top>70</top>
 				<width>750</width>
-				<height>435</height>
+				<height>530</height>
 				<itemgap>-1</itemgap>
 				<pagecontrol>60</pagecontrol>
 				<onleft>3</onleft>
@@ -154,7 +153,7 @@
 				<left>1060</left>
 				<top>60</top>
 				<width>25</width>
-				<height>435</height>
+				<height>530</height>
 				<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
 				<texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
 				<texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png</texturesliderbarfocus>
@@ -210,7 +209,6 @@
 			<font>font13</font>
 			<textcolor>grey2</textcolor>
 			<focusedcolor>white</focusedcolor>
-			<invalidcolor>invalid</invalidcolor>
 			<texturefocus border="0,2,0,2">MenuItemFO.png</texturefocus>
 			<texturenofocus border="0,2,0,2">MenuItemNF.png</texturenofocus>
 		</control>
@@ -278,6 +276,44 @@
 			<control type="label">
 				<include>WindowTitleCommons</include>
 				<label>[COLOR=blue] - [/COLOR]$INFO[Control.GetLabel(2)]</label>
+			</control>
+		</control>
+		<control type="group">
+			<posx>-250</posx>
+			<include>SideBladeLeft</include>
+			<control type="grouplist" id="9000">
+				<posx>0</posx>
+				<posy>110</posy>
+				<width>250</width>
+				<height>600</height>
+				<onleft>9000</onleft>
+				<onright>3</onright>
+				<onup>9000</onup>
+				<ondown>9000</ondown>
+				<onback>3</onback>
+				<itemgap>0</itemgap>
+				<control type="label" id="200">
+					<width>250</width>
+					<height>35</height>
+					<font>font12</font>
+					<label>31007</label>
+					<textcolor>blue</textcolor>
+					<align>center</align>
+					<aligny>center</aligny>
+				</control>
+				<control type="button" id="20">
+					<description>Setting level button</description>
+					<textwidth>235</textwidth>
+					<include>ButtonCommonValues</include>
+					<label>10037</label>
+					<onclick>SettingsLevelChange</onclick>
+				</control>
+				<control type="button" id="21">
+					<description>Reset button</description>
+					<include>ButtonCommonValues</include>
+					<label>10035</label>
+					<onclick>SettingsReset</onclick>
+				</control>
 			</control>
 		</control>
 		<include>Clock</include>

@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,10 +23,8 @@
 #include "guilib/GUIDialog.h"
 #include "FileItem.h"
 
-class CVideoDatabase;
-
 class CGUIDialogVideoInfo :
-      public CGUIDialog
+public CGUIDialog
 {
 public:
   CGUIDialogVideoInfo(void);
@@ -46,17 +44,11 @@ public:
   static std::string ChooseArtType(const CFileItem &item, std::map<std::string, std::string> &currentArt);
   static void AddItemPathToFileBrowserSources(VECSOURCES &sources, const CFileItem &item);
 
-  static int ManageVideoItem(const CFileItemPtr &item);
-  static bool UpdateVideoItemTitle(const CFileItemPtr &pItem);
-  static bool MarkWatched(const CFileItemPtr &item, bool bMark);
   static bool CanDeleteVideoItem(const CFileItemPtr &item);
   static bool DeleteVideoItemFromDatabase(const CFileItemPtr &item, bool unavailable = false);
   static bool DeleteVideoItem(const CFileItemPtr &item, bool unavailable = false);
 
   static bool ManageMovieSets(const CFileItemPtr &item);
-  static bool GetMoviesForSet(const CFileItem *setItem, CFileItemList &originalMovies, CFileItemList &selectedMovies);
-  static bool GetSetForMovie(const CFileItem *movieItem, CFileItemPtr &selectedSet);
-  static bool SetMovieSet(const CFileItem *movieItem, const CFileItem *selectedSet);
 
   static bool GetItemsForTag(const CStdString &strHeading, const std::string &type, CFileItemList &items, int idTag = -1, bool showAll = true);
   static bool AddItemsToTag(const CFileItemPtr &tagItem);
@@ -80,8 +72,6 @@ protected:
   void OnGetFanart();
   void PlayTrailer();
 
-  static bool UpdateVideoItemSortTitle(const CFileItemPtr &pItem);
-  static bool LinkMovieToTvShow(const CFileItemPtr &item, bool bRemove, CVideoDatabase &database);
 
   /*! \brief Pop up a fanart chooser. Does not utilise remote URLs.
    \param videoItem the item to choose fanart for.

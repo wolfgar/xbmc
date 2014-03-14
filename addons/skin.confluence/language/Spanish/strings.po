@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Pantalla completa"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Pantalla completa"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Duración total"
@@ -88,10 +92,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Info"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Acciones"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "Reproduciendo ahora"
@@ -112,9 +112,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "RETROCESO"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "BUSCANDO"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Visualizaciones preestablecidas"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +174,10 @@ msgstr "Mostrar \"Pausa\" en modo presentación de imágenes"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Reproducir trailers en ventana [COLOR=grey3](Sólo diálogo de información de vídeo)[/COLOR] "
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Reproducir trailers en ventana [COLOR=grey3](Sólo diálogo de información de vídeo)[/COLOR] "
 
 msgctxt "#31106"
@@ -244,6 +248,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Ocultar Fanart con visualizaciones a pantalla completa"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Ocultar Fanart con visualizaciones a pantalla completa"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Add-on para letras"
@@ -258,6 +266,18 @@ msgstr "Submenú de música de la pantalla principal"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Submenú de imágenes de la pantalla principal"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Submenú de vídeos de la pantalla principal"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Submenú de música de la pantalla principal"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Submenú de imágenes de la pantalla principal"
 
 msgctxt "#31140"
@@ -412,18 +432,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Descargar subtítulos"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "Ver en 2D"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Cambiar modo"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Activado"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Por defecto"
@@ -466,6 +474,10 @@ msgstr "[B]Configura los ADD-ONS[/B][CR][CR]Administra tus addons instalados · 
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]CONFIGURAR OPCIONES DE TV[/B][CR][CR]Cambiar info pantalla completa ·  Especificar datos de guía EPG"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]CONFIGURAR OPCIONES DE TV[/B][CR][CR]Cambiar info pantalla completa ·  Especificar datos de guía EPG"
 
 msgctxt "#31410"
@@ -576,10 +588,6 @@ msgctxt "#31951"
 msgid "PICTURES"
 msgstr "IMÁGENES"
 
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "TELEVISIÓN EN DIRECTO"
-
 msgctxt "#31953"
 msgid "VIDEOS"
 msgstr "VIDEOS"
@@ -588,10 +596,6 @@ msgctxt "#31954"
 msgid "MOVIES"
 msgstr "PELÍCULAS"
 
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "PROGRAMAS DE TELEVISIÓN"
-
 msgctxt "#31956"
 msgid "MUSIC"
 msgstr "MÚSICA"
@@ -599,10 +603,6 @@ msgstr "MÚSICA"
 msgctxt "#31957"
 msgid "PROGRAMS"
 msgstr "PROGRAMAS"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "REPRODUCIR DISCO"
 
 msgctxt "#31959"
 msgid "SYSTEM"

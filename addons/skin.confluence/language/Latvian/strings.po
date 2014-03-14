@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Pilnekrāns"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Pilnekrāna režīms"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Kopējais ilgums"
@@ -120,6 +124,10 @@ msgctxt "#31048"
 msgid "Visualisation Presets"
 msgstr "Vizualizācijas sagataves"
 
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Vizualizācijas sagataves"
+
 msgctxt "#31049"
 msgid "End Time"
 msgstr "Beigu laiks"
@@ -196,6 +204,10 @@ msgctxt "#31110"
 msgid "Background path:"
 msgstr "Fona ceļš:"
 
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "Atskaņot treilerus logā [COLOR=grey3](Tikai video informācijas dialogs)[/COLOR]"
+
 msgctxt "#31111"
 msgid "Hide"
 msgstr "Slēpt"
@@ -235,6 +247,10 @@ msgstr "Atskaņot TV dziesmas tēmas video bibliotēkā (TvTunes )"
 msgctxt "#31127"
 msgid "TvTunes"
 msgstr "TvTunes"
+
+msgctxt "#31122"
+msgid "Weather Page"
+msgstr "Laika apstākļu lapa"
 
 msgctxt "#31128"
 msgid "Lyrics"

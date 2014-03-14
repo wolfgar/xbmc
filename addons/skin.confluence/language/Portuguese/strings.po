@@ -88,10 +88,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Info"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Acções"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "A reproduzir"
@@ -112,9 +108,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "RETROCEDER "
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "PROCURANDO"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Pré-selecções de visualização"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +170,10 @@ msgstr "Mostrar \"Pausado\" ao Apresentar Slides"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Reproduzir trailers numa janela [COLOR=grey3](só na janela de info de vídeo)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Reproduzir trailers numa janela [COLOR=grey3](só na janela de info de vídeo)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +244,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Ocultar Fanart na visualização de ecrã inteiro"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Ocultar Fanart na visualização de ecrã inteiro"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Add-on de Letras de música"
@@ -259,6 +263,18 @@ msgstr "Submenu de Música da Página Inicial"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "Submenu de Imagens da Página Inicial"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Submenu de Vídeos da Página Inicial"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Submenu de Música da Página Inicial"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "Submenu de Fotos da Página Inicial"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -412,18 +428,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Transferir Legendas"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "Ver em 2D"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Alterar modo"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Activado"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Padrão do tema"
@@ -467,6 +471,10 @@ msgstr "[B]CONFIGURAR ADD-ONS[/B][CR][CR]Gerir Add-ons instalados · Procurar e 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B]CONFIGURAR DEFINIÇÕES DE TV[/B][CR][CR]Alterar informações em ecrã cheio · Gerir definições de dados do EPG"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]CONFIGURAR DEFINIÇÕES DE TV[/B][CR][CR]Alterar informações em ecrã inteiro · Gerir definições de dados do EPG"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<defaultcontrol always="true">100</defaultcontrol>
 	<include>dialogeffect</include>
@@ -139,7 +138,7 @@
 				<texturefocus>OSDNextTrackFO.png</texturefocus>
 				<texturenofocus>OSDNextTrackNF.png</texturenofocus>
 				<onleft>204</onleft>
-				<onright>255</onright>
+				<onright>250</onright>
 				<onup>1000</onup>
 				<ondown>1000</ondown>
 				<onclick>PlayerControl(Next)</onclick>
@@ -228,6 +227,7 @@
 				<width>55</width>
 				<height>55</height>
 				<label>31351</label>
+				<altlabel>208</altlabel>
 				<font>-</font>
 				<texturefocus>OSDStopFO.png</texturefocus>
 				<texturenofocus>OSDStopNF.png</texturenofocus>
@@ -280,7 +280,7 @@
 				<texturefocus>OSDepgFO.png</texturefocus>
 				<texturenofocus>OSDepgNF.png</texturenofocus>
 				<onleft>306</onleft>
-				<onright>354</onright>
+				<onright>350</onright>
 				<onup>1000</onup>
 				<ondown>1000</ondown>
 				<onclick>ActivateWindow(PVROSDGuide)</onclick>

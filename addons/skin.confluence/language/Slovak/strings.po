@@ -88,10 +88,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Informácie"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Akcie"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "Práve hrá"
@@ -112,9 +108,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "PRETÁČA SA DOZADU"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "VYHĽADÁVANIE"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Predvolby Vizualizácií"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +170,10 @@ msgstr "Zobrazovať 'Pauza' pri prezentácií obrázkov"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Prehrávať ukážky v okne [COLOR=grey3](iba z okna Detailné Informácie)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Prehrávať ukážky v okne [COLOR=grey3](iba z okna Detailné Informácie)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +244,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Skryť Fanart pri vizualizácii na celú obrazovku"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Skryť Fanart pri vizualizácii na celú obrazovku"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Doplnok Texty skladieb"
@@ -259,6 +263,18 @@ msgstr "Domovská stránka / podmenu Hudba"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "Domovská stránka / podmenu Obrázky"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Domovská stránka / podmenu videá"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Domovská stránka / podmenu hudba"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "Domovská stránka / podmenu obrázky"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -412,18 +428,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Stiahnuť titulky"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "Pozerať ako 2D"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Zmeniť režim"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Aktívne"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Predvolený vzhľad"
@@ -466,6 +470,10 @@ msgstr "[B]MOŽNOSTI DOPLNKOV[/B][CR][CR]Správa nainštalovaných doplnkov · V
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]NASTAVENIA TV[/B][CR][CR]Zmeniť informácie zobrazené na celej obrazovke · Spravovať nastavenia EPG dát"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]NASTAVENIA TV[/B][CR][CR]Zmeniť informácie zobrazené na celej obrazovke · Spravovať nastavenia EPG dát"
 
 msgctxt "#31410"
@@ -567,43 +575,3 @@ msgstr "Zisťujem informácie o počasí..."
 msgctxt "#31910"
 msgid "Map & Alerts"
 msgstr "Mapa a upozornenia"
-
-msgctxt "#31950"
-msgid "WEATHER"
-msgstr "POČASIE"
-
-msgctxt "#31951"
-msgid "PICTURES"
-msgstr "OBRÁZKY"
-
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "TV"
-
-msgctxt "#31953"
-msgid "VIDEOS"
-msgstr "VIDEÁ"
-
-msgctxt "#31954"
-msgid "MOVIES"
-msgstr "FILMY"
-
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "SERIÁLY"
-
-msgctxt "#31956"
-msgid "MUSIC"
-msgstr "HUDBA"
-
-msgctxt "#31957"
-msgid "PROGRAMS"
-msgstr "PROGRAMY"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "CD/DVD/Blu-ray"
-
-msgctxt "#31959"
-msgid "SYSTEM"
-msgstr "SYSTÉM"

@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Fylla skjá"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Allur skjárinn"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Alls tímalengd"
@@ -120,6 +124,10 @@ msgctxt "#31048"
 msgid "Visualisation Presets"
 msgstr "Forstillingar myndskreytinga"
 
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Forstillingar myndskreytinga"
+
 msgctxt "#31049"
 msgid "End Time"
 msgstr "Lokatími"
@@ -174,6 +182,10 @@ msgstr "Sýna \"Í bið\" í myndasýningu"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Spila kvikmyndasýnishorn í glugga [COLOR=grey3](Aðeins myndbandaupplýsingarglugga)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Spila kvikmyndasýnishorn í glugga [COLOR=grey3](Aðeins myndbandaupplýsingarglugga)[/COLOR]"
 
 msgctxt "#31106"
@@ -254,6 +266,18 @@ msgstr "Undirvalmynd tónlistarsíðu"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Undirvalmynd ljósmyndaasíðu"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Undirvalmynd myndbandasíðu"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Undirvalmynd tónlistarsíðu"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Undirvalmynd ljósmyndaasíðu"
 
 msgctxt "#31140"
@@ -411,10 +435,6 @@ msgstr "Horfa á í 2D"
 msgctxt "#31361"
 msgid "Change mode"
 msgstr "Breyta ham"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Virkt"
 
 msgctxt "#31390"
 msgid "Skin default"

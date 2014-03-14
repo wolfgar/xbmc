@@ -545,7 +545,6 @@ void CGUIWindowFullScreen::FrameMove()
     g_infoManager.SetDisplayAfterSeek();
 
   if (!g_application.m_pPlayer->HasPlayer()) return;
-
   if( g_application.m_pPlayer->IsCaching() )
   {
     g_infoManager.SetDisplayAfterSeek(0); //Make sure these stuff aren't visible now

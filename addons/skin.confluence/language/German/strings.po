@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Vollbild"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Vollbild"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Insgesamte Laufzeit"
@@ -88,10 +92,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Info"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Aktionen"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "Jetzt gespielt"
@@ -118,6 +118,10 @@ msgstr "SUCHLAUF"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
+msgstr "Visualisierungs - Voreinstellung"
+
+msgctxt "#31048"
+msgid "Visualization Presets"
 msgstr "Visualisierungs - Voreinstellung"
 
 msgctxt "#31049"
@@ -174,6 +178,10 @@ msgstr "Zeige \"Pause\" in Bilder Diaschau"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Trailer im Fenster wiedergeben [COLOR=grey3](Nur im Videoinformationsdialog)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Trailer im Fenster wiedergeben [COLOR=grey3](Nur im Videoinformationsdialog)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +252,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Fanart in Vollbild Visualisierung ausblenden."
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Fanart in Vollbild Visualisierung deaktivieren."
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Songtext Addon"
@@ -258,6 +270,18 @@ msgstr "Hauptmenü Musik-Untermenü"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Hauptmenü Bilder-Untermenü"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Hauptmenü Videos-Untermenü"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Hauptmenü Musik-Untermenü"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Hauptmenü Bilder-Untermenü"
 
 msgctxt "#31140"
@@ -412,18 +436,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Untertitel herunterladen"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "In 2D anschauen"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Ändere Modus"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Aktivieren"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Skin - Standard"
@@ -466,6 +478,10 @@ msgstr "[B]KONFIGURIERE ADDONS[/B][CR][CR]Organisiere die installierten Addons �
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]TV Einstellungen konfigurieren[/B][CR][CR]Ändere die Vollbild Information - Verwalte die EPG-Daten Einstellungen"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]TV Einstellungen konfigurieren[/B][CR][CR]Ändere die Vollbild Information - Verwalte die EPG-Daten Einstellungen"
 
 msgctxt "#31410"

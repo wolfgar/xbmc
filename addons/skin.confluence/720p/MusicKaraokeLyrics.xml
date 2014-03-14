@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<controls>
 		<control type="karvisualisation" id="1">
@@ -7,7 +6,7 @@
 			<top>0</top>
 			<width>1280</width>
 			<height>720</height>
-			<visible>false</visible>
+			<visibility>false</visibility>
 		</control>
 		<control type="image" id="2">
 			<description>fullscreen image</description>
@@ -15,7 +14,7 @@
 			<top>0</top>
 			<width>1280</width>
 			<height>720</height>
-			<visible>false</visible>
+			<visibility>false</visibility>
 		</control>
 		<control type="group">
 			<visible>MusicPlayer.Offset(number).Exists + !IntegerGreaterThan(Player.TimeRemaining,20)</visible>

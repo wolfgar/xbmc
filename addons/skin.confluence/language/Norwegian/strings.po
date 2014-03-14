@@ -58,7 +58,7 @@ msgstr "Side"
 
 msgctxt "#31025"
 msgid "Items"
-msgstr "Elementer"
+msgstr "elementer"
 
 msgctxt "#31026"
 msgid "Misc Options"
@@ -70,7 +70,7 @@ msgstr "Sted"
 
 msgctxt "#31028"
 msgid "Poster Wrap"
-msgstr "Plakatsvøpe"
+msgstr "Plakat"
 
 msgctxt "#31029"
 msgid "Fanart"
@@ -112,9 +112,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "SPOL TILBAKE"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "SØKER"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Visualiseringsforvalg"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -154,11 +154,11 @@ msgstr "Nåværende spilleliste"
 
 msgctxt "#31060"
 msgid "This file is stacked, select the part you want to play from."
-msgstr "Denne filen er stablet, velg den delen du vil spille fra."
+msgstr "Denne fil er stablet, velg den delen du vil spille."
 
 msgctxt "#31061"
 msgid "Current Selected"
-msgstr "Nåværende valgt"
+msgstr "Valgt nå"
 
 msgctxt "#31101"
 msgid "Home screen options"
@@ -176,6 +176,10 @@ msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "Spill trailere i et vindu[COLOR=grey3](Kun videoinformasjonsdialog)[/COLOR]"
 
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "Spill trailere i et vindu[COLOR=grey3](Kun videoinformasjonsdialog)[/COLOR]"
+
 msgctxt "#31106"
 msgid "Miscellaneous options"
 msgstr "Øvrige alternativer"
@@ -190,7 +194,7 @@ msgstr "Gjem hovedmenyknapper"
 
 msgctxt "#31109"
 msgid "Enable Custom Background"
-msgstr "Aktiver egendefinert bakgrunn"
+msgstr "Skru på egendefinert bakgrunn"
 
 msgctxt "#31110"
 msgid "Background path:"
@@ -354,7 +358,7 @@ msgstr "Sist innlogget"
 
 msgctxt "#31321"
 msgid "Karaoke Song Selector"
-msgstr "Låtvelger for karaoke"
+msgstr "Sangvelger for karaoker"
 
 msgctxt "#31322"
 msgid "Aired"
@@ -420,17 +424,13 @@ msgctxt "#31361"
 msgid "Change mode"
 msgstr "Endre modus"
 
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Aktivert"
-
 msgctxt "#31390"
 msgid "Skin default"
-msgstr "Standard for skall"
+msgstr "Standard for skallet"
 
 msgctxt "#31391"
 msgid "Skin default with no Caps"
-msgstr "Skallstandard uten versaler"
+msgstr "Temastandard uten caps"
 
 msgctxt "#31392"
 msgid "Arial based"
@@ -514,7 +514,7 @@ msgstr "Legg til gruppe"
 
 msgctxt "#31504"
 msgid "Rename Group"
-msgstr "Gi nytt navn til gruppe"
+msgstr "Gi nytt navn på gruppe"
 
 msgctxt "#31505"
 msgid "Delete Group"
@@ -522,7 +522,7 @@ msgstr "Slett gruppe"
 
 msgctxt "#31506"
 msgid "Available[CR]Groups"
-msgstr "Ledige[CR]grupper"
+msgstr "Ledige[CR]Grupper"
 
 msgctxt "#31509"
 msgid "Channel Group"
@@ -567,43 +567,3 @@ msgstr "Henter værvarsel..."
 msgctxt "#31910"
 msgid "Map & Alerts"
 msgstr "Kart og varsler"
-
-msgctxt "#31950"
-msgid "WEATHER"
-msgstr "VÆR"
-
-msgctxt "#31951"
-msgid "PICTURES"
-msgstr "BILDER"
-
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "LIVE TV"
-
-msgctxt "#31953"
-msgid "VIDEOS"
-msgstr "VIDEOER"
-
-msgctxt "#31954"
-msgid "MOVIES"
-msgstr "FILMER"
-
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "TV-SERIER"
-
-msgctxt "#31956"
-msgid "MUSIC"
-msgstr "MUSIKK"
-
-msgctxt "#31957"
-msgid "PROGRAMS"
-msgstr "PROGRAMMER"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "SPILL PLATE"
-
-msgctxt "#31959"
-msgid "SYSTEM"
-msgstr "SYSTEM"

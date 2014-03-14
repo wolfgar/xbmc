@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <includes>
 	<include name="PosterWrapView">
 		<control type="grouplist">
@@ -286,7 +285,7 @@
 				<top>0</top>
 				<width>1280</width>
 				<height>270</height>
-				<texture border="1">HomeNowPlayingBack.png</texture>
+				<texture>HomeNowPlayingBack.png</texture>
 			</control>
 			<control type="label">
 				<left>40</left>

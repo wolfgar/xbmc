@@ -900,7 +900,6 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
     else
     {
       const char* found = strstr(queryString.c_str(), "position=");
-      
       if (found && g_application.m_pPlayer->HasPlayer())
       {
         int64_t position = (int64_t) (atof(found + strlen("position=")) * 1000.0);
@@ -979,7 +978,6 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
     bool playing = false;
 
     CLog::Log(LOGDEBUG, "AIRPLAY: got request %s", uri.c_str());
-
     if (needAuth && !checkAuthorization(authorization, method, uri))
     {
       status = AIRPLAY_STATUS_NEED_AUTH;

@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "מסך מלא"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "מסך מלא"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "סה\"כ משך זמן"
@@ -88,10 +92,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "מידע"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "פעולות"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "מנגן כעת"
@@ -118,6 +118,10 @@ msgstr "בחיפוש"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
+msgstr "קביעוני חיזוי"
+
+msgctxt "#31048"
+msgid "Visualization Presets"
 msgstr "קביעוני חיזוי"
 
 msgctxt "#31049"
@@ -175,6 +179,10 @@ msgstr "הראה \"הפסקה\" במצגת תמונות"
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "נגן קדימונים בחלון"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "נגן קדימונים בחלון [COLOR=grey3](חלון פרטי וידאו בלבד)[/COLOR]"
 
 msgctxt "#31106"
 msgid "Miscellaneous options"
@@ -244,6 +252,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "הסתר חיזוי פאנארט במסך מלא"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "הסתר עטיפת דיסק בזמן הנפשות"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "תוספי מילים לשירים"
@@ -258,6 +270,18 @@ msgstr "תת-תפריט מוסיקה במסך הבית"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "תת-תפריט תמונות במסך הבית"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "תת-תפריט וידאו במסך הבית"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "תת-תפריט מוסיקה במסך הבית"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "תת-תפריט תמונות במסך הבית"
 
 msgctxt "#31140"
@@ -412,18 +436,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "הורד כתוביות"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "צפה בדו-מימד"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "שנה מצב"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "פעיל"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "ברירת מחדל של הסקין"
@@ -463,6 +475,10 @@ msgstr "[B]שינוי הגדרות מערכת[/B][CR][CR]הגדר וכייל צ�
 msgctxt "#31408"
 msgid "[B]CONFIGURE ADD-ONS[/B][CR][CR]Manage your installed Add-ons · Browse for and install Add-ons from xbmc.org[CR]Modify Add-on settings"
 msgstr "[B]שינוי הגדרות הרחבות[/B][CR][CR]נהל את ההרחבות המותקנות אצלך, עיין והתקן הרחבות נוספות מxbmc.org[CR]שנה הגדרות הרחבות"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]התאם הגדרות טלווזיה[/B][CR][CR]שנה מידע במסך מלא · נהל מידע לוחות שידורים"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"
@@ -594,7 +610,7 @@ msgstr "מוזיקה"
 
 msgctxt "#31957"
 msgid "PROGRAMS"
-msgstr "תוכנות"
+msgstr "סדרות"
 
 msgctxt "#31958"
 msgid "PLAY DISC"

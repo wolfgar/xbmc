@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,31 +22,45 @@
 #include "utils/StdString.h"
 #include "utils/JobManager.h"
 #include "ThumbLoader.h"
+#include "PictureDatabase.h"
 
 class CPictureThumbLoader : public CThumbLoader, public CJobQueue
 {
+private:
+  bool m_regenerateThumbs;
 public:
-  CPictureThumbLoader();
-  virtual ~CPictureThumbLoader();
-
-  virtual bool LoadItem(CFileItem* pItem);
-  virtual bool LoadItemCached(CFileItem* pItem);
-  virtual bool LoadItemLookup(CFileItem* pItem);
   void SetRegenerateThumbs(bool regenerate) { m_regenerateThumbs = regenerate; };
   static void ProcessFoldersAndArchives(CFileItem *pItem);
 
-  /*!
-   \brief Callback from CThumbExtractor on completion of a generated image
-
-   Performs the callbacks and updates the GUI.
-
-   \sa CImageLoader, IJobCallback
+  CPictureThumbLoader();
+  virtual ~CPictureThumbLoader();
+  
+  virtual void Initialize();
+  virtual void Deinitialize();
+  
+  virtual bool LoadItem(CFileItem* pItem);
+  
+  /*! \brief helper function to fill the art for a video library item
+   \param item a video CFileItem
+   \return true if we fill art, false otherwise
    */
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
-
+  virtual bool FillLibraryArt(CFileItem &item);
+  
+  /*! \brief Fill the thumb of a music file/folder item
+   First uses a cached thumb from a previous run, then checks for a local thumb
+   and caches it for the next run
+   \param item the CFileItem object to fill
+   \return true if we fill the thumb, false otherwise
+   */
+  virtual bool FillThumb(CFileItem &item, bool folderThumbs = true);
+  
+  virtual bool GetEmbeddedThumb(const std::string &path, PICTURE_INFO::EmbeddedArt &art);
+  
 protected:
+  virtual void OnLoaderStart();
   virtual void OnLoaderFinish();
-
-private:
-  bool m_regenerateThumbs;
+  
+  CPictureDatabase *m_database;
+  typedef std::map<int, std::map<std::string, std::string> > ArtCache;
+  ArtCache m_albumArt;
 };

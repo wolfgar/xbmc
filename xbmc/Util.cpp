@@ -1979,9 +1979,7 @@ void CUtil::ScanForExternalSubtitles(const CStdString& strMovie, std::vector<CSt
     if (strLookInPaths[step].length() != 0)
     {
       CFileItemList items;
-      
       CDirectory::GetDirectory(strLookInPaths[step], items, g_advancedSettings.m_subtitlesExtensions, DIR_FLAG_NO_FILE_DIRS);
-      
       for (int j = 0; j < items.Size(); j++)
       {
         URIUtils::Split(items[j]->GetPath(), strPath, strItem);

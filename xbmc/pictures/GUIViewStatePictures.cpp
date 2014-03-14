@@ -40,9 +40,9 @@ CGUIViewStateWindowPictures::CGUIViewStateWindowPictures(const CFileItemList& it
     AddSortMethod(SortByLabel, 551, LABEL_MASKS());
     AddSortMethod(SortByDriveType, 564, LABEL_MASKS());
     SetSortMethod(SortByLabel);
-
+    
     SetViewAsControl(DEFAULT_VIEW_LIST);
-
+    
     SetSortOrder(SortOrderAscending);
   }
   else
@@ -52,7 +52,7 @@ CGUIViewStateWindowPictures::CGUIViewStateWindowPictures(const CFileItemList& it
     AddSortMethod(SortByDate, 552, LABEL_MASKS("%L", "%J", "%L", "%J"));  // Filename, Date | Foldername, Date
     AddSortMethod(SortByDateTaken, 577, LABEL_MASKS("%L", "%t", "%L", "%J"));  // Filename, DateTaken | Foldername, Date
     AddSortMethod(SortByFile, 561, LABEL_MASKS("%L", "%I", "%L", ""));  // Filename, Size | FolderName, empty
-
+    
     const CViewState *viewState = CViewStateSettings::Get().Get("pictures");
     SetSortMethod(viewState->m_sortDescription);
     SetViewAsControl(viewState->m_viewMode);
@@ -75,7 +75,7 @@ CStdString CGUIViewStateWindowPictures::GetExtensions()
 {
   if (CSettings::Get().GetBool("pictures.showvideos"))
     return g_advancedSettings.m_pictureExtensions+"|"+g_advancedSettings.m_videoExtensions;
-
+  
   return g_advancedSettings.m_pictureExtensions;
 }
 
@@ -86,4 +86,3 @@ VECSOURCES& CGUIViewStateWindowPictures::GetSources()
   AddOrReplace(*pictureSources, CGUIViewState::GetSources());
   return *pictureSources;
 }
-

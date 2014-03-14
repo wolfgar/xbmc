@@ -947,6 +947,8 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
   {
   case CONTEXT_BUTTON_EDIT:
     {
+      //jais
+      /*
       CONTEXT_BUTTON ret = (CONTEXT_BUTTON)CGUIDialogVideoInfo::ManageVideoItem(item);
       if (ret >= 0)
       {
@@ -955,6 +957,7 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
 
         Refresh(true);
       }
+       */
       return true;
     }
 

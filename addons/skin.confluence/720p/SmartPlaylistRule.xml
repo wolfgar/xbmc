@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<defaultcontrol always="true">9001</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
@@ -132,7 +131,6 @@
 			<height>40</height>
 			<font>font13</font>
 			<aligny>center</aligny>
-			<invalidcolor>invalid</invalidcolor>
 			<texturefocus border="3">button-focus2.png</texturefocus>
 			<texturenofocus border="3">button-nofocus.png</texturenofocus>
 			<label>-</label>

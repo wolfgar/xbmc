@@ -88,10 +88,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Info"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Handlinger"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "Spiller nu"
@@ -112,9 +108,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "SPOL TILBAGE"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "SØGER"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Visualiserings-forudindstillinger"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +170,10 @@ msgstr "Vis \"PAUSE\" i  billeddiasshow"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Afspil trailere i et vindue [COLOR=grey3](Kun videoinformationsdialog)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Afspil trailere i et vindue [COLOR=grey3](Kun videoinformationsdialog)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +244,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Skjul Fanart i fuldskærmsvisning"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Skjul fankunst i fuldskærmsvisualisering"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Add-on til Sangtekster"
@@ -258,6 +262,18 @@ msgstr "Undermenu til Musik på Hjemmeskærmen"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Undermenu til Billeder på Hjemmeskærmen"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Undermenu til Videoer på Hjemmeskærmen"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Undermenu til Musik på Hjemmeskærmen"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Undermenu til Billeder på Hjemmeskærmen"
 
 msgctxt "#31140"
@@ -412,18 +428,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Hent Undertekster"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "Se i 2D"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Skift tilstand"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Aktiveret"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Skinnets standard"
@@ -467,6 +471,10 @@ msgstr "[B]KONFIGURER ADD-ONS[/B][CR][CR]Administrer dine installerede Add-ons �
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B]KONFIGURER TV-INDSTILLINGER[/B][CR][CR]Skift fuldskærmsinfo · Administrer indstillinger for EPG"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]KONFIGURER TV-INDSTILLINGER[/B][CR][CR]Skift fuldskærmsinfo · Administrer dataindstillinger for EPG"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"
@@ -567,43 +575,3 @@ msgstr "Henter vejrudsigt..."
 msgctxt "#31910"
 msgid "Map & Alerts"
 msgstr "Kort og Advarsler"
-
-msgctxt "#31950"
-msgid "WEATHER"
-msgstr "VEJR"
-
-msgctxt "#31951"
-msgid "PICTURES"
-msgstr "BILLEDER"
-
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "DIREKTE TV"
-
-msgctxt "#31953"
-msgid "VIDEOS"
-msgstr "VIDEOER"
-
-msgctxt "#31954"
-msgid "MOVIES"
-msgstr "FILM"
-
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "TV-SERIER"
-
-msgctxt "#31956"
-msgid "MUSIC"
-msgstr "MUSIK"
-
-msgctxt "#31957"
-msgid "PROGRAMS"
-msgstr "PROGRAMMER"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "AFSPIL PLADE"
-
-msgctxt "#31959"
-msgid "SYSTEM"
-msgstr "SYSTEM"

@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Sgrin Lawn"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Sgrin Lawn"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Cyfanswm Hyd"
@@ -120,6 +124,10 @@ msgctxt "#31048"
 msgid "Visualisation Presets"
 msgstr "Rhagosodiadau Delweddu"
 
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Rhagosodiaid Delweddu"
+
 msgctxt "#31049"
 msgid "End Time"
 msgstr "Amser Gorffen"
@@ -175,6 +183,10 @@ msgstr "Dangos \"Oedwyd\" yn y sioe sleidiau"
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "Chwarae Rhagflas mewn ffenestr [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "Chwarae Hysbysebion mewn ffenestr [COLOR=grey3] (Deialog Gwybodaeth Fideo yn Unig)[/COLOR]"
 
 msgctxt "#31106"
 msgid "Miscellaneous options"
@@ -244,6 +256,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Cuddio Celf Selogion mewn delweddu sgrin llawn"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Cuddio Celf Selogion mewn delweddu sgrin lawn"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Ychwanegyn Geiriau Caneuon"
@@ -259,6 +275,18 @@ msgstr "Is-ddewislen Tudalen Cartref Cerddoriaeth"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "Is-ddewislen Tudalen Cartref Lluniau"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Isddewislen Tudalen Cartref Fideo"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Isddewislen Tudalen Cartref Cerddoriaeth"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "Isddewislen Tudalen Cartref Lluniau"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -420,10 +448,6 @@ msgctxt "#31361"
 msgid "Change mode"
 msgstr "Newid modd"
 
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Galluogwyd"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Croen rhagosodedig"
@@ -466,6 +490,10 @@ msgstr "[B]FFURFWEDDU YCHWANEGION[/B][CR][CR]Rheoli eich Ychwanegion · Pori a g
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]FFURFWEDDU GOSODIADAU TELEDU[/B][CR][CR]Newid gwybodaeth sgrin lawn · Rheoli gosodiadau data'r Amserlenydd Rhaglenni Electronig"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]FFURFWEDDU GOSODIADAU TELEDU[/B][CR][CR]Newid gwybodaeth sgrin lawn · Rheoli gosodiadau data'r Amserlenydd Rhaglenni Electronig"
 
 msgctxt "#31410"

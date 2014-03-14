@@ -219,7 +219,6 @@ void CGUIWindowMusicSongs::OnPrepareFileItems(CFileItemList &items)
 void CGUIWindowMusicSongs::UpdateButtons()
 {
   CGUIWindowMusicBase::UpdateButtons();
-
   bool bIsPlaying = g_application.m_pPlayer->IsPlayingAudio();
   bool bCanRecord = false;
   bool bIsRecording = false;

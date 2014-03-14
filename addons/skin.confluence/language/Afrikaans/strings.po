@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Volskerm"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Volskerm"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Totale Tydsduur"
@@ -120,6 +124,10 @@ msgctxt "#31048"
 msgid "Visualisation Presets"
 msgstr "Visualisering Voorkeure"
 
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Visualisering Instellings"
+
 msgctxt "#31049"
 msgid "End Time"
 msgstr "Eind Tyd"
@@ -175,6 +183,10 @@ msgstr "Wys \"Pouseer\" in prentjie skyfievertoning"
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "Speel Rolprent Uittreksels in 'n venster [COLOR=grey3](Video Informasie Dialoog Aleenlik)[/COLOR] "
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "Speel Voorskoue in 'n venster [COLOR=grey3](Slegs Video Inligting Dialoog)[/COLOR]"
 
 msgctxt "#31106"
 msgid "Miscellaneous options"
@@ -244,6 +256,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Versteek Aanhanger Kuns in vol skerm visualisering "
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Versteek Ondersteunerkuns in volskerm visualisering"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Lirieke Byvoegsel"
@@ -259,6 +275,18 @@ msgstr "Tuis Bladsy Musiek Subkieslys"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "Tuis Bladsy Prente Subkieslys"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Tuis Blad Videos Subkieslys"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Tuis Blad Musiek Subkieslys"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "Tuis Blad Prente Subkieslys"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -467,6 +495,10 @@ msgstr "[B]KONFIGUREER BYVOEGSELS[/B][CR][CR]Beheer jou geïnstalleerde Byvoegse
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B]VERANDER TV VERSTELLINGS[/B][CR][CR]Verander vol skerm inligting - Beheer EPG data verstellings"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]KONFIGUREER TV VERSTELLINGS[/B][CR][CR]Verander volskerm info · Bestuur EPG data verstellings"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"

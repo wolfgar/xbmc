@@ -389,10 +389,8 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       {
         CGUIWindowSlideShow *pSlideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
         if (!pSlideShow) return ;
-
         // stop playing file
         if (g_application.m_pPlayer->IsPlayingVideo()) g_application.StopPlaying();
-
         if (g_windowManager.GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO)
           g_windowManager.PreviousWindow();
 
@@ -438,10 +436,8 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       {
         CGUIWindowSlideShow *pSlideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
         if (!pSlideShow) return ;
-
         if (g_application.m_pPlayer->IsPlayingVideo())
           g_application.StopPlaying();
-
         g_graphicsContext.Lock();
         pSlideShow->Reset();
 

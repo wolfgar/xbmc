@@ -628,7 +628,6 @@ void CGUIWindowFileManager::OnStart(CFileItem *pItem)
       return ;
     if (g_application.m_pPlayer->IsPlayingVideo())
       g_application.StopPlaying();
-
     pSlideShow->Reset();
     pSlideShow->Add(pItem);
     pSlideShow->Select(pItem->GetPath());

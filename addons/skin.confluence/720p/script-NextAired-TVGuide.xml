@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<onload>ClearProperty(TVGuide.MondayList,Home)</onload>
 	<onload>ClearProperty(TVGuide.TuesdayList,Home)</onload>
@@ -126,7 +125,7 @@
 			<itemgap>5</itemgap>
 			<control type="label">
 				<include>WindowTitleCommons</include>
-				<label>$ADDON[script.tv.show.next.aired 450]</label>
+				<label>$LOCALIZE[SCRIPT450]</label>
 			</control>
 			<control type="label">
 				<include>WindowTitleCommons</include>

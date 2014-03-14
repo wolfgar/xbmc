@@ -36,7 +36,7 @@
 #include "utils/SystemInfo.h"
 #include "guilib/GUITextBox.h"
 #include "pictures/GUIWindowSlideShow.h"
-#include "pictures/PictureInfoTag.h"
+#include "pictures/tags/PictureInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
 #include "guilib/IGUIContainer.h"
 #include "guilib/GUIWindowManager.h"
@@ -1056,7 +1056,7 @@ int CGUIInfoManager::TranslateSingleString(const CStdString &strCondition, bool 
         if (prop.name == slideshow[i].str)
           return slideshow[i].val;
       }
-      return CPictureInfoTag::TranslateString(prop.name);
+      return PICTURE_INFO::CPictureInfoTag::TranslateString(prop.name);
     }
     else if (cat.name == "container")
     {
@@ -2641,9 +2641,11 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       }
     }
   }
+     
   if (condition1 < 0)
     bReturn = !bReturn;
   return bReturn;
+  
 }
 
 /// \brief Examines the multi information sent and returns true or false accordingly.
@@ -3191,6 +3193,7 @@ CStdString CGUIInfoManager::GetMultiInfoLabel(const GUIInfo &info, int contextWi
       strTime = StringUtils::Format("%s (%ix)", GetCurrentPlayTime((TIME_FORMAT)info.GetData1()).c_str(), g_application.m_pPlayer->GetPlaySpeed());
     else
       strTime = GetCurrentPlayTime();
+    
     return strTime;
   }
   else if (info.m_info == PLAYER_DURATION)
@@ -3328,6 +3331,7 @@ CStdString CGUIInfoManager::GetMultiInfoLabel(const GUIInfo &info, int contextWi
 /// \brief Obtains the filename of the image to show from whichever subsystem is needed
 CStdString CGUIInfoManager::GetImage(int info, int contextWindow, CStdString *fallback)
 {
+  
   if (info >= CONDITIONAL_LABEL_START && info <= CONDITIONAL_LABEL_END)
     return GetSkinVariableString(info, true);
 
@@ -3400,6 +3404,7 @@ CStdString CGUIInfoManager::GetImage(int info, int contextWindow, CStdString *fa
     }
   }
   return GetLabel(info, contextWindow, fallback);
+  
 }
 
 CStdString CGUIInfoManager::GetDate(bool bNumbersOnly)
@@ -3454,6 +3459,7 @@ CStdString CGUIInfoManager::LocalizeTime(const CDateTime &time, TIME_FORMAT form
 
 CStdString CGUIInfoManager::GetDuration(TIME_FORMAT format) const
 {
+
   if (g_application.m_pPlayer->IsPlayingAudio() && m_currentFile->HasMusicInfoTag())
   {
     const CMusicInfoTag& tag = *m_currentFile->GetMusicInfoTag();
@@ -3465,6 +3471,7 @@ CStdString CGUIInfoManager::GetDuration(TIME_FORMAT format) const
   unsigned int iTotal = (unsigned int)g_application.GetTotalTime();
   if (iTotal > 0)
     return StringUtils::SecondsToTimeString(iTotal, format);
+  
   return "";
 }
 
@@ -3757,7 +3764,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
 
     switch (item)
     {
-    /* Now playing infos */
+    // Now playing infos
     case VIDEOPLAYER_ORIGINALTITLE:
       return tag->GetEPGNow(epgTag) ?
           epgTag.Title() :
@@ -3775,7 +3782,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
     case VIDEOPLAYER_ENDTIME:
       return tag->GetEPGNow(epgTag) ? epgTag.EndAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
 
-    /* Next playing infos */
+    // Next playing infos
     case VIDEOPLAYER_NEXT_TITLE:
       return tag->GetEPGNext(epgTag) ?
           epgTag.Title() :
@@ -3809,7 +3816,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
       }
       break;
 
-    /* General channel infos */
+    // General channel infos
     case VIDEOPLAYER_CHANNEL_NAME:
       return tag->ChannelName();
     case VIDEOPLAYER_CHANNEL_NUMBER:
@@ -4117,7 +4124,6 @@ void CGUIInfoManager::SetCurrentMovie(CFileItem &item)
       SetCurrentSong(item);
       return;
     }
-
     // else its a video
     if (!g_application.m_strPlayListFile.empty())
     {
@@ -4405,7 +4411,6 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
     CStdString property = m_listitemProperties[info - LISTITEM_PROPERTY_START];
     return item->GetProperty(property).asString();
   }
-
   if (info >= LISTITEM_PICTURE_START && info <= LISTITEM_PICTURE_END && item->HasPictureInfoTag())
     return item->GetPictureInfoTag()->GetInfo(picture_slide_map[info - LISTITEM_PICTURE_START]);
 

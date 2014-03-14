@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "เต็มจอ"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "เต็มหน้าจอ"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "รวม ระยะเวลา"
@@ -88,10 +92,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "ข้อมูล"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "การกระทำ"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "ขณะนี้กำลังเล่น"
@@ -118,6 +118,10 @@ msgstr "ค้นหา"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
+msgstr "ชุดรูปแบบ การแสดงแสงสี"
+
+msgctxt "#31048"
+msgid "Visualization Presets"
 msgstr "ชุดรูปแบบ การแสดงแสงสี"
 
 msgctxt "#31049"
@@ -175,6 +179,10 @@ msgstr "แสดง \"หยุดชั่วขณะ\" ในการนำ
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "เล่นตัวอย่างภาพยนตร์ในหน้าต่าง [COLOR=grey3](กล่องโต้ตอบข้อมูลวิดีโอเท่านั้น)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "เล่นตัวอย่างหนังในหน้าต่าง [COLOR=grey3](กล่องโต้ตอบ ข้อมูลวิดีโอเท่านั้น)[/COLOR]"
 
 msgctxt "#31106"
 msgid "Miscellaneous options"
@@ -244,6 +252,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "ซ่อนแฟนอาร์ต ในการแสดงแสงสีแบบเต็มจอ"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "ซ่อนแฟนอาร์ต ในการแสดงแสงสีแบบเต็มจอ"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "ส่วนเสริม เนื้อเพลง"
@@ -259,6 +271,18 @@ msgstr "หน้าหลัก เพลง เมนู-ย่อย"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "หน้าหลัก รูปภาพ เมนู-ย่อย"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "หน้าหลักของเมนูย่อย วิดีโอ"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "หน้าหลักของเมนูย่อย เพลง"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "หน้าหลักของเมนูย่อย รูปภาพ"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -412,18 +436,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "ดาวน์โหลด คำบรรยาย"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "ชมแบบ 2 มิติ"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "เปลี่ยนโหมด"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "ใช้งาน"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "หน้าตาพื้นฐาน"
@@ -467,6 +479,10 @@ msgstr "[B]ปรับเปลี่ยน ส่วนเสริม[/B][CR]
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B] ตั้งค่าทีวี [/B][CR][CR]เปลี่ยนแปลงข้อมูลแบบเต็มหน้าจอ·จัดการการตั้งค่าข้อมูล EPG"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B] ตั้งค่าทีวี [/B] [CR] [CR]เปลี่ยน ข้อมูลบนหน้าจอ·จัดการการตั้งค่าข้อมูล EPG"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"

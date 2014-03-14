@@ -84,6 +84,10 @@ namespace MUSIC_INFO
 {
   class CMusicInfoScanner;
 }
+namespace PICTURE_INFO
+{
+  class CPictureInfoScanner;
+}
 
 #define VOLUME_MINIMUM 0.0f        // -60dB
 #define VOLUME_MAXIMUM 1.0f        // 0dB
@@ -112,11 +116,11 @@ protected:
 };
 
 class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMsgTargetCallback,
-                     public ISettingCallback, public ISettingsHandler, public ISubSettings
+public ISettingCallback, public ISettingsHandler, public ISubSettings
 {
   friend class CApplicationPlayer;
 public:
-
+  
   enum ESERVERS
   {
     ES_WEBSERVER = 1,
@@ -127,7 +131,7 @@ public:
     ES_EVENTSERVER,
     ES_ZEROCONF
   };
-
+  
   CApplication(void);
   virtual ~CApplication(void);
   virtual bool Initialize();
@@ -137,15 +141,15 @@ public:
   virtual void Preflight();
   virtual bool Create();
   virtual bool Cleanup();
-
+  
   bool CreateGUI();
   bool InitWindow();
   bool DestroyWindow();
   void StartServices();
   void StopServices();
-
+  
   bool StartServer(enum ESERVERS eServer, bool bStart, bool bWait = false);
-
+  
   void StartPVRManager(bool bOpenPVRWindow = false);
   void StopPVRManager();
   bool IsCurrentThread() const;
@@ -192,7 +196,7 @@ public:
   void CheckPlayingProgress();
   void ActivateScreenSaver(bool forceType = false);
   void CloseNetworkShares();
-
+  
   virtual void Process();
   void ProcessSlow();
   void ResetScreenSaver();
@@ -213,64 +217,67 @@ public:
   bool WakeUpScreenSaver(bool bPowerOffKeyPressed = false);
   /*!
    \brief Returns the total time in fractional seconds of the currently playing media
-
+   
    Beware that this method returns fractional seconds whereas IPlayer::GetTotalTime() returns milliseconds.
    */
   double GetTotalTime() const;
   /*!
    \brief Returns the current time in fractional seconds of the currently playing media
-
+   
    Beware that this method returns fractional seconds whereas IPlayer::GetTime() returns milliseconds.
    */
   double GetTime() const;
   float GetPercentage() const;
-
+  
   // Get the percentage of data currently cached/buffered (aq/vq + FileCache) from the input stream if applicable.
   float GetCachePercentage() const;
-
+  
   void SeekPercentage(float percent);
   void SeekTime( double dTime = 0.0 );
-
+  
   void StopShutdownTimer();
   void ResetShutdownTimers();
-
+  
   void StopVideoScan();
   void StopMusicScan();
   bool IsMusicScanning() const;
   bool IsVideoScanning() const;
-
+  void StopPictureScan();
+  bool IsPictureScanning() const;
+  
   void StartVideoCleanup();
-
+  
+  void StartPictureScan(const CStdString &path, int flags = 0);
   void StartVideoScan(const CStdString &path, bool scanAll = false);
   void StartMusicScan(const CStdString &path, int flags = 0);
   void StartMusicAlbumScan(const CStdString& strDirectory, bool refresh=false);
   void StartMusicArtistScan(const CStdString& strDirectory, bool refresh=false);
-
+  
   void UpdateLibraries();
   void CheckMusicPlaylist();
-
+  
   bool ExecuteXBMCAction(std::string action);
-
+  
   static bool OnEvent(XBMC_Event& newEvent);
-
+  
   CNetwork& getNetwork();
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats &GetPerformanceStats();
 #endif
-
+  
 #ifdef HAS_DVD_DRIVE
   MEDIA_DETECT::CAutorun* m_Autorun;
 #endif
-
+  
 #if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
   MEDIA_DETECT::CDetectDVDMedia m_DetectDVDType;
 #endif
-
+  
   CApplicationPlayer* m_pPlayer;
-
+  
   inline bool IsInScreenSaver() { return m_bScreenSave; };
   int m_iScreenSaveLock; // spiff: are we checking for a lock? if so, ignore the screensaver state, if -1 we have failed to input locks
-
+  
   bool m_bPlaybackStarting;
   typedef enum
   {
@@ -430,6 +437,7 @@ protected:
 
   VIDEO::CVideoInfoScanner *m_videoInfoScanner;
   MUSIC_INFO::CMusicInfoScanner *m_musicInfoScanner;
+  PICTURE_INFO::CPictureInfoScanner *m_pictureInfoScanner;
 
   bool m_muted;
   float m_volumeLevel;
@@ -468,11 +476,11 @@ protected:
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats m_perfStats;
 #endif
-
+  
 #ifdef HAS_EVENT_SERVER
   std::map<std::string, std::map<int, float> > m_lastAxisMap;
 #endif
-
+  
   ReplayGainSettings m_replayGainSettings;
 };
 

@@ -123,6 +123,24 @@ typedef enum {
   FieldDisbanded,
   FieldDied,
   FieldStereoMode,
+  
+  FieldOrientation,
+  FieldTakenOn,
+  FieldPictureCount,
+  FieldPictureAlbum,
+  FieldPictureAlbumId,
+  FieldFace,
+  FieldLocation,
+  
+  //Contacts fields
+  FieldFirstName,
+  FieldLastName,
+  FieldContact,
+  FieldPhones,
+  FieldEmails,
+  FieldProfessional,
+  FieldDates,
+  FieldRelations,
   FieldMax
 } Field;
 
@@ -140,8 +158,14 @@ typedef enum {
   MediaTypeMusicVideo,
   MediaTypeMovie,
   MediaTypeTvShow,
-  MediaTypeEpisode
+  MediaTypeEpisode,
+  MediaTypePicture,
+  MediaTypeContact,
+  MediaTypePictureAlbum,
+  MediaTypeFace,
+  MediaTypeLocation
 } MediaType;
+
 
 typedef enum {
   DatabaseQueryPartSelect,

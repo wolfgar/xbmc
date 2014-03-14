@@ -88,10 +88,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "情報"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "アクション"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "現在再生中"
@@ -112,9 +108,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "巻戻し"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "スキャン中"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "ビジュアライザーのプリセット"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +170,10 @@ msgstr "ピクチャスライドショーで「静止中」と表示"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "ウィンドウ内で予告を再生 [COLOR=grey3](ビデオ情報ダイアログのみ)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "ウィンドウ内で予告を再生 [COLOR=grey3](ビデオ情報ダイアログのみ)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +244,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "フルスクリーン視覚化ではファンアートを非表示に"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "フルスクリーン時にファンアートを隠す"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "歌詞アドオン"
@@ -258,6 +262,18 @@ msgstr "ホーム画面「ミュージック』のサブメニュー"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "ホーム画面「ピクチャ』のサブメニュー"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "ホーム画面「ビデオ』のサブメニュー"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "ホーム画面「ミュージック』のサブメニュー"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "ホーム画面「ピクチャ』のサブメニュー"
 
 msgctxt "#31140"
@@ -412,18 +428,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "字幕をダウンロード"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "2D で観る"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "モードを変更"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "LCD有効"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "スキンのデフォルト"
@@ -466,6 +470,10 @@ msgstr "[B]アドオン設定[/B][CR][CR]インストール済みアドオン管
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]TV設定[/B][CR][CR]フルスクリーン情報の変更 · EPGデータ設定"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]TV設定[/B][CR][CR]フルスクリーン情報の変更 · EPGデータ設定"
 
 msgctxt "#31410"
@@ -567,43 +575,3 @@ msgstr "天気予報データ取得中..."
 msgctxt "#31910"
 msgid "Map & Alerts"
 msgstr "マップ＆アラート"
-
-msgctxt "#31950"
-msgid "WEATHER"
-msgstr "天気"
-
-msgctxt "#31951"
-msgid "PICTURES"
-msgstr "画像"
-
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "LIVE TV"
-
-msgctxt "#31953"
-msgid "VIDEOS"
-msgstr "動画"
-
-msgctxt "#31954"
-msgid "MOVIES"
-msgstr "映画"
-
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "テレビ番組"
-
-msgctxt "#31956"
-msgid "MUSIC"
-msgstr "音楽"
-
-msgctxt "#31957"
-msgid "PROGRAMS"
-msgstr "プログラム"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "ディスク再生"
-
-msgctxt "#31959"
-msgid "SYSTEM"
-msgstr "システム"

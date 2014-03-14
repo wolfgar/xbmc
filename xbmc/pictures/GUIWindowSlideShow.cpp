@@ -45,7 +45,7 @@
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "interfaces/AnnouncementManager.h"
-#include "pictures/PictureInfoTag.h"
+#include "pictures/tags/PictureInfoTag.h"
 #include "pictures/PictureThumbLoader.h"
 
 using namespace XFILE;
@@ -143,7 +143,7 @@ void CBackgroundPicLoader::LoadPic(int iPic, int iSlideNumber, const CStdString 
 }
 
 CGUIWindowSlideShow::CGUIWindowSlideShow(void)
-    : CGUIWindow(WINDOW_SLIDESHOW, "SlideShow.xml")
+: CGUIWindow(WINDOW_SLIDESHOW, "SlideShow.xml")
 {
   m_pBackgroundLoader = NULL;
   m_slides = new CFileItemList;
@@ -209,7 +209,7 @@ void CGUIWindowSlideShow::AnnouncePropertyChanged(const std::string &strProperty
 {
   if (strProperty.empty() || value.isNull())
     return;
-
+  
   CVariant data;
   data["player"]["playerid"] = PLAYLIST_PICTURE;
   data["property"][strProperty] = value;
@@ -233,7 +233,7 @@ void CGUIWindowSlideShow::Reset()
   m_Image[0].Close();
   m_Image[1].UnLoad();
   m_Image[1].Close();
-
+  
   m_fRotate = 0.0f;
   m_fInitialRotate = 0.0f;
   m_iZoomFactor = 1;
@@ -251,19 +251,19 @@ void CGUIWindowSlideShow::Reset()
 }
 
 void CGUIWindowSlideShow::OnDeinitWindow(int nextWindowID)
-{ 
+{
   if (m_Resolution != CDisplaySettings::Get().GetCurrentResolution())
   {
     //FIXME: Use GUI resolution for now
     //g_graphicsContext.SetVideoResolution(CDisplaySettings::Get().GetCurrentResolution(), TRUE);
   }
-
+  
   //   Reset();
   if (nextWindowID != WINDOW_PICTURES)
     m_ImageLib.Unload();
-
+  
   g_windowManager.ShowOverlay(OVERLAY_STATE_SHOWN);
-
+  
   if (nextWindowID != WINDOW_FULLSCREEN_VIDEO)
   {
     // wait for any outstanding picture loads
@@ -284,7 +284,7 @@ void CGUIWindowSlideShow::OnDeinitWindow(int nextWindowID)
     m_Image[1].Close();
   }
   g_infoManager.ResetCurrentSlide();
-
+  
   CGUIWindow::OnDeinitWindow(nextWindowID);
 }
 
@@ -295,13 +295,13 @@ void CGUIWindowSlideShow::Add(const CFileItem *picture)
   {
     // item without tag; get mimetype then we can tell whether it's video item
     item->FillInMimeType();
-
+    
     if (!item->IsVideo())
       // then it is a picture and force tag generation
       item->GetPictureInfoTag();
   }
   AnnouncePlaylistAdd(item, m_slides->Size());
-
+  
   m_slides->Add(item);
 }
 
@@ -309,7 +309,7 @@ void CGUIWindowSlideShow::ShowNext()
 {
   if (m_slides->Size() == 1)
     return;
-
+  
   m_iDirection   = 1;
   m_iNextSlide   = GetNextSlide();
   m_iZoomFactor  = 1;
@@ -322,7 +322,7 @@ void CGUIWindowSlideShow::ShowPrevious()
 {
   if (m_slides->Size() == 1)
     return;
-
+  
   m_iDirection   = -1;
   m_iNextSlide   = GetNextSlide();
   m_iZoomFactor  = 1;
@@ -400,35 +400,35 @@ void CGUIWindowSlideShow::SetDirection(int direction)
 void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &regions)
 {
   const RESOLUTION_INFO res = g_graphicsContext.GetResInfo();
-
+  
   // reset the screensaver if we're in a slideshow
   // (unless we are the screensaver!)
   if (m_bSlideShow && !m_bPause && !g_application.IsInScreenSaver())
     g_application.ResetScreenSaver();
   int iSlides = m_slides->Size();
   if (!iSlides) return ;
-
+  
   // if we haven't processed yet, we should mark the whole screen
   if (!HasProcessed())
     regions.push_back(CRect(0.0f, 0.0f, (float)g_graphicsContext.GetWidth(), (float)g_graphicsContext.GetHeight()));
-
+  
   if (m_iCurrentSlide < 0 || m_iCurrentSlide >= m_slides->Size())
     m_iCurrentSlide = 0;
   if (m_iNextSlide < 0 || m_iNextSlide >= m_slides->Size())
     m_iNextSlide = GetNextSlide();
-
+  
   // Create our background loader if necessary
   if (!m_pBackgroundLoader)
   {
     m_pBackgroundLoader = new CBackgroundPicLoader();
-
+    
     if (!m_pBackgroundLoader)
     {
       throw 1;
     }
     m_pBackgroundLoader->Create(this);
   }
-
+  
   bool bSlideShow = m_bSlideShow && !m_bPause && !m_bPlayingVideo;
   if (bSlideShow && m_slides->Get(m_iCurrentSlide)->HasProperty("unplayable"))
   {
@@ -438,7 +438,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
     m_iCurrentSlide = m_iNextSlide;
     m_iNextSlide    = GetNextSlide();
   }
-
+  
   if (m_bErrorMessage)
   { // we have an error when loading either the current or next picture
     // check to see if we have a picture loaded
@@ -492,15 +492,15 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       m_bErrorMessage = false;
     }
   }
-
+  
   if (m_bErrorMessage)
   { // hack, just mark it all
     regions.push_back(CRect(0.0f, 0.0f, (float)g_graphicsContext.GetWidth(), (float)g_graphicsContext.GetHeight()));
     return;
   }
-
+  
   CSingleLock lock(m_slideSection);
-
+  
   if (!m_Image[m_iCurrentPic].IsLoaded() && !m_pBackgroundLoader->IsLoading())
   { // load first image
     CFileItemPtr item = m_slides->Get(m_iCurrentSlide);
@@ -511,10 +511,10 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
         CLog::Log(LOGDEBUG, "Loading the thumb %s for current video %d: %s", picturePath.c_str(), m_iCurrentSlide, item->GetPath().c_str());
       else
         CLog::Log(LOGDEBUG, "Loading the current image %d: %s", m_iCurrentSlide, item->GetPath().c_str());
-
+      
       // load using the background loader
       int maxWidth, maxHeight;
-
+      
       GetCheckedSize((float)res.iWidth * m_fZoom,
                      (float)res.iHeight * m_fZoom,
                      maxWidth, maxHeight);
@@ -523,11 +523,11 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       m_bLoadNextPic = false;
     }
   }
-
+  
   // check if we should discard an already loaded next slide
   if (m_Image[1 - m_iCurrentPic].IsLoaded() && m_Image[1 - m_iCurrentPic].SlideNumber() != m_iNextSlide)
     m_Image[1 - m_iCurrentPic].Close();
-
+  
   if (m_iNextSlide != m_iCurrentSlide && m_Image[m_iCurrentPic].IsLoaded() && !m_Image[1 - m_iCurrentPic].IsLoaded() && !m_pBackgroundLoader->IsLoading() && m_iLastFailedNextSlide != m_iNextSlide)
   { // load the next image
     m_iLastFailedNextSlide = -1;
@@ -547,7 +547,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       m_pBackgroundLoader->LoadPic(1 - m_iCurrentPic, m_iNextSlide, picturePath, maxWidth, maxHeight);
     }
   }
-
+  
   if (m_slides->Get(m_iCurrentSlide)->IsVideo() && bSlideShow)
   {
     if (!PlayVideo())
@@ -562,7 +562,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
     m_Image[m_iCurrentPic].Pause(!bSlideShow);
     m_Image[m_iCurrentPic].Process(currentTime, regions);
   }
-
+  
   // Check if we should be transistioning immediately
   if (m_bLoadNextPic && m_Image[m_iCurrentPic].IsLoaded())
   {
@@ -573,7 +573,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       m_bLoadNextPic = false;
     }
   }
-
+  
   // render the next image
   if (m_Image[m_iCurrentPic].DrawNextImage())
   {
@@ -599,12 +599,12 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
     {
       if (m_pBackgroundLoader->IsLoading())
       {
-//        CLog::Log(LOGDEBUG, "Having to hold the current image (%s) while we load %s", m_vecSlides[m_iCurrentSlide].c_str(), m_vecSlides[m_iNextSlide].c_str());
+        //        CLog::Log(LOGDEBUG, "Having to hold the current image (%s) while we load %s", m_vecSlides[m_iCurrentSlide].c_str(), m_vecSlides[m_iNextSlide].c_str());
         m_Image[m_iCurrentPic].Keep();
       }
     }
   }
-
+  
   // check if we should swap images now
   if (m_Image[m_iCurrentPic].IsFinished() || (m_bLoadNextPic && !m_Image[m_iCurrentPic].IsLoaded()))
   {
@@ -614,7 +614,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
     else
       // what if it's bg loading?
       CLog::Log(LOGDEBUG, "Image %s is not loaded, switching to %s", m_slides->Get(m_iCurrentSlide)->GetPath().c_str(), m_slides->Get(m_iNextSlide)->GetPath().c_str());
-
+    
     if (m_Image[m_iCurrentPic].IsFinished() && m_iCurrentSlide == m_iNextSlide && m_Image[m_iCurrentPic].SlideNumber() == m_iNextSlide)
       m_Image[m_iCurrentPic].Reset(GetDisplayEffect(m_iCurrentSlide));
     else
@@ -623,7 +623,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
         m_Image[m_iCurrentPic].Reset(GetDisplayEffect(m_iCurrentSlide));
       else
         m_Image[m_iCurrentPic].Close();
-
+      
       if ((m_Image[1 - m_iCurrentPic].IsLoaded() && m_Image[1 - m_iCurrentPic].SlideNumber() == m_iNextSlide) ||
           (m_pBackgroundLoader->IsLoading() && m_pBackgroundLoader->SlideNumber() == m_iNextSlide && m_pBackgroundLoader->Pic() == 1 - m_iCurrentPic))
       {
@@ -638,15 +638,15 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       m_iNextSlide    = GetNextSlide();
     }
     AnnouncePlayerPlay(m_slides->Get(m_iCurrentSlide));
-
+    
     m_iZoomFactor = 1;
     m_fZoom = 1.0f;
     m_fRotate = 0.0f;
   }
-
+  
   if (m_Image[m_iCurrentPic].IsLoaded())
     g_infoManager.SetCurrentSlide(*m_slides->Get(m_iCurrentSlide));
-
+  
   RenderPause();
   CGUIWindow::Process(currentTime, regions);
 }
@@ -655,10 +655,10 @@ void CGUIWindowSlideShow::Render()
 {
   if (m_Image[m_iCurrentPic].IsLoaded())
     m_Image[m_iCurrentPic].Render();
-
+  
   if (m_Image[m_iCurrentPic].DrawNextImage() && m_Image[1 - m_iCurrentPic].IsLoaded())
     m_Image[1 - m_iCurrentPic].Render();
-
+  
   RenderErrorMessage();
   CGUIWindow::Render();
 }
@@ -687,12 +687,12 @@ EVENT_RESULT CGUIWindowSlideShow::OnMouseEvent(const CPoint &point, const CMouse
       result |= EVENT_RESULT_SWIPE;
     else
       result |= EVENT_RESULT_PAN_HORIZONTAL;
-
+    
     if (m_Image[m_iCurrentPic].m_bCanMoveVertically)
       result |= EVENT_RESULT_PAN_VERTICAL;
-
+    
     return (EVENT_RESULT)result;
-  }  
+  }
   else if (event.m_id == ACTION_GESTURE_BEGIN)
   {
     m_firstGesturePoint = point;
@@ -704,7 +704,7 @@ EVENT_RESULT CGUIWindowSlideShow::OnMouseEvent(const CPoint &point, const CMouse
   {
     // zoomed in - free move mode
     if (m_iZoomFactor != 1 &&
-       (m_Image[m_iCurrentPic].m_bCanMoveHorizontally || m_Image[m_iCurrentPic].m_bCanMoveVertically))
+        (m_Image[m_iCurrentPic].m_bCanMoveHorizontally || m_Image[m_iCurrentPic].m_bCanMoveVertically))
     {
       Move(PICTURE_MOVE_AMOUNT_TOUCH / m_iZoomFactor * (m_firstGesturePoint.x - point.x), PICTURE_MOVE_AMOUNT_TOUCH / m_iZoomFactor * (m_firstGesturePoint.y - point.y));
       m_firstGesturePoint = point;
@@ -736,7 +736,7 @@ EVENT_RESULT CGUIWindowSlideShow::OnMouseEvent(const CPoint &point, const CMouse
       else if (-reminder > 90.0f - ROTATION_SNAP_RANGE)
         Rotate(-90.0f - reminder);
     }
-
+    
     m_fInitialZoom = 0.0f;
     m_fInitialRotate = 0.0f;
     return EVENT_RESULT_HANDLED;
@@ -758,7 +758,7 @@ bool CGUIWindowSlideShow::OnAction(const CAction &action)
 {
   switch (action.GetID())
   {
-  case ACTION_SHOW_CODEC:
+    case ACTION_SHOW_CODEC:
     {
       CGUIDialogPictureInfo *pictureInfo = (CGUIDialogPictureInfo *)g_windowManager.GetWindow(WINDOW_DIALOG_PICTURE_INFO);
       if (pictureInfo)
@@ -767,130 +767,130 @@ bool CGUIWindowSlideShow::OnAction(const CAction &action)
         pictureInfo->DoModal();
       }
     }
-    break;
-
-  case ACTION_PREVIOUS_MENU:
-  case ACTION_NAV_BACK:
-  case ACTION_STOP:
-    if (m_slides->Size())
-      AnnouncePlayerStop(m_slides->Get(m_iCurrentSlide));
-    g_windowManager.PreviousWindow();
-    break;
-
-  case ACTION_NEXT_PICTURE:
-      ShowNext();
-    break;
-
-  case ACTION_PREV_PICTURE:
-      ShowPrevious();
-    break;
-
-  case ACTION_MOVE_RIGHT:
-    if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveHorizontally)
-      ShowNext();
-    else
-      Move(PICTURE_MOVE_AMOUNT, 0);
-    break;
-
-  case ACTION_MOVE_LEFT:
-    if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveHorizontally)
-      ShowPrevious();
-    else
-      Move( -PICTURE_MOVE_AMOUNT, 0);
-    break;
-
-  case ACTION_MOVE_DOWN:
-    Move(0, PICTURE_MOVE_AMOUNT);
-    break;
-
-  case ACTION_MOVE_UP:
-    Move(0, -PICTURE_MOVE_AMOUNT);
-    break;
-
-  case ACTION_PAUSE:
-  case ACTION_PLAYER_PLAY:
-    if (m_slides->Size() == 0)
       break;
-    if (m_slides->Get(m_iCurrentSlide)->IsVideo())
-    {
-      if (!m_bPlayingVideo)
-      {
-        if (m_bSlideShow)
-        {
-          SetDirection(1);
-          m_bPause = false;
-        }
-        PlayVideo();
-      }
-    }
-    else if (!m_bSlideShow || m_bPause)
-    {
-      m_bSlideShow = true;
-      m_bPause = false;
-      SetDirection(1);
-      if (m_Image[m_iCurrentPic].IsLoaded())
-      {
-        CSlideShowPic::DISPLAY_EFFECT effect = GetDisplayEffect(m_iCurrentSlide);
-        if (m_Image[m_iCurrentPic].DisplayEffectNeedChange(effect))
-          m_Image[m_iCurrentPic].Reset(effect);
-      }
-      AnnouncePlayerPlay(m_slides->Get(m_iCurrentSlide));
-    }
-    else if (action.GetID() == ACTION_PAUSE)
-    {
-      m_bPause = true;
-      AnnouncePlayerPause(m_slides->Get(m_iCurrentSlide));
-    }
-    break;
-
-  case ACTION_ZOOM_OUT:
-    Zoom(m_iZoomFactor - 1);
-    break;
-
-  case ACTION_ZOOM_IN:
-    Zoom(m_iZoomFactor + 1);
-    break;
-
-  case ACTION_GESTURE_SWIPE_UP:
-  case ACTION_GESTURE_SWIPE_DOWN:
-    if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveVertically)
-    {
-      bool swipeOnLeft = action.GetAmount() < g_graphicsContext.GetWidth() / 2;
-      bool swipeUp = action.GetID() == ACTION_GESTURE_SWIPE_UP;
-      if (swipeUp == swipeOnLeft)
-        Rotate(90.0f);
+      
+    case ACTION_PREVIOUS_MENU:
+    case ACTION_NAV_BACK:
+    case ACTION_STOP:
+      if (m_slides->Size())
+        AnnouncePlayerStop(m_slides->Get(m_iCurrentSlide));
+      g_windowManager.PreviousWindow();
+      break;
+      
+    case ACTION_NEXT_PICTURE:
+      ShowNext();
+      break;
+      
+    case ACTION_PREV_PICTURE:
+      ShowPrevious();
+      break;
+      
+    case ACTION_MOVE_RIGHT:
+      if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveHorizontally)
+        ShowNext();
       else
-        Rotate(-90.0f);
-    }
-    break;
-
-  case ACTION_ROTATE_PICTURE_CW:
-    Rotate(90.0f);
-    break;
-
-  case ACTION_ROTATE_PICTURE_CCW:
-    Rotate(-90.0f);
-    break;
-
-  case ACTION_ZOOM_LEVEL_NORMAL:
-  case ACTION_ZOOM_LEVEL_1:
-  case ACTION_ZOOM_LEVEL_2:
-  case ACTION_ZOOM_LEVEL_3:
-  case ACTION_ZOOM_LEVEL_4:
-  case ACTION_ZOOM_LEVEL_5:
-  case ACTION_ZOOM_LEVEL_6:
-  case ACTION_ZOOM_LEVEL_7:
-  case ACTION_ZOOM_LEVEL_8:
-  case ACTION_ZOOM_LEVEL_9:
-    Zoom((action.GetID() - ACTION_ZOOM_LEVEL_NORMAL) + 1);
-    break;
-
-  case ACTION_ANALOG_MOVE:
-    Move(action.GetAmount()*PICTURE_MOVE_AMOUNT_ANALOG, -action.GetAmount(1)*PICTURE_MOVE_AMOUNT_ANALOG);
-    break;
-
-  default:
-    return CGUIWindow::OnAction(action);
+        Move(PICTURE_MOVE_AMOUNT, 0);
+      break;
+      
+    case ACTION_MOVE_LEFT:
+      if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveHorizontally)
+        ShowPrevious();
+      else
+        Move( -PICTURE_MOVE_AMOUNT, 0);
+      break;
+      
+    case ACTION_MOVE_DOWN:
+      Move(0, PICTURE_MOVE_AMOUNT);
+      break;
+      
+    case ACTION_MOVE_UP:
+      Move(0, -PICTURE_MOVE_AMOUNT);
+      break;
+      
+    case ACTION_PAUSE:
+    case ACTION_PLAYER_PLAY:
+      if (m_slides->Size() == 0)
+        break;
+      if (m_slides->Get(m_iCurrentSlide)->IsVideo())
+      {
+        if (!m_bPlayingVideo)
+        {
+          if (m_bSlideShow)
+          {
+            SetDirection(1);
+            m_bPause = false;
+          }
+          PlayVideo();
+        }
+      }
+      else if (!m_bSlideShow || m_bPause)
+      {
+        m_bSlideShow = true;
+        m_bPause = false;
+        SetDirection(1);
+        if (m_Image[m_iCurrentPic].IsLoaded())
+        {
+          CSlideShowPic::DISPLAY_EFFECT effect = GetDisplayEffect(m_iCurrentSlide);
+          if (m_Image[m_iCurrentPic].DisplayEffectNeedChange(effect))
+            m_Image[m_iCurrentPic].Reset(effect);
+        }
+        AnnouncePlayerPlay(m_slides->Get(m_iCurrentSlide));
+      }
+      else if (action.GetID() == ACTION_PAUSE)
+      {
+        m_bPause = true;
+        AnnouncePlayerPause(m_slides->Get(m_iCurrentSlide));
+      }
+      break;
+      
+    case ACTION_ZOOM_OUT:
+      Zoom(m_iZoomFactor - 1);
+      break;
+      
+    case ACTION_ZOOM_IN:
+      Zoom(m_iZoomFactor + 1);
+      break;
+      
+    case ACTION_GESTURE_SWIPE_UP:
+    case ACTION_GESTURE_SWIPE_DOWN:
+      if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveVertically)
+      {
+        bool swipeOnLeft = action.GetAmount() < g_graphicsContext.GetWidth() / 2;
+        bool swipeUp = action.GetID() == ACTION_GESTURE_SWIPE_UP;
+        if (swipeUp == swipeOnLeft)
+          Rotate(90.0f);
+        else
+          Rotate(-90.0f);
+      }
+      break;
+      
+    case ACTION_ROTATE_PICTURE_CW:
+      Rotate(90.0f);
+      break;
+      
+    case ACTION_ROTATE_PICTURE_CCW:
+      Rotate(-90.0f);
+      break;
+      
+    case ACTION_ZOOM_LEVEL_NORMAL:
+    case ACTION_ZOOM_LEVEL_1:
+    case ACTION_ZOOM_LEVEL_2:
+    case ACTION_ZOOM_LEVEL_3:
+    case ACTION_ZOOM_LEVEL_4:
+    case ACTION_ZOOM_LEVEL_5:
+    case ACTION_ZOOM_LEVEL_6:
+    case ACTION_ZOOM_LEVEL_7:
+    case ACTION_ZOOM_LEVEL_8:
+    case ACTION_ZOOM_LEVEL_9:
+      Zoom((action.GetID() - ACTION_ZOOM_LEVEL_NORMAL) + 1);
+      break;
+      
+    case ACTION_ANALOG_MOVE:
+      Move(action.GetAmount()*PICTURE_MOVE_AMOUNT_ANALOG, -action.GetAmount(1)*PICTURE_MOVE_AMOUNT_ANALOG);
+      break;
+      
+    default:
+      return CGUIWindow::OnAction(action);
   }
   return true;
 }
@@ -899,13 +899,13 @@ void CGUIWindowSlideShow::RenderErrorMessage()
 {
   if (!m_bErrorMessage)
     return ;
-
+  
   const CGUIControl *control = GetControl(LABEL_ROW1);
   if (NULL == control || control->GetControlType() != CGUIControl::GUICONTROL_LABEL)
   {
-     return;
+    return;
   }
-
+  
   CGUIFont *pFont = ((CGUILabelControl *)control)->GetLabelInfo().font;
   CGUITextLayout::DrawText(pFont, 0.5f*g_graphicsContext.GetWidth(), 0.5f*g_graphicsContext.GetHeight(), 0xffffffff, 0, g_localizeStrings.Get(747), XBFONT_CENTER_X | XBFONT_CENTER_Y);
 }
@@ -914,31 +914,31 @@ bool CGUIWindowSlideShow::OnMessage(CGUIMessage& message)
 {
   switch ( message.GetMessage() )
   {
-  case GUI_MSG_WINDOW_INIT:
+    case GUI_MSG_WINDOW_INIT:
     {
       m_Resolution = (RESOLUTION) CSettings::Get().GetInt("pictures.displayresolution");
-
+      
       //FIXME: Use GUI resolution for now
       if (0 /*m_Resolution != CDisplaySettings::Get().GetCurrentResolution() && m_Resolution != INVALID && m_Resolution!=AUTORES*/)
         g_graphicsContext.SetVideoResolution(m_Resolution);
       else
         m_Resolution = g_graphicsContext.GetVideoResolution();
-
+      
       CGUIWindow::OnMessage(message);
       if (message.GetParam1() != WINDOW_PICTURES)
         m_ImageLib.Load();
-
+      
       g_windowManager.ShowOverlay(OVERLAY_STATE_HIDDEN);
-
+      
       // turn off slideshow if we only have 1 image
       if (m_slides->Size() <= 1)
         m_bSlideShow = false;
-
+      
       return true;
     }
-    break;
-
-  case GUI_MSG_SHOW_PICTURE:
+      break;
+      
+    case GUI_MSG_SHOW_PICTURE:
     {
       CStdString strFile = message.GetStringParam();
       Reset();
@@ -946,9 +946,9 @@ bool CGUIWindowSlideShow::OnMessage(CGUIMessage& message)
       Add(&item);
       RunSlideShow("", false, false, true, "", false);
     }
-    break;
-
-  case GUI_MSG_START_SLIDESHOW:
+      break;
+      
+    case GUI_MSG_START_SLIDESHOW:
     {
       CStdString strFolder = message.GetStringParam();
       unsigned int iParams = message.GetParam1();
@@ -971,52 +971,52 @@ bool CGUIWindowSlideShow::OnMessage(CGUIMessage& message)
       }
       RunSlideShow(strFolder, bRecursive, bRandom, bNotRandom, beginSlidePath, !bPause);
     }
-    break;
-
+      break;
+      
     case GUI_MSG_PLAYLISTPLAYER_STOPPED:
-      {
-      }
+    {
+    }
       break;
-
+      
     case GUI_MSG_PLAYBACK_STARTED:
-      {
-        if (m_bPlayingVideo)
-          g_windowManager.ActivateWindow(WINDOW_FULLSCREEN_VIDEO);
-      }
+    {
+      if (m_bPlayingVideo)
+        g_windowManager.ActivateWindow(WINDOW_FULLSCREEN_VIDEO);
+    }
       break;
-
+      
     case GUI_MSG_PLAYBACK_STOPPED:
+    {
+      if (m_bPlayingVideo)
       {
-        if (m_bPlayingVideo)
-        {
-          m_bPlayingVideo = false;
-          if (m_bSlideShow)
-            m_bPause = true;
-        }
+        m_bPlayingVideo = false;
+        if (m_bSlideShow)
+          m_bPause = true;
       }
+    }
       break;
-
+      
     case GUI_MSG_PLAYBACK_ENDED:
+    {
+      if (m_bPlayingVideo)
       {
-        if (m_bPlayingVideo)
+        m_bPlayingVideo = false;
+        if (m_bSlideShow)
         {
-          m_bPlayingVideo = false;
-          if (m_bSlideShow)
-          {
-            m_bPause = false;
-            if (m_iCurrentSlide == m_iNextSlide)
-              break;
-            m_Image[m_iCurrentPic].Close();
-            m_iCurrentPic = 1 - m_iCurrentPic;
-            m_iCurrentSlide = m_iNextSlide;
-            m_iNextSlide    = GetNextSlide();
-            AnnouncePlayerPlay(m_slides->Get(m_iCurrentSlide));
-            m_iZoomFactor = 1;
-            m_fZoom = 1.0f;
-            m_fRotate = 0.0f;
-          }
+          m_bPause = false;
+          if (m_iCurrentSlide == m_iNextSlide)
+            break;
+          m_Image[m_iCurrentPic].Close();
+          m_iCurrentPic = 1 - m_iCurrentPic;
+          m_iCurrentSlide = m_iNextSlide;
+          m_iNextSlide    = GetNextSlide();
+          AnnouncePlayerPlay(m_slides->Get(m_iCurrentSlide));
+          m_iZoomFactor = 1;
+          m_fZoom = 1.0f;
+          m_fRotate = 0.0f;
         }
       }
+    }
       break;
   }
   return CGUIWindow::OnMessage(message);
@@ -1037,20 +1037,20 @@ void CGUIWindowSlideShow::RenderPause()
    dwCounter++;
    if (dwCounter > 25)
    {
-    dwCounter=0;
+   dwCounter=0;
    }
    if (!m_bPause) return;
    if (dwCounter <13) return;*/
-
+  
 }
 
 void CGUIWindowSlideShow::Rotate(float fAngle, bool immediate /* = false */)
 {
   if (m_Image[m_iCurrentPic].DrawNextImage())
     return;
-
+  
   m_fRotate += fAngle;
-
+  
   m_Image[m_iCurrentPic].Rotate(fAngle, immediate);
 }
 
@@ -1058,7 +1058,7 @@ void CGUIWindowSlideShow::Zoom(int iZoom)
 {
   if (iZoom > MAX_ZOOM_FACTOR || iZoom < 1)
     return;
-
+  
   ZoomRelative(zoomamount[iZoom - 1]);
 }
 
@@ -1068,26 +1068,26 @@ void CGUIWindowSlideShow::ZoomRelative(float fZoom, bool immediate /* = false */
     fZoom = zoomamount[0];
   else if (fZoom > zoomamount[MAX_ZOOM_FACTOR - 1])
     fZoom = zoomamount[MAX_ZOOM_FACTOR - 1];
-
+  
   if (m_Image[m_iCurrentPic].DrawNextImage())
     return;
-
+  
   m_fZoom = fZoom;
-
+  
   // find the nearest zoom factor
   for (unsigned int i = 1; i < MAX_ZOOM_FACTOR; i++)
   {
     if (m_fZoom > zoomamount[i])
       continue;
-
+    
     if (fabs(m_fZoom - zoomamount[i - 1]) < fabs(m_fZoom - zoomamount[i]))
       m_iZoomFactor = i;
     else
       m_iZoomFactor = i + 1;
-
+    
     break;
   }
-
+  
   m_Image[m_iCurrentPic].Zoom(m_fZoom, immediate);
 }
 
@@ -1174,7 +1174,7 @@ void CGUIWindowSlideShow::Shuffle()
   m_iCurrentSlide = 0;
   m_iNextSlide = GetNextSlide();
   m_bShuffled = true;
-
+  
   AnnouncePropertyChanged("shuffled", true);
 }
 
@@ -1189,7 +1189,7 @@ int CGUIWindowSlideShow::CurrentSlide() const
 }
 
 void CGUIWindowSlideShow::AddFromPath(const CStdString &strPath,
-                                      bool bRecursive, 
+                                      bool bRecursive,
                                       SortBy method, SortOrder order, SortAttribute sortAttributes,
                                       const CStdString &strExtensions)
 {
@@ -1307,4 +1307,3 @@ CStdString CGUIWindowSlideShow::GetPicturePath(CFileItem *item)
   }
   return picturePath;
 }
-

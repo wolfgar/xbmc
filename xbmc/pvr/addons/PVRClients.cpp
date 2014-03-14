@@ -1065,7 +1065,6 @@ void CPVRClients::LoadCurrentChannelSettings(void)
   CPVRDatabase *database = GetPVRDatabase();
   if (!database)
     return;
-
   if (g_application.m_pPlayer->HasPlayer())
   {
     /* store the current settings so we can compare if anything has changed */

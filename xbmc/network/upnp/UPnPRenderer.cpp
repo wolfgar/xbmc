@@ -30,7 +30,7 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/Key.h"
 #include "pictures/GUIWindowSlideShow.h"
-#include "pictures/PictureInfoTag.h"
+#include "pictures/tags/PictureInfoTag.h"
 #include "interfaces/AnnouncementManager.h"
 #include "settings/Settings.h"
 #include "TextureDatabase.h"
@@ -306,7 +306,6 @@ CUPnPRenderer::UpdateState()
         return;
 
     avt->SetStateVariable("TransportStatus", "OK");
-
     if (g_application.m_pPlayer->IsPlaying() || g_application.m_pPlayer->IsPausedPlayback()) {
         avt->SetStateVariable("NumberOfTracks", "1");
         avt->SetStateVariable("CurrentTrack", "1");

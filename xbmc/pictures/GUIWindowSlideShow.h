@@ -39,13 +39,13 @@ class CBackgroundPicLoader : public CThread
 public:
   CBackgroundPicLoader();
   ~CBackgroundPicLoader();
-
+  
   void Create(CGUIWindowSlideShow *pCallback);
   void LoadPic(int iPic, int iSlideNumber, const CStdString &strFileName, const int maxWidth, const int maxHeight);
   bool IsLoading() { return m_isLoading;};
   int SlideNumber() const { return m_iSlideNumber; }
   int Pic() const { return m_iPic; }
-
+  
 private:
   void Process();
   int m_iPic;
@@ -53,10 +53,10 @@ private:
   CStdString m_strFileName;
   int m_maxWidth;
   int m_maxHeight;
-
+  
   CEvent m_loadPic;
   bool m_isLoading;
-
+  
   CGUIWindowSlideShow *m_pCallback;
 };
 
@@ -65,7 +65,7 @@ class CGUIWindowSlideShow : public CGUIWindow
 public:
   CGUIWindowSlideShow(void);
   virtual ~CGUIWindowSlideShow(void);
-
+  
   void Reset();
   void Add(const CFileItem *picture);
   bool IsPlaying() const;
@@ -83,14 +83,14 @@ public:
                     SortAttribute sortAttributes = SortAttributeNone,
                     const CStdString &strExtensions="");
   void AddFromPath(const CStdString &strPath, bool bRecursive,
-                   SortBy method = SortByLabel, 
+                   SortBy method = SortByLabel,
                    SortOrder order = SortOrderAscending,
                    SortAttribute sortAttributes = SortAttributeNone,
                    const CStdString &strExtensions="");
   void StartSlideShow();
   bool InSlideShow() const;
   virtual bool OnMessage(CGUIMessage& message);
-  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);  
+  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
   virtual bool OnAction(const CAction &action);
   virtual void Render();
   virtual void Process(unsigned int currentTime, CDirtyRegionList &regions);
@@ -120,7 +120,7 @@ private:
   void GetCheckedSize(float width, float height, int &maxWidth, int &maxHeight);
   CStdString GetPicturePath(CFileItem *item);
   int  GetNextSlide();
-
+  
   void AnnouncePlayerPlay(const CFileItemPtr& item);
   void AnnouncePlayerPause(const CFileItemPtr& item);
   void AnnouncePlayerStop(const CFileItemPtr& item);
@@ -128,7 +128,7 @@ private:
   void AnnouncePlaylistClear();
   void AnnouncePlaylistAdd(const CFileItemPtr& item, int pos);
   void AnnouncePropertyChanged(const std::string &strProperty, const CVariant &value);
-
+  
   int m_iCurrentSlide;
   int m_iNextSlide;
   int m_iDirection;
@@ -137,17 +137,17 @@ private:
   int m_iZoomFactor;
   float m_fZoom;
   float m_fInitialZoom;
-
+  
   bool m_bShuffled;
   bool m_bSlideShow;
   bool m_bPause;
   bool m_bPlayingVideo;
   bool m_bErrorMessage;
-
+  
   CFileItemList* m_slides;
-
+  
   CSlideShowPic m_Image[2];
-
+  
   int m_iCurrentPic;
   // background loader
   CBackgroundPicLoader* m_pBackgroundLoader;

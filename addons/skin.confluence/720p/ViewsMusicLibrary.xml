@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <includes>
 	<include name="MusicInfoListView">
 		<control type="group">
@@ -238,7 +237,7 @@
 				<top>0</top>
 				<width>1280</width>
 				<height>270</height>
-				<texture border="1">HomeNowPlayingBack.png</texture>
+				<texture>HomeNowPlayingBack.png</texture>
 			</control>
 			<control type="label">
 				<left>40</left>
@@ -426,6 +425,7 @@
 					<align>left</align>
 					<aligny>center</aligny>
 					<label>$LOCALIZE[515]: $INFO[ListItem.Genre]</label>
+					<scroll>false</scroll>
 				</control>
 				<control type="label">
 					<left>0</left>
@@ -439,6 +439,7 @@
 					<align>left</align>
 					<aligny>center</aligny>
 					<label>$LOCALIZE[562]: $INFO[ListItem.Year]</label>
+					<scroll>false</scroll>
 				</control>
 				<control type="fadelabel">
 					<left>0</left>

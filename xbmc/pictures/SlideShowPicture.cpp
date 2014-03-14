@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/Texture.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/log.h"
@@ -120,9 +121,7 @@ void CSlideShowPic::SetTexture_Internal(int iSlideNumber, CBaseTexture* pTexture
   m_transistionStart.type = transEffect;
   m_transistionStart.start = 0;
   // the +1's make sure it actually occurs
-  float fadeTime = 0.2f;
-  if (m_displayEffect != EFFECT_NO_TIMEOUT)
-    fadeTime = std::min(0.2f*CSettings::Get().GetInt("slideshow.staytime"), 3.0f);
+  float fadeTime = std::min(0.2f*CSettings::Get().GetInt("slideshow.staytime"), 3.0f);
   m_transistionStart.length = (int)(g_graphicsContext.GetFPS() * fadeTime); // transition time in frames
   m_transistionEnd.type = transEffect;
   m_transistionEnd.length = m_transistionStart.length;
@@ -161,9 +160,9 @@ void CSlideShowPic::SetTexture_Internal(int iSlideNumber, CBaseTexture* pTexture
   int iFrames = max((int)(g_graphicsContext.GetFPS() * CSettings::Get().GetInt("slideshow.staytime")), 1);
   if (m_displayEffect == EFFECT_PANORAMA)
   {
-    RESOLUTION_INFO res = g_graphicsContext.GetResInfo();
-    float fScreenWidth  = (float)res.Overscan.right  - res.Overscan.left;
-    float fScreenHeight = (float)res.Overscan.bottom - res.Overscan.top;
+    RESOLUTION iRes = g_graphicsContext.GetVideoResolution();
+	  float fScreenWidth = (float)CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.right - CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.left;
+    float fScreenHeight = (float)CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.bottom - CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.top;
 
     if (m_fWidth > m_fHeight)
     {
@@ -418,15 +417,15 @@ void CSlideShowPic::Process(unsigned int currentTime, CDirtyRegionList &dirtyreg
   if (m_iCounter > m_transistionEnd.start + m_transistionEnd.length)
     m_bIsFinished = true;
 
-  RESOLUTION_INFO info = g_graphicsContext.GetResInfo();
-
   // calculate where we should render (and how large it should be)
   // calculate aspect ratio correction factor
-  float fOffsetX      = (float)info.Overscan.left;
-  float fOffsetY      = (float)info.Overscan.top;
-  float fScreenWidth  = (float)info.Overscan.right  - info.Overscan.left;
-  float fScreenHeight = (float)info.Overscan.bottom - info.Overscan.top;
-  float fPixelRatio   = info.fPixelRatio;
+  RESOLUTION iRes = g_graphicsContext.GetVideoResolution();
+  float fOffsetX = (float)CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.left;
+  float fOffsetY = (float)CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.top;
+  float fScreenWidth = (float)CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.right - CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.left;
+  float fScreenHeight = (float)CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.bottom - CDisplaySettings::Get().GetResolutionInfo(iRes).Overscan.top;
+
+  float fPixelRatio = CDisplaySettings::Get().GetResolutionInfo(iRes).fPixelRatio;
 
   // Rotate the image as needed
   float x[4];
@@ -748,17 +747,17 @@ void CSlideShowPic::Render(float *x, float *y, CBaseTexture* pTexture, color_t c
 #ifdef HAS_DX
   struct VERTEX
   {
-    D3DXVECTOR3 p;
+    D3DXVECTOR4 p;
     D3DCOLOR col;
     FLOAT tu, tv;
   };
-  static const DWORD FVF_VERTEX = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+  static const DWORD FVF_VERTEX = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
 
   VERTEX vertex[5];
 
   for (int i = 0; i < 4; i++)
   {
-    vertex[i].p = D3DXVECTOR3( x[i], y[i], 0);
+    vertex[i].p = D3DXVECTOR4( x[i], y[i], 0, 1.0f);
     vertex[i].tu = 0;
     vertex[i].tv = 0;
     vertex[i].col = color;
@@ -881,29 +880,31 @@ void CSlideShowPic::Render(float *x, float *y, CBaseTexture* pTexture, color_t c
     v2 = (float)pTexture->GetHeight() / pTexture->GetTextureHeight();
   }
 
-  GLubyte col[4];
+  GLubyte col[4][4];
   GLfloat ver[4][3];
   GLfloat tex[4][2];
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
 
   GLint posLoc  = g_Windowing.GUIShaderGetPos();
+  GLint colLoc  = g_Windowing.GUIShaderGetCol();
   GLint tex0Loc = g_Windowing.GUIShaderGetCoord0();
-  GLint uniColLoc= g_Windowing.GUIShaderGetUniCol();
 
   glVertexAttribPointer(posLoc,  3, GL_FLOAT, 0, 0, ver);
+  glVertexAttribPointer(colLoc,  4, GL_UNSIGNED_BYTE, GL_TRUE, 0, col);
   glVertexAttribPointer(tex0Loc, 2, GL_FLOAT, 0, 0, tex);
 
   glEnableVertexAttribArray(posLoc);
+  glEnableVertexAttribArray(colLoc);
   glEnableVertexAttribArray(tex0Loc);
-
-  // Setup Colour values
-  col[0] = (GLubyte)GET_R(color);
-  col[1] = (GLubyte)GET_G(color);
-  col[2] = (GLubyte)GET_B(color);
-  col[3] = (GLubyte)GET_A(color);
 
   for (int i=0; i<4; i++)
   {
+    // Setup Colour values
+    col[i][0] = (GLubyte)GET_R(color);
+    col[i][1] = (GLubyte)GET_G(color);
+    col[i][2] = (GLubyte)GET_B(color);
+    col[i][3] = (GLubyte)GET_A(color);
+
     // Setup vertex position values
     ver[i][0] = x[i];
     ver[i][1] = y[i];
@@ -915,10 +916,10 @@ void CSlideShowPic::Render(float *x, float *y, CBaseTexture* pTexture, color_t c
   tex[1][0] = tex[2][0] = u2;
   tex[2][1] = tex[3][1] = v2;
 
-  glUniform4f(uniColLoc,(col[0] / 255.0f), (col[1] / 255.0f), (col[2] / 255.0f), (col[3] / 255.0f));
   glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, idx);
 
   glDisableVertexAttribArray(posLoc);
+  glDisableVertexAttribArray(colLoc);
   glDisableVertexAttribArray(tex0Loc);
 
   g_Windowing.DisableGUIShader();

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,22 +33,26 @@
 #include "settings/AdvancedSettings.h"
 #include "music/MusicThumbLoader.h"
 #include "video/VideoThumbLoader.h"
+#include "pictures/PictureThumbLoader.h"
+#include "pictures/PictureDatabase.h"
+
+
 
 #define NUM_ITEMS 10
 
 CRecentlyAddedJob::CRecentlyAddedJob(int flag)
 {
   m_flag = flag;
-} 
+}
 
-bool CRecentlyAddedJob::UpdateVideo()
+bool CRecentlyAddedJob::UpdateMovies()
 {
   CGUIWindow* home = g_windowManager.GetWindow(WINDOW_HOME);
-
+  
   if ( home == NULL )
     return false;
-
-  CLog::Log(LOGDEBUG, "CRecentlyAddedJob::UpdateVideos() - Running RecentlyAdded home screen update");
+  
+  CLog::Log(LOGDEBUG, "CRecentlyAddedJob::UpdateMovies() - Running RecentlyAdded home screen update");
   
   int            i = 0;
   CFileItemList  items;
@@ -57,9 +61,9 @@ bool CRecentlyAddedJob::UpdateVideo()
   loader.OnLoaderStart();
   
   videodatabase.Open();
-
+  
   if (videodatabase.GetRecentlyAddedMoviesNav("videodb://recentlyaddedmovies/", items, NUM_ITEMS))
-  {  
+  {
     for (; i < items.Size(); ++i)
     {
       CFileItemPtr item = items.Get(i);
@@ -73,14 +77,13 @@ bool CRecentlyAddedJob::UpdateVideo()
       home->SetProperty("LatestMovie." + value + ".RunningTime" , item->GetVideoInfoTag()->GetDuration() / 60);
       home->SetProperty("LatestMovie." + value + ".Path"        , item->GetVideoInfoTag()->m_strFileNameAndPath);
       home->SetProperty("LatestMovie." + value + ".Trailer"     , item->GetVideoInfoTag()->m_strTrailer);
-
       if (!item->HasArt("thumb"))
         loader.LoadItem(item.get());
-
+      
       home->SetProperty("LatestMovie." + value + ".Thumb"       , item->GetArt("thumb"));
       home->SetProperty("LatestMovie." + value + ".Fanart"      , item->GetArt("fanart"));
     }
-  } 
+  }
   for (; i < NUM_ITEMS; ++i)
   {
     CStdString value = StringUtils::Format("%i", i + 1);
@@ -94,14 +97,14 @@ bool CRecentlyAddedJob::UpdateVideo()
     home->SetProperty("LatestMovie." + value + ".Trailer"     , "");
     home->SetProperty("LatestMovie." + value + ".Fanart"      , "");
   }
- 
+  
   i = 0;
-  CFileItemList  TVShowItems; 
- 
+  CFileItemList  TVShowItems;
+  
   if (videodatabase.GetRecentlyAddedEpisodesNav("videodb://recentlyaddedepisodes/", TVShowItems, NUM_ITEMS))
   {
     for (; i < TVShowItems.Size(); ++i)
-    {    
+    {
       CFileItemPtr item          = TVShowItems.Get(i);
       int          EpisodeSeason = item->GetVideoInfoTag()->m_iSeason;
       int          EpisodeNumber = item->GetVideoInfoTag()->m_iEpisode;
@@ -148,11 +151,11 @@ bool CRecentlyAddedJob::UpdateVideo()
     home->SetProperty("LatestEpisode." + value + ".ShowThumb"     , "");
     home->SetProperty("LatestEpisode." + value + ".SeasonThumb"   , "");
     home->SetProperty("LatestEpisode." + value + ".Fanart"        , "");
-  }  
-
+  }
+  
   i = 0;
   CFileItemList MusicVideoItems;
-
+  
   if (videodatabase.GetRecentlyAddedMusicVideosNav("videodb://recentlyaddedmusicvideos/", MusicVideoItems, NUM_ITEMS))
   {
     for (; i < MusicVideoItems.Size(); ++i)
@@ -186,7 +189,7 @@ bool CRecentlyAddedJob::UpdateVideo()
     home->SetProperty("LatestMusicVideo." + value + ".Artist"      , "");
     home->SetProperty("LatestMusicVideo." + value + ".Fanart"      , "");
   }
-
+  
   videodatabase.Close();
   return true;
 }
@@ -252,7 +255,7 @@ bool CRecentlyAddedJob::UpdateMusic()
     CStdString value = StringUtils::Format("%i", i + 1);
     home->SetProperty("LatestSong." + value + ".Title"   , "");
     home->SetProperty("LatestSong." + value + ".Year"    , "");
-    home->SetProperty("LatestSong." + value + ".Artist"  , "");      
+    home->SetProperty("LatestSong." + value + ".Artist"  , "");
     home->SetProperty("LatestSong." + value + ".Album"   , "");
     home->SetProperty("LatestSong." + value + ".Rating"  , "");
     home->SetProperty("LatestSong." + value + ".Path"    , "");
@@ -264,7 +267,7 @@ bool CRecentlyAddedJob::UpdateMusic()
   VECALBUMS albums;
   
   if (musicdatabase.GetRecentlyAddedAlbums(albums, NUM_ITEMS))
-  { 
+  {
     for (; i < (int)albums.size(); ++i)
     {
       CAlbum&    album=albums[i];
@@ -277,7 +280,7 @@ bool CRecentlyAddedJob::UpdateMusic()
       
       home->SetProperty("LatestAlbum." + value + ".Title"   , album.strAlbum);
       home->SetProperty("LatestAlbum." + value + ".Year"    , album.iYear);
-      home->SetProperty("LatestAlbum." + value + ".Artist"  , strArtist);      
+      home->SetProperty("LatestAlbum." + value + ".Artist"  , strArtist);
       home->SetProperty("LatestAlbum." + value + ".Rating"  , album.iRating);
       home->SetProperty("LatestAlbum." + value + ".Path"    , strDBpath);
       home->SetProperty("LatestAlbum." + value + ".Thumb"   , strThumb);
@@ -289,16 +292,294 @@ bool CRecentlyAddedJob::UpdateMusic()
     CStdString value = StringUtils::Format("%i", i + 1);
     home->SetProperty("LatestAlbum." + value + ".Title"   , "");
     home->SetProperty("LatestAlbum." + value + ".Year"    , "");
-    home->SetProperty("LatestAlbum." + value + ".Artist"  , "");      
+    home->SetProperty("LatestAlbum." + value + ".Artist"  , "");
     home->SetProperty("LatestAlbum." + value + ".Rating"  , "");
     home->SetProperty("LatestAlbum." + value + ".Path"    , "");
     home->SetProperty("LatestAlbum." + value + ".Thumb"   , "");
-    home->SetProperty("LatestAlbum." + value + ".Fanart"  , "");            
+    home->SetProperty("LatestAlbum." + value + ".Fanart"  , "");
   }
   
   musicdatabase.Close();
   return true;
 }
+
+bool CRecentlyAddedJob::UpdatePicture()
+{
+  CGUIWindow* home = g_windowManager.GetWindow(WINDOW_HOME);
+  
+  if ( home == NULL )
+    return false;
+  
+  
+  
+  int            i = 0;
+  CFileItemList  pictureItems;
+  CPictureDatabase picturedatabase;
+  CPictureThumbLoader loader;
+  loader.Initialize();
+  
+  
+  
+  picturedatabase.Open();
+  CStdString pictureType = "Picture";
+  if (picturedatabase.GetRecentlyAddedPictureAlbumPictures("picturedb://recentlyaddedpictures/", pictureItems, NUM_ITEMS, pictureType))
+  {
+    
+    long idPictureAlbum = -1;
+    CStdString strPictureAlbumThumb;
+    CStdString strPictureAlbumFanart;
+    for (; i < pictureItems.Size(); ++i)
+    {
+      CFileItemPtr item = pictureItems.Get(i);
+      CStdString   value;
+      value.Format("%i", i + 1);
+      
+      CStdString   strRating;
+      CStdString   strPictureAlbum  = item->GetPictureInfoTag()->GetPictureAlbum();
+      CStdString   strFace = StringUtils::Join(item->GetPictureInfoTag()->GetFace(), g_advancedSettings.m_pictureItemSeparator);
+      
+      if (idPictureAlbum != item->GetPictureInfoTag()->GetPictureAlbumId())
+      {
+        strPictureAlbumThumb.clear();
+        strPictureAlbumFanart.clear();
+        idPictureAlbum = item->GetPictureInfoTag()->GetPictureAlbumId();
+        
+        if (loader.LoadItem(item.get()))
+        {
+          strPictureAlbumThumb = item->GetArt("thumb");
+          strPictureAlbumFanart = item->GetArt("fanart");
+        }
+      }
+      
+      
+      home->SetProperty("LatestPicture." + value + ".Title"   , item->GetPictureInfoTag()->GetTitle());
+      home->SetProperty("LatestPicture." + value + ".Face"    , strFace);
+      home->SetProperty("LatestPicture." + value + ".PictureAlbum"   , strPictureAlbum);
+      home->SetProperty("LatestPicture." + value + ".Rating"  , strRating);
+      home->SetProperty("LatestPicture." + value + ".Path"    , item->GetPictureInfoTag()->GetURL());
+      home->SetProperty("LatestPicture." + value + ".Thumb"   , strPictureAlbumThumb);
+      home->SetProperty("LatestPicture." + value + ".Fanart"  , strPictureAlbumFanart);
+      
+    }
+  }
+  for (; i < NUM_ITEMS; ++i)
+  {
+    CStdString value;
+    value.Format("%i", i + 1);
+    home->SetProperty("LatestPicture." + value + ".Title"   , "");
+    home->SetProperty("LatestPicture." + value + ".Year"    , "");
+    home->SetProperty("LatestPicture." + value + ".Face"  , "");
+    home->SetProperty("LatestPicture." + value + ".PictureAlbum"   , "");
+    home->SetProperty("LatestPicture." + value + ".Rating"  , "");
+    home->SetProperty("LatestPicture." + value + ".Path"    , "");
+    home->SetProperty("LatestPicture." + value + ".Thumb"   , "");
+    home->SetProperty("LatestPicture." + value + ".Fanart"  , "");
+  }
+  
+  CStdString value;
+  value.Format("%i", pictureItems.Size());
+  home->SetProperty("LatestPicture.Num"             , value);
+  
+  i = 0;
+  VECPICTUREALBUMS albums;
+  
+  if (picturedatabase.GetRecentlyAddedPictureAlbums(albums, NUM_ITEMS, pictureType))
+  {
+    for (; i < (int)albums.size(); ++i)
+    {
+      CStdString value;
+      CStdString strIdAlbum;
+      CStdString strPath;
+      CStdString strThumb;
+      CStdString strFanart;
+      CStdString strDBpath;
+      CStdString strSQLPictureAlbum;
+      CPictureAlbum&    album=albums[i];
+      
+      value.Format("%i", i + 1);
+      strIdAlbum.Format("%i", album.idAlbum);
+      strThumb = picturedatabase.GetArtForItem(album.idAlbum, "album", "thumb");
+      strFanart = picturedatabase.GetFaceArtForItem(album.idAlbum, "album", "fanart");
+      strDBpath.Format("picturedb://albums/%i/", album.idAlbum);
+      strSQLPictureAlbum.Format("idPictureAlbum=%i", album.idAlbum);
+      
+      
+      
+      CStdString strFace = picturedatabase.GetSingleValue("albumview", "strFaces", strSQLPictureAlbum);
+      
+      home->SetProperty("LatestPictureAlbum." + value + ".Title"   , album.strAlbum);
+      home->SetProperty("LatestPictureAlbum." + value + ".Face"    , strFace);
+      home->SetProperty("LatestPictureAlbum." + value + ".Path"    , strDBpath);
+      home->SetProperty("LatestPictureAlbum." + value + ".Thumb"   , strThumb);
+      home->SetProperty("LatestPictureAlbum." + value + ".Fanart"  , strFanart);
+      home->SetProperty("LatestPictureAlbum." + value + ".AlbumId" , strIdAlbum);
+      
+      
+      
+    }
+  }
+  for (; i < NUM_ITEMS; ++i)
+  {
+    CStdString value;
+    value.Format("%i", i + 1);
+    home->SetProperty("LatestPictureAlbum." + value + ".Title"   , "");
+    home->SetProperty("LatestPictureAlbum." + value + ".Face"  , "");
+    home->SetProperty("LatestPictureAlbum." + value + ".Path"    , "");
+    home->SetProperty("LatestPictureAlbum." + value + ".Thumb"   , "");
+    home->SetProperty("LatestPictureAlbum." + value + ".Fanart"  , "");
+    home->SetProperty("LatestPictureAlbum." + value + ".AlbumId" , "");
+  }
+  
+  //  CStdString value;
+  value.Format("%i", albums.size());
+  home->SetProperty("LatestPictureAlbum.NumAlbums"             , value);
+  
+  // Please set like this
+  
+  // home->SetProperty("LatestPictureAlbum.1.Fanart"  , "../backgrounds/tv.jpg");
+  //home->SetProperty("LatestPictureAlbum.2.Fanart"  , "../backgrounds/media-overlay.jpg");
+  //home->SetProperty("LatestPictureAlbum.3.Fanart"  , "../backgrounds/settings.jpg");
+  
+  
+  picturedatabase.Close();
+  return true;
+}
+
+
+bool CRecentlyAddedJob::UpdateVideos()
+{
+  CGUIWindow* home = g_windowManager.GetWindow(WINDOW_HOME);
+  
+  if ( home == NULL )
+    return false;
+  
+  
+  
+  int            i = 0;
+  CFileItemList  pictureItems;
+  CPictureDatabase picturedatabase;
+  
+  
+  picturedatabase.Open();
+  CStdString pictureType = "Video";
+  if (picturedatabase.GetRecentlyAddedPictureAlbumPictures("picturedb://recentlyaddedpictures/", pictureItems, NUM_ITEMS, pictureType))
+  {
+    
+    long idPictureAlbum = -1;
+    CStdString strPictureAlbumThumb;
+    CStdString strPictureAlbumFanart;
+    for (; i < pictureItems.Size(); ++i)
+    {
+      CFileItemPtr item = pictureItems.Get(i);
+      CStdString   value;
+      value.Format("%i", i + 1);
+      
+      CStdString   strRating;
+      CStdString   strPictureAlbum  = item->GetPictureInfoTag()->GetPictureAlbum();
+      CStdString   strFace = StringUtils::Join(item->GetPictureInfoTag()->GetFace(), g_advancedSettings.m_pictureItemSeparator);
+      
+      if (idPictureAlbum != item->GetPictureInfoTag()->GetPictureAlbumId())
+      {
+        strPictureAlbumThumb.clear();
+        strPictureAlbumFanart.clear();
+        idPictureAlbum = item->GetPictureInfoTag()->GetPictureAlbumId();
+      }
+      
+      
+      home->SetProperty("LatestVideo." + value + ".Title"   , item->GetPictureInfoTag()->GetTitle());
+      home->SetProperty("LatestVideo." + value + ".Face"    , strFace);
+      home->SetProperty("LatestVideo." + value + ".PictureAlbum"   , strPictureAlbum);
+      home->SetProperty("LatestVideo." + value + ".Rating"  , strRating);
+      home->SetProperty("LatestVideo." + value + ".Path"    , item->GetPictureInfoTag()->GetURL());
+      home->SetProperty("LatestVideo." + value + ".Thumb"   , strPictureAlbumThumb);
+      home->SetProperty("LatestVideo." + value + ".Fanart"  , strPictureAlbumFanart);
+      home->SetProperty("LatestVideo." + value + ".HasAutoThumb"  , true);
+      
+    }
+  }
+  for (; i < NUM_ITEMS; ++i)
+  {
+    CStdString value;
+    value.Format("%i", i + 1);
+    home->SetProperty("LatestVideo." + value + ".Title"   , "");
+    home->SetProperty("LatestVideo." + value + ".Year"    , "");
+    home->SetProperty("LatestVideo." + value + ".Face"  , "");
+    home->SetProperty("LatestVideo." + value + ".PictureAlbum"   , "");
+    home->SetProperty("LatestVideo." + value + ".Rating"  , "");
+    home->SetProperty("LatestVideo." + value + ".Path"    , "");
+    home->SetProperty("LatestVideo." + value + ".Thumb"   , "");
+    home->SetProperty("LatestVideo." + value + ".Fanart"  , "");
+  }
+  
+  CStdString value;
+  value.Format("%i", pictureItems.Size());
+  home->SetProperty("LatestVideo.Num"             , value);
+  
+  
+  i = 0;
+  VECPICTUREALBUMS albums;
+  if (picturedatabase.GetRecentlyAddedPictureAlbums(albums, NUM_ITEMS, pictureType))
+  {
+    for (; i < (int)albums.size(); ++i)
+    {
+      CStdString value;
+      CStdString strIdAlbum;
+      CStdString strPath;
+      CStdString strThumb;
+      CStdString strFanart;
+      CStdString strDBpath;
+      CStdString strSQLPictureAlbum;
+      CPictureAlbum&    album=albums[i];
+      
+      value.Format("%i", i + 1);
+      strIdAlbum.Format("%i", album.idAlbum);
+      strThumb = picturedatabase.GetArtForItem(album.idAlbum, "album", "thumb");
+      strFanart = picturedatabase.GetFaceArtForItem(album.idAlbum, "album", "fanart");
+      strDBpath.Format("picturedb://albums/%i/", album.idAlbum);
+      strSQLPictureAlbum.Format("idPictureAlbum=%i", album.idAlbum);
+      
+      
+      
+      CStdString strFace = picturedatabase.GetSingleValue("albumview", "strFaces", strSQLPictureAlbum);
+      
+      home->SetProperty("LatestVideoAlbum." + value + ".Title"   , album.strAlbum);
+      home->SetProperty("LatestVideoAlbum." + value + ".Face"    , strFace);
+      home->SetProperty("LatestVideoAlbum." + value + ".Path"    , strDBpath);
+      home->SetProperty("LatestVideoAlbum." + value + ".Thumb"   , strThumb);
+      home->SetProperty("LatestVideoAlbum." + value + ".Fanart"  , strFanart);
+      home->SetProperty("LatestVideoAlbum." + value + ".AlbumId" , strIdAlbum);
+      CLog::Log(LOGDEBUG, "picturedatabase.GetRecentlyAddedPictureAlbums");
+      
+      
+    }
+  }
+  for (; i < NUM_ITEMS; ++i)
+  {
+    CStdString value;
+    value.Format("%i", i + 1);
+    home->SetProperty("LatestVideoAlbum." + value + ".Title"   , "");
+    home->SetProperty("LatestVideoAlbum." + value + ".Face"  , "");
+    home->SetProperty("LatestVideoAlbum." + value + ".Path"    , "");
+    home->SetProperty("LatestVideoAlbum." + value + ".Thumb"   , "");
+    home->SetProperty("LatestVideoAlbum." + value + ".Fanart"  , "");
+    home->SetProperty("LatestVideoAlbum." + value + ".AlbumId" , "");
+  }
+  
+  //  CStdString value;
+  value.Format("%i", albums.size());
+  home->SetProperty("LatestVideoAlbum.NumAlbums"             , value);
+  
+  // Please set like this
+  
+  //home->SetProperty("LatestVideoAlbum.1.Fanart"  , "../backgrounds/tv.jpg");
+  //home->SetProperty("LatestVideoAlbum.2.Fanart"  , "../backgrounds/media-overlay.jpg");
+  //home->SetProperty("LatestVideoAlbum.3.Fanart"  , "../backgrounds/settings.jpg");
+  
+  
+  picturedatabase.Close();
+  return true;
+}
+
 
 bool CRecentlyAddedJob::UpdateTotal()
 {
@@ -307,9 +588,9 @@ bool CRecentlyAddedJob::UpdateTotal()
   if ( home == NULL )
     return false;
   
-  CLog::Log(LOGDEBUG, "CRecentlyAddedJob::UpdateTotal() - Running RecentlyAdded home screen update");
   
-  CVideoDatabase videodatabase;  
+  
+  CVideoDatabase videodatabase;
   CMusicDatabase musicdatabase;
   
   musicdatabase.Open();
@@ -317,7 +598,7 @@ bool CRecentlyAddedJob::UpdateTotal()
   int MusAlbumTotals  = atoi(musicdatabase.GetSingleValue("songview"       , "count(distinct strAlbum)"));
   int MusArtistTotals = atoi(musicdatabase.GetSingleValue("songview"       , "count(distinct strArtists)"));
   musicdatabase.Close();
- 
+  
   videodatabase.Open();
   int tvShowCount     = atoi(videodatabase.GetSingleValue("tvshowview"     , "count(1)"));
   int movieTotals     = atoi(videodatabase.GetSingleValue("movieview"      , "count(1)"));
@@ -334,7 +615,7 @@ bool CRecentlyAddedJob::UpdateTotal()
   home->SetProperty("TVShows.UnWatched"     , tvShowCount - TvShowsWatched);
   home->SetProperty("Episodes.Count"        , EpCount);
   home->SetProperty("Episodes.Watched"      , EpWatched);
-  home->SetProperty("Episodes.UnWatched"    , EpCount-EpWatched);  
+  home->SetProperty("Episodes.UnWatched"    , EpCount-EpWatched);
   home->SetProperty("Movies.Count"          , movieTotals);
   home->SetProperty("Movies.Watched"        , movieWatched);
   home->SetProperty("Movies.UnWatched"      , movieTotals - movieWatched);
@@ -356,10 +637,16 @@ bool CRecentlyAddedJob::DoWork()
     ret &= UpdateMusic();
   
   if (m_flag & Video)
-    ret &= UpdateVideo();
+    ret &= UpdateMovies();
+  
+  if (m_flag & Video)
+    ret &= UpdateVideos();
+  
+  if (m_flag & Picture)
+    ret &= UpdatePicture();
   
   if (m_flag & Totals)
     ret &= UpdateTotal();
-    
+  
   return ret; 
 }

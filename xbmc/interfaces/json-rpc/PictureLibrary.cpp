@@ -36,7 +36,13 @@
 #include "utils/log.h"
 #include "pictures/infoscanner/PictureAlbumInfo.h"
 #include "TextureCache.h"
+
 #include "settings/MediaSourceSettings.h"
+#include "utils/StreamDetails.h"
+
+
+#include "cores/dvdplayer/DVDFileInfo.h"
+
 
 using namespace PICTURE_INFO;
 using namespace JSONRPC;
@@ -474,7 +480,7 @@ JSONRPC_STATUS CPictureLibrary::AddVideo(const CStdString &method, ITransportLay
   CStdString strOrientation = parameterObject["orientation"].c_str();
   
   //take the first source as the path
-  VECSOURCES *shares = CMediaSourceSettings::Get().GetSources("pictures");
+  VECSOURCES *shares = CMediaSourceSettings::Get().GetSources("videos");
   if( !shares )
     return InternalError;
   
@@ -512,7 +518,7 @@ JSONRPC_STATUS CPictureLibrary::AddVideo(const CStdString &method, ITransportLay
   
   // set the thumbnail for photo
   CTextureCache::Get().BackgroundCacheImage(strPicturePath);
-  picturedatabase.SetArtForItem(idPicture, "picture", "thumb", strPicturePath);
+  picturedatabase.SetArtForItem(idPicture, "video", "thumb", strPicturePath);
   
   //set the latest added photo as the thumbnail for the album
   CTextureCache::Get().BackgroundCacheImage(strPicturePath);
@@ -712,7 +718,8 @@ JSONRPC_STATUS CPictureLibrary::GetRecentlyAddedPictures(const CStdString &metho
     amount = 0;
   
   CFileItemList items;
-  if (!picturedatabase.GetRecentlyAddedPictureAlbumPictures("picturedb://", items, (unsigned int)amount))
+  CStdString pictureType  = "Picture";
+  if (!picturedatabase.GetRecentlyAddedPictureAlbumPictures("picturedb://", items, (unsigned int)amount), pictureType)
     return InternalError;
   
   JSONRPC_STATUS ret = GetAdditionalPictureDetails(parameterObject, items, picturedatabase);
@@ -759,7 +766,8 @@ JSONRPC_STATUS CPictureLibrary::GetRecentlyPlayedPictures(const CStdString &meth
     return InternalError;
   
   CFileItemList items;
-  if (!picturedatabase.GetRecentlyPlayedPictureAlbumPictures("picturedb://", items))
+  CStdString pictureType = "Picture";
+  if (!picturedatabase.GetRecentlyPlayedPictureAlbumPictures("picturedb://", items, pictureType))
     return InternalError;
   
   JSONRPC_STATUS ret = GetAdditionalPictureDetails(parameterObject, items, picturedatabase);
@@ -833,7 +841,8 @@ JSONRPC_STATUS CPictureLibrary::GetRecentlyAddedVideos(const CStdString &method,
     amount = 0;
   
   CFileItemList items;
-  if (!picturedatabase.GetRecentlyAddedPictureAlbumPictures("picturedb://", items, (unsigned int)amount))
+  CStdString pictureType = "Picture";
+  if (!picturedatabase.GetRecentlyAddedPictureAlbumPictures("picturedb://", items, (unsigned int)amount,pictureType))
     return InternalError;
   
   JSONRPC_STATUS ret = GetAdditionalPictureDetails(parameterObject, items, picturedatabase);
@@ -880,7 +889,8 @@ JSONRPC_STATUS CPictureLibrary::GetRecentlyPlayedVideos(const CStdString &method
     return InternalError;
   
   CFileItemList items;
-  if (!picturedatabase.GetRecentlyPlayedPictureAlbumPictures("picturedb://", items))
+  CStdString pictureType = "Picture";
+  if (!picturedatabase.GetRecentlyPlayedPictureAlbumPictures("picturedb://", items, pictureType))
     return InternalError;
   
   JSONRPC_STATUS ret = GetAdditionalPictureDetails(parameterObject, items, picturedatabase);
@@ -1134,14 +1144,14 @@ bool CPictureLibrary::FillFileItemList(const CVariant &parameterObject, CFileIte
     // If we retrieved the list of pictures by "faceid"
     // we sort by album (and implicitly by track number)
     if (faceID != -1)
-      list.Sort(SORT_METHOD_ALBUM_IGNORE_THE, SortOrderAscending);
+      list.Sort(SortByTitle, SortOrderAscending);
     // If we retrieve the list of pictures by "locationid"
     // we sort by face (and implicitly by album and track number)
     else if (locationID != -1)
-      list.Sort(SORT_METHOD_ARTIST_IGNORE_THE, SortOrderAscending);
+      list.Sort(SortByTitle, SortOrderAscending);
     // otherwise we sort by track number
     else
-      list.Sort(SORT_METHOD_TRACKNUM, SortOrderAscending);
+      list.Sort(SortByTitle, SortOrderAscending);
     
   }
   

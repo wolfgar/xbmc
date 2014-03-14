@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Полный экран"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Полный экран"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Общая длительность"
@@ -88,10 +92,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Информация"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Действия"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "Сейчас воспроизводится:"
@@ -118,6 +118,10 @@ msgstr "ПОИСК"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
+msgstr "Настройки визуализации"
+
+msgctxt "#31048"
+msgid "Visualization Presets"
 msgstr "Настройки визуализации"
 
 msgctxt "#31049"
@@ -174,6 +178,10 @@ msgstr "Показывать \"Пауза\" в режиме слайд-шоу"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Воспроизводить трейлеры в окне [COLOR=grey3](только для окна сведений)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Воспроизводить трейлеры в окне [COLOR=grey3](только для окна сведений)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +252,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Скрывать фанарт в полноэкранной визуализации"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Скрывать фанарт в полноэкранной визуализации"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Дополнение текстов песен"
@@ -258,6 +270,18 @@ msgstr "Подменю музыки главного экрана"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Подменю фото главного экрана"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Подменю видео главного экрана"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Подменю музыки главного экрана"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Подменю фото главного экрана"
 
 msgctxt "#31140"
@@ -378,7 +402,7 @@ msgstr "Последние"
 
 msgctxt "#31329"
 msgid "[B]Timer set![/B] [COLOR=grey2] - System auto shutdown in[/COLOR]"
-msgstr "[B]Установлен таймер![/B] [COLOR=grey2] Выключение через[/COLOR]"
+msgstr "[B]Установлен таймер![/B] [COLOR=grey2] Автоматическое отключение через[/COLOR]"
 
 msgctxt "#31330"
 msgid "Click button to play[CR][CR]Movie trailer"
@@ -411,18 +435,6 @@ msgstr "Меню фильма"
 msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Загрузить субтитры"
-
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "Смотреть в 2D"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Изменить режим"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Вкл."
 
 msgctxt "#31390"
 msgid "Skin default"
@@ -466,6 +478,10 @@ msgstr "[B]НАСТРОЙКА ДОПОЛНЕНИЙ[/B][CR][CR]Управлени
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]НАСТРОЙКА ПАРАМЕТРОВ ТВ[/B][CR][CR]Настройка полноэкранной информации · Настройка отображения EPG"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]НАСТРОЙКА ПАРАМЕТРОВ ТВ[/B][CR][CR]Настройка полноэкранной информации · Настройка отображения EPG"
 
 msgctxt "#31410"
@@ -574,7 +590,7 @@ msgstr "ПОГОДА"
 
 msgctxt "#31951"
 msgid "PICTURES"
-msgstr "ФОТО"
+msgstr "КАРТИНКИ"
 
 msgctxt "#31952"
 msgid "LIVE TV"
@@ -590,7 +606,7 @@ msgstr "ФИЛЬМЫ"
 
 msgctxt "#31955"
 msgid "TV SHOWS"
-msgstr "СЕРИАЛЫ"
+msgstr "ТВ-ШОУ"
 
 msgctxt "#31956"
 msgid "MUSIC"

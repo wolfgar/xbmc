@@ -73,13 +73,11 @@ CGUIDialogAudioSubtitleSettings::~CGUIDialogAudioSubtitleSettings(void)
 void CGUIDialogAudioSubtitleSettings::CreateSettings()
 {
   m_usePopupSliders = g_SkinInfo->HasSkinFile("DialogSlider.xml");
-
   if (g_application.m_pPlayer->HasPlayer())
   {
     g_application.m_pPlayer->GetAudioCapabilities(m_audioCaps);
     g_application.m_pPlayer->GetSubtitleCapabilities(m_subCaps);
   }
-
   // clear out any old settings
   m_settings.clear();
   // create our settings
@@ -371,6 +369,7 @@ void CGUIDialogAudioSubtitleSettings::FrameMove()
 {
   m_volume = g_application.GetVolume(false);
   UpdateSetting(AUDIO_SETTINGS_VOLUME);
+
   if (g_application.m_pPlayer->HasPlayer())
   {
     // these settings can change on the fly
@@ -378,6 +377,7 @@ void CGUIDialogAudioSubtitleSettings::FrameMove()
     UpdateSetting(SUBTITLE_SETTINGS_ENABLE);
     UpdateSetting(SUBTITLE_SETTINGS_DELAY);
   }
+
   CGUIDialogSettings::FrameMove();
 }
 

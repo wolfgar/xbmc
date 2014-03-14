@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Полн екран"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Полн екран"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Вкупно времетраење"
@@ -116,6 +120,10 @@ msgctxt "#31048"
 msgid "Visualisation Presets"
 msgstr "Предефирнирани визуелизации"
 
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Постојни бизуализации"
+
 msgctxt "#31049"
 msgid "End Time"
 msgstr "Време на завршување"
@@ -171,6 +179,10 @@ msgstr "Прикажи „Паузирано“ за време на репро�
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "Пушти трејлери во прозорче [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "Репродуцирај најави на филмови во прозор [COLOR=grey3](Video Info. Dialog Only)[/COLOR]"
 
 msgctxt "#31106"
 msgid "Miscellaneous options"
@@ -240,6 +252,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Сокриј ги постерите во визуелизацијата на полн екран"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Скриј слика во визуализација на цел екран"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Lyrics Add-on"
@@ -255,6 +271,18 @@ msgstr "Музичко подмени на почетна страна"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "Подмени Албуми од почетната страна"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Home Page Videos Submenu"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Home Page Music Submenu"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "Home Page Pictures Submenu"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -416,10 +444,6 @@ msgctxt "#31361"
 msgid "Change mode"
 msgstr "Смени мод"
 
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Овозможено"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Подразбирачка маска"
@@ -462,6 +486,10 @@ msgstr "[B]КОНФИГУРИРАЊЕ ЗА ДОПОЛНИТЕЛНИ ПРОГРА
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]КОНФИГУРИРАЈ ТВ ПОСТАВКИ[/B][CR][CR]Промени инфо на цел екран · Подесување на EPG податоци"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]КОНФИГУРИРАЈ ТВ ПОСТАВКИ[/B][CR][CR]Промени инфо на цел екран · Подесување на EPG податоци"
 
 msgctxt "#31410"

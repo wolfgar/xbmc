@@ -118,14 +118,12 @@ bool CGUIWindowMusicPlayList::OnMessage(CGUIMessage& message)
         m_iLastControl = CONTROL_BTNVIEWASICONS;
         SET_CONTROL_FOCUS(m_iLastControl, 0);
       }
-
       if (g_application.m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
       {
         int iSong = g_playlistPlayer.GetCurrentSong();
         if (iSong >= 0 && iSong <= m_vecItems->Size())
           m_viewControl.SetSelectedItem(iSong);
       }
-
       return true;
     }
     break;
@@ -255,7 +253,6 @@ bool CGUIWindowMusicPlayList::MoveCurrentPlayListItem(int iItem, int iAction, bo
   if ((g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC) && (g_application.m_pPlayer->IsPlayingAudio()) &&
     ((g_playlistPlayer.GetCurrentSong() == iSelected) || (g_playlistPlayer.GetCurrentSong() == iNew)))
     bFixCurrentSong = true;
-
   CPlayList& playlist = g_playlistPlayer.GetPlaylist(PLAYLIST_MUSIC);
   if (playlist.Swap(iSelected, iNew))
   {
@@ -338,12 +335,10 @@ void CGUIWindowMusicPlayList::ClearPlayList()
 void CGUIWindowMusicPlayList::RemovePlayListItem(int iItem)
 {
   if (iItem < 0 || iItem > m_vecItems->Size()) return;
-
   // The current playing song can't be removed
   if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC && g_application.m_pPlayer->IsPlayingAudio()
       && g_playlistPlayer.GetCurrentSong() == iItem)
     return ;
-
   g_playlistPlayer.Remove(PLAYLIST_MUSIC, iItem);
 
   Refresh();
@@ -372,7 +367,6 @@ void CGUIWindowMusicPlayList::UpdateButtons()
     CONTROL_ENABLE(CONTROL_BTNCLEAR);
     CONTROL_ENABLE(CONTROL_BTNREPEAT);
     CONTROL_ENABLE(CONTROL_BTNPLAY);
-
     if (g_application.m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
     {
       CONTROL_ENABLE(CONTROL_BTNNEXT);

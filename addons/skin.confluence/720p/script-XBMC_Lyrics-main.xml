@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<allowoverlay>no</allowoverlay>
 	<coordinates>
@@ -40,7 +39,7 @@
 				<width>550</width>
 				<height>30</height>
 				<font>font30_title</font>
-				<label>$ADDON[script.cu.lrclyrics 32199]</label>
+				<label>$LOCALIZE[SCRIPT0]</label>
 				<align>right</align>
 				<aligny>center</aligny>
 				<textcolor>white</textcolor>
@@ -101,6 +100,7 @@
 						<aligny>center</aligny>
 						<align>center</align>
 						<selectedcolor>selected</selectedcolor>
+						<align>left</align>
 						<info>ListItem.Label</info>
 					</control>
 				</itemlayout>
@@ -116,6 +116,7 @@
 						<shadowcolor>black</shadowcolor>
 						<textcolor>white</textcolor>
 						<selectedcolor>selected</selectedcolor>
+						<align>left</align>
 						<label>$INFO[ListItem.Label]</label>
 						<visible>!Control.HasFocus(110)</visible>
 					</control>
@@ -129,6 +130,7 @@
 						<align>center</align>
 						<shadowcolor>black</shadowcolor>
 						<textcolor>selected</textcolor>
+						<align>left</align>
 						<label fallback="--">$INFO[ListItem.Label]</label>
 						<visible>Control.HasFocus(110)</visible>
 					</control>

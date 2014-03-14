@@ -755,7 +755,6 @@ bool CDVDPlayer::OpenDemuxStream()
   int64_t tim = m_pDemuxer->GetStreamLength();
   if(len > 0 && tim > 0)
     m_pInputStream->SetReadRate(g_advancedSettings.m_readBufferFactor * len * 1000 / tim);
-
   return true;
 }
 

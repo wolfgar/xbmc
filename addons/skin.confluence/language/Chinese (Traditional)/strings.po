@@ -88,10 +88,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "資訊"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "動作"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "正在播放"
@@ -112,9 +108,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "倒轉"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "查找"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "視覺效果設定"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +170,10 @@ msgstr "在圖片幻燈片秀中顯示\"已暫停\"狀態"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "在視窗中播放預告片[COLOR=grey3](只在影片資訊對話框中)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "在視窗中播放預告片[COLOR=grey3](只在影片資訊對話框中)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +244,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "在全螢幕視覺效果中隱藏 Fanart"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "在全螢幕視覺效果中隱藏 Fanart"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "歌詞附加元件"
@@ -258,6 +262,18 @@ msgstr "首頁音樂子選單"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "首頁圖片子選單"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "首頁影片子選單"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "首頁音樂子選單"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "首頁圖片子選單"
 
 msgctxt "#31140"
@@ -412,18 +428,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "下載字幕"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "以 2D 模式觀賞"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "更改設定"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "啟用"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "主題預設"
@@ -467,6 +471,10 @@ msgstr "[B]配置附加元件[/B][CR][CR]管理已安裝的附加元件 · 從 x
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B]電視設定[/B][CR][CR]修改全螢幕資訊 · 管理電子節目表資料設定"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]CONFIGURE TV SETTINGS[/B][CR][CR]修改全螢幕資訊 · 管理電子節目表資料設定"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"
@@ -567,43 +575,3 @@ msgstr "正在擷取預報資訊..."
 msgctxt "#31910"
 msgid "Map & Alerts"
 msgstr "地圖 & 警報"
-
-msgctxt "#31950"
-msgid "WEATHER"
-msgstr "天氣"
-
-msgctxt "#31951"
-msgid "PICTURES"
-msgstr "圖片"
-
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "直播電視"
-
-msgctxt "#31953"
-msgid "VIDEOS"
-msgstr "影片"
-
-msgctxt "#31954"
-msgid "MOVIES"
-msgstr "電影"
-
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "電視劇"
-
-msgctxt "#31956"
-msgid "MUSIC"
-msgstr "音樂"
-
-msgctxt "#31957"
-msgid "PROGRAMS"
-msgstr "程式"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "播放光碟"
-
-msgctxt "#31959"
-msgid "SYSTEM"
-msgstr "系統"

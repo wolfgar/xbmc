@@ -88,10 +88,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "Інформація"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "Дії"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "Зараз відтворюється:"
@@ -112,9 +108,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "ПЕРЕМОТКА НАЗАД"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "ПОШУК"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Налаштування візуалізації"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +170,10 @@ msgstr "Показувати \"Пауза\" в режими слайдшоу"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Відтворювати трейлери у вікні [COLOR=grey3](лише для вікна відомостей)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Відтворювати трейлери у вікні [COLOR=grey3](лише для вікна відомостей)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +244,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Приховувати фанарт у повноекранній візуалізації"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Приховувати фанарт у повноекранній візуалізації"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Надбудова текстів пісень"
@@ -259,6 +263,18 @@ msgstr "Підменю музики головного екрану"
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
 msgstr "Домашня сторінка Фотографії підменю"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Підменю відео головного екрану"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Підменю музики головного екрану"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
+msgstr "Підменю фото головного екрану"
 
 msgctxt "#31140"
 msgid "Music OSD"
@@ -412,18 +428,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Завантажити субтитри"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "Переглядати як 2D"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Зміна режиму"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Увімкн."
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Стандартні"
@@ -467,6 +471,10 @@ msgstr "[B]НАЛАШТУВАННЯ НАДБУДОВ[/B][CR][CR]Керуванн
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B]КОНФІГУРАЦІЯ НАЛАШТУВАНЬ ТБ[/B][CR][CR]Змінити інформацію повного екрану · Керувати налаштуваннями даних телегіда"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]НАЛАШТУВАННЯ ТБ[/B][CR][CR]Налаштування повноекранних відомостей · Керування параметрами EPG"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"
@@ -567,43 +575,3 @@ msgstr "Отримання прогнозу…"
 msgctxt "#31910"
 msgid "Map & Alerts"
 msgstr "Мапи та попередження"
-
-msgctxt "#31950"
-msgid "WEATHER"
-msgstr "ПОГОДА"
-
-msgctxt "#31951"
-msgid "PICTURES"
-msgstr "МАЛЮНКИ"
-
-msgctxt "#31952"
-msgid "LIVE TV"
-msgstr "ТЕЛЕБАЧЕННЯ"
-
-msgctxt "#31953"
-msgid "VIDEOS"
-msgstr "ВІДЕО"
-
-msgctxt "#31954"
-msgid "MOVIES"
-msgstr "ФІЛЬМИ"
-
-msgctxt "#31955"
-msgid "TV SHOWS"
-msgstr "ТВ-ШОУ"
-
-msgctxt "#31956"
-msgid "MUSIC"
-msgstr "МУЗИКА"
-
-msgctxt "#31957"
-msgid "PROGRAMS"
-msgstr "ПРОГРАМИ"
-
-msgctxt "#31958"
-msgid "PLAY DISC"
-msgstr "ПРОГРАВАННЯ ДИСКУ"
-
-msgctxt "#31959"
-msgid "SYSTEM"
-msgstr "СИСТЕМА"

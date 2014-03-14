@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@
 #include "utils/log.h"
 #include "GUIInfoManager.h"
 #include "system.h"
-#include "GitRevision.h"
-#include "utils/StringUtils.h"
 
 using namespace JSONRPC;
 
@@ -121,14 +119,15 @@ JSONRPC_STATUS CApplicationOperations::GetPropertyValue(const CStdString &proper
     result = CVariant(CVariant::VariantTypeObject);
     result["major"] = VERSION_MAJOR;
     result["minor"] = VERSION_MINOR;
-    if (GetXbmcGitRevision())
-      result["revision"] = GetXbmcGitRevision();
+ifdef GIT_REV
+    result["revision"] = GIT_REV;
+#endif
     CStdString tag(VERSION_TAG);
     if (StringUtils::EqualsNoCase(tag, "-pre"))
-      result["tag"] = "alpha";
-    else if (StringUtils::StartsWithNoCase(tag, "-beta"))
+      result["tag"] = "alpha";    
+    else if (tag.ToLower().Left(5).Equals("-beta"))
       result["tag"] = "beta";
-    else if (StringUtils::StartsWithNoCase(tag, "-rc"))
+    else if (tag.ToLower().Left(3).Equals("-rc"))
       result["tag"] = "releasecandidate";
     else if (tag.empty())
       result["tag"] = "stable";

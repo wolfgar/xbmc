@@ -24,6 +24,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "تمام صفحه"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "تمام صفحه"
+
 msgctxt "#31022"
 msgid "Music - Files"
 msgstr "موسیقی - فایل ها"
@@ -119,10 +123,6 @@ msgstr "میزان استفاده حافظه:"
 msgctxt "#31327"
 msgid "Resolution"
 msgstr "رزولیشن"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "فعال شده"
 
 msgctxt "#31390"
 msgid "Skin default"

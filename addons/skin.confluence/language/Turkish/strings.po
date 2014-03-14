@@ -112,9 +112,9 @@ msgctxt "#31045"
 msgid "REWIND"
 msgstr "GERİ SAR"
 
-msgctxt "#31046"
-msgid "SEEKING"
-msgstr "ARIYOR"
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Görsel Öğe Önayarları"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
@@ -174,6 +174,10 @@ msgstr "Resim slayt gösterisinde \"Duraklatıldı\"yı göster"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "Fragmanları pencere içinde oynat [COLOR=grey3](Sadece Video Bilgisi İletişim Kutusu İçin)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "Fragmanları pencere içinde oynat [COLOR=grey3](Sadece Video Bilgisi İletişim Kutusu İçin)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +248,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Tam ekran görsel öğede Fanart'ı gizle"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Tam ekran görsel öğede Fanart'ı gizle"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Şarkı Sözleri Eklentisi"
@@ -258,6 +266,18 @@ msgstr "Ana Sayfa Müzik Alt Menüsü"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Ana Sayfa Resimler Alt Menüsü"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Ana Sayfa Videolar Alt Menüsü"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Ana Sayfa Müzik Alt Menüsü"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Ana Sayfa Resimler Alt Menüsü"
 
 msgctxt "#31140"
@@ -412,18 +432,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Altyazıları İndir"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "2 Boyutlu olarak izle"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "Modu değiştir"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "Etkin"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Dış görünüm varsayılanı"
@@ -466,6 +474,10 @@ msgstr "[B]EKLENTİLERİ YAPILANDIR[/B][CR][CR]Yüklenmiş eklentileri yönet ·
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]TV AYARLARINI YAPILANDIR[/B][CR][CR]Tam ekran bilgisini değiştir · EPG veri ayarlarını yönet"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]TV AYARLARINI YAPILANDIR[/B][CR][CR]Tam ekran bilgisini değiştir · EPG veri ayarlarını yönet"
 
 msgctxt "#31410"

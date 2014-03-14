@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "Fullskärm"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "Helskärm"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "Total längd"
@@ -120,6 +124,10 @@ msgctxt "#31048"
 msgid "Visualisation Presets"
 msgstr "Visualiserings val"
 
+msgctxt "#31048"
+msgid "Visualization Presets"
+msgstr "Visualiseringsförval"
+
 msgctxt "#31049"
 msgid "End Time"
 msgstr "Sluttid"
@@ -175,6 +183,10 @@ msgstr "Visa \"Pausad\" i bildspel"
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
 msgstr "Spela Trailers i ett fönster [COLOR=grey3](Endast Video Informations Dialog)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
+msgstr "Spela trailers i ett fönster [COLOR=grey3](Endast i videoinformationsdialogen)[/COLOR]"
 
 msgctxt "#31106"
 msgid "Miscellaneous options"
@@ -244,6 +256,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "Dölj Fanart i fullskärmsvisualisering"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "Dölj fanart i fullskärmsvisualisering"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "Sångtextstillägg"
@@ -258,6 +274,18 @@ msgstr "Hemskärmens musikundermeny"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "Hemskärmens bildundermeny"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "Hemskärmens videoundermeny"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "Hemskärmens musikundermeny"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "Hemskärmens bildundermeny"
 
 msgctxt "#31140"
@@ -467,6 +495,10 @@ msgstr "[B]KONFIGURERA TILLÄGG[/B][CR][CR]Hantera installerade tillägg · Visa
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
 msgstr "[B]KONFIGURERA TV-INSTÄLLNINGAR[/B][CR][CR]Ändra fullskärmslägesinformation · Hantera EPG-datainställningar"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
+msgstr "[B]KONFIGURERA TV-INSTÄLLNINGAR[/B][CR][CR]Ändra helskärmsinfo · Hantera EPG-datainställningar"
 
 msgctxt "#31410"
 msgid "[B]CONFIGURE SERVICE SETTINGS[/B][CR][CR]Setup control of XBMC via UPnP and HTTP · Configure file sharing[CR]Enable Zeroconf · Configure AirPlay"

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,13 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#include "Picture.h"
+#include "pictures/tags/PictureInfoTag.h"
+#include "utils/Variant.h"
+#include "FileItem.h"
+#include "settings/AdvancedSettings.h"
+#include "utils/StringUtils.h"
 
 #include "system.h"
 #if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
@@ -38,6 +45,8 @@
 #endif
 
 using namespace XFILE;
+using namespace std;
+using namespace PICTURE_INFO;
 
 bool CPicture::CreateThumbnailFromSurface(const unsigned char *buffer, int width, int height, int stride, const CStdString &thumbFile)
 {
@@ -45,8 +54,13 @@ bool CPicture::CreateThumbnailFromSurface(const unsigned char *buffer, int width
   if (URIUtils::HasExtension(thumbFile, ".jpg"))
   {
 #if defined(HAS_OMXPLAYER)
-    if (COMXImage::CreateThumbnailFromSurface((BYTE *)buffer, width, height, XB_FMT_A8R8G8B8, stride, thumbFile.c_str()))
+    COMXImage *omxImage = new COMXImage();
+    if (omxImage && omxImage->CreateThumbnailFromSurface((BYTE *)buffer, width, height, XB_FMT_A8R8G8B8, stride, thumbFile.c_str()))
+    {
+      delete omxImage;
       return true;
+    }
+    delete omxImage;
 #endif
   }
 
@@ -422,4 +436,68 @@ bool CPicture::TransposeOffAxis(uint32_t *&pixels, unsigned int &width, unsigned
   pixels = dest;
   std::swap(width, height);
   return true;
+}
+
+
+
+CPicture::CPicture(CFileItem& item)
+{
+    CPictureInfoTag& tag = *item.GetPictureInfoTag();
+    SYSTEMTIME stTime;
+    strTitle = tag.GetTitle();
+    location = tag.GetLocation();
+    face = tag.GetFace();
+    strAlbum = tag.GetPictureAlbum();
+    albumFace = tag.GetPictureAlbumFace();
+    strComment = tag.GetComment();
+    embeddedArt = tag.GetCoverArtInfo();
+    strFileName = tag.GetURL().IsEmpty() ? item.GetPath() : tag.GetURL();
+    strThumb = item.GetUserPictureThumb(true);
+    idPicture = -1;
+    idAlbum = -1;
+}
+
+CPicture::CPicture()
+{
+    Clear();
+}
+
+void CPicture::Serialize(CVariant& value) const
+{
+    value["filename"] = strFileName;
+    value["title"] = strTitle;
+    value["face"] = face;
+    value["album"] = strAlbum;
+    value["albumface"] = albumFace;
+    value["location"] = location;
+  value["orientation"] = strOrientation;
+    value["comment"] = strComment;
+    value["takenon"] = takenOn.IsValid() ? takenOn.GetAsDBDateTime() : "";
+    value["albumid"] = idAlbum;
+}
+
+void CPicture::Clear()
+{
+    strFileName.Empty();
+    strTitle.Empty();
+    face.clear();
+    strAlbum.Empty();
+    albumFace.clear();
+    location.clear();
+    strThumb.Empty();
+    strComment.Empty();
+    idPicture = -1;
+    takenOn.Reset();
+    idAlbum = -1;
+}
+
+bool CPicture::HasArt() const
+{
+    if (!strThumb.empty()) return true;
+    return false;
+}
+
+bool CPicture::ArtMatches(const CPicture &right) const
+{
+   return (right.strThumb == strThumb );
 }

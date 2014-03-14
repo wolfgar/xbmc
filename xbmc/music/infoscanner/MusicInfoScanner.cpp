@@ -265,7 +265,6 @@ void CMusicInfoScanner::Start(const CStdString& strDirectory, int flags)
   else
     m_pathsToScan.insert(strDirectory);
   m_bClean = g_advancedSettings.m_bMusicLibraryCleanOnUpdate;
-
   m_scanType = 0;
   Create();
   m_bRunning = true;

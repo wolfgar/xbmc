@@ -25,7 +25,7 @@
 
 #include "video/VideoInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
-#include "pictures/PictureInfoTag.h"
+#include "pictures/tags/PictureInfoTag.h"
 #include "utils/log.h"
 #include "utils/Variant.h"
 #include "utils/StringUtils.h"
@@ -498,7 +498,7 @@ namespace XBMCAddon
           {
             const String& exifkey = key;
             if (!StringUtils::StartsWithNoCase(exifkey, "exif:") || exifkey.length() < 6) continue;
-            int info = CPictureInfoTag::TranslateString(StringUtils::Mid(exifkey,5));
+            int info = PICTURE_INFO::CPictureInfoTag::TranslateString(exifkey.Mid(5));
             item->GetPictureInfoTag()->SetInfo(info, value);
           }
         }

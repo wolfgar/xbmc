@@ -79,10 +79,10 @@ struct RefreshOverride
 {
   float fpsmin;
   float fpsmax;
-
+  
   float refreshmin;
   float refreshmax;
-
+  
   bool  fallback;
 };
 
@@ -91,7 +91,7 @@ struct RefreshVideoLatency
 {
   float refreshmin;
   float refreshmax;
-
+  
   float delay;
 };
 
@@ -257,6 +257,15 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     CStdString m_musicThumbs;
     CStdString m_fanartImages;
+    
+    bool m_bPictureLibraryHideAllItems;
+    int m_iPictureLibraryRecentlyAddedItems;
+    bool m_bPictureLibraryAllItemsOnBottom;
+    bool m_bPictureLibraryAlbumsSortByArtistThenYear;
+    CStdString m_strPictureLibraryAlbumFormat;
+    CStdString m_strPictureLibraryAlbumFormatRight;
+    CStdString m_pictureItemSeparator;
+    CStdString m_contactItemSeparator;
 
     bool m_bMusicLibraryHideAllItems;
     int m_iMusicLibraryRecentlyAddedItems;
@@ -366,7 +375,9 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     bool m_measureRefreshrate; //when true the videoreferenceclock will measure the refreshrate when direct3d is used
                                //otherwise it will use the windows refreshrate
 
+    DatabaseSettings m_databaseContact; // advanced music database setup
     DatabaseSettings m_databaseMusic; // advanced music database setup
+    DatabaseSettings m_databasePicture;// advanced picture database setup
     DatabaseSettings m_databaseVideo; // advanced video database setup
     DatabaseSettings m_databaseTV;    // advanced tv database setup
     DatabaseSettings m_databaseEpg;   /*!< advanced EPG database setup */
@@ -395,6 +406,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     // runtime settings which cannot be set from advancedsettings.xml
     CStdString m_pictureExtensions;
+    CStdString m_contactExtensions;
     CStdString m_musicExtensions;
     CStdString m_videoExtensions;
     CStdString m_discStubExtensions;

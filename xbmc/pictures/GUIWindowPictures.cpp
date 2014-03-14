@@ -44,6 +44,8 @@
 #include "Autorun.h"
 #include "interfaces/AnnouncementManager.h"
 #include "utils/StringUtils.h"
+#include "profiles/ProfilesManager.h"
+
 
 #define CONTROL_BTNVIEWASICONS      2
 #define CONTROL_BTNSORTBY           3
@@ -59,7 +61,7 @@ using namespace PLAYLIST;
 #define CONTROL_SHUFFLE      9
 
 CGUIWindowPictures::CGUIWindowPictures(void)
-    : CGUIMediaWindow(WINDOW_PICTURES, "MyPics.xml")
+: CGUIMediaWindow(WINDOW_PICTURES, "MyPics.xml")
 {
   m_thumbLoader.SetObserver(this);
   m_slideShowStarted = false;
@@ -145,7 +147,7 @@ bool CGUIWindowPictures::OnMessage(CGUIMessage& message)
       {
         int iItem = m_viewControl.GetSelectedItem();
         int iAction = message.GetParam1();
-
+        
         // iItem is checked for validity inside these routines
         if (iAction == ACTION_DELETE_ITEM)
         {
@@ -167,7 +169,7 @@ bool CGUIWindowPictures::OnMessage(CGUIMessage& message)
         }
       }
     }
-    break;
+      break;
   }
   return CGUIMediaWindow::OnMessage(message);
 }
@@ -175,7 +177,7 @@ bool CGUIWindowPictures::OnMessage(CGUIMessage& message)
 void CGUIWindowPictures::UpdateButtons()
 {
   CGUIMediaWindow::UpdateButtons();
-
+  
   // Update the shuffle button
   if (CSettings::Get().GetBool("slideshow.shuffle"))
   {
@@ -187,7 +189,7 @@ void CGUIWindowPictures::UpdateButtons()
     CGUIMessage msg2(GUI_MSG_DESELECTED, GetID(), CONTROL_SHUFFLE);
     g_windowManager.SendMessage(msg2);
   }
-
+  
   // check we can slideshow or recursive slideshow
   int nFolders = m_vecItems->GetFolderCount();
   if (nFolders == m_vecItems->Size() ||
@@ -251,7 +253,7 @@ void CGUIWindowPictures::OnPrepareFileItems(CFileItemList& items)
         m_dlgProgress->ShowProgressBar(true);
         bProgressVisible = true;
       }
-
+      
       if (bProgressVisible && m_dlgProgress)
       { // keep GUI alive
         m_dlgProgress->Progress();
@@ -259,7 +261,7 @@ void CGUIWindowPictures::OnPrepareFileItems(CFileItemList& items)
     } // if (bShowProgress)
     Sleep(1);
   } // while (loader.IsLoading())
-
+  
   if (bProgressVisible && m_dlgProgress)
     m_dlgProgress->Close();
 }
@@ -268,18 +270,18 @@ bool CGUIWindowPictures::Update(const CStdString &strDirectory, bool updateFilte
 {
   if (m_thumbLoader.IsLoading())
     m_thumbLoader.StopThread();
-
+  
   if (!CGUIMediaWindow::Update(strDirectory, updateFilterPath))
     return false;
-
+  
   m_vecItems->SetArt("thumb", "");
   if (CSettings::Get().GetBool("pictures.generatethumbs"))
     m_thumbLoader.Load(*m_vecItems);
-
+  
   CPictureThumbLoader thumbLoader;
   CStdString thumb = thumbLoader.GetCachedImage(*m_vecItems, "thumb");
   m_vecItems->SetArt("thumb", thumb);
-
+  
   return true;
 }
 
@@ -287,7 +289,7 @@ bool CGUIWindowPictures::OnClick(int iItem)
 {
   if ( iItem < 0 || iItem >= (int)m_vecItems->Size() ) return true;
   CFileItemPtr pItem = m_vecItems->Get(iItem);
-
+  
   if (pItem->IsCBZ() || pItem->IsCBR())
   {
     CStdString strComicPath;
@@ -295,13 +297,13 @@ bool CGUIWindowPictures::OnClick(int iItem)
       URIUtils::CreateArchivePath(strComicPath, "zip", pItem->GetPath(), "");
     else
       URIUtils::CreateArchivePath(strComicPath, "rar", pItem->GetPath(), "");
-
+    
     OnShowPictureRecursive(strComicPath);
     return true;
   }
   else if (CGUIMediaWindow::OnClick(iItem))
     return true;
-
+  
   return false;
 }
 
@@ -321,7 +323,7 @@ bool CGUIWindowPictures::OnPlayMedia(int iItem)
 {
   if (m_vecItems->Get(iItem)->IsVideo())
     return CGUIMediaWindow::OnPlayMedia(iItem);
-
+  
   return ShowPicture(iItem, false);
 }
 
@@ -330,52 +332,52 @@ bool CGUIWindowPictures::ShowPicture(int iItem, bool startSlideShow)
   if ( iItem < 0 || iItem >= (int)m_vecItems->Size() ) return false;
   CFileItemPtr pItem = m_vecItems->Get(iItem);
   CStdString strPicture = pItem->GetPath();
-
+  
 #ifdef HAS_DVD_DRIVE
   if (pItem->IsDVD())
     return MEDIA_DETECT::CAutorun::PlayDiscAskResume(m_vecItems->Get(iItem)->GetPath());
 #endif
-
+  
   if (pItem->m_bIsShareOrDrive)
     return false;
-
+  
   CGUIWindowSlideShow *pSlideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
   if (!pSlideShow)
     return false;
   if (g_application.m_pPlayer->IsPlayingVideo())
     g_application.StopPlaying();
-
+  
   pSlideShow->Reset();
   for (int i = 0; i < (int)m_vecItems->Size();++i)
   {
     CFileItemPtr pItem = m_vecItems->Get(i);
-    if (!pItem->m_bIsFolder && !(URIUtils::IsRAR(pItem->GetPath()) || 
-          URIUtils::IsZIP(pItem->GetPath())) && (pItem->IsPicture() || (
-                                CSettings::Get().GetBool("pictures.showvideos") &&
-                                pItem->IsVideo())))
+    if (!pItem->m_bIsFolder && !(URIUtils::IsRAR(pItem->GetPath()) ||
+                                 URIUtils::IsZIP(pItem->GetPath())) && (pItem->IsPicture() || (
+                                                                                               CSettings::Get().GetBool("pictures.showvideos") &&
+                                                                                               pItem->IsVideo())))
     {
       pSlideShow->Add(pItem.get());
     }
   }
-
+  
   if (pSlideShow->NumSlides() == 0)
     return false;
-
+  
   pSlideShow->Select(strPicture);
-
+  
   if (startSlideShow)
     pSlideShow->StartSlideShow();
-  else 
+  else
   {
     CVariant param;
     param["player"]["speed"] = 1;
     param["player"]["playerid"] = PLAYLIST_PICTURE;
     ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::Player, "xbmc", "OnPlay", pSlideShow->GetCurrentSlide(), param);
   }
-
+  
   m_slideShowStarted = true;
   g_windowManager.ActivateWindow(WINDOW_SLIDESHOW);
-
+  
   return true;
 }
 
@@ -387,7 +389,7 @@ void CGUIWindowPictures::OnShowPictureRecursive(const CStdString& strPath)
     // stop any video
     if (g_application.m_pPlayer->IsPlayingVideo())
       g_application.StopPlaying();
-
+    
     SortDescription sorting = m_guiState->GetSortMethod();
     pSlideShow->AddFromPath(strPath, true,
                             sorting.sortBy, sorting.sortOrder, sorting.sortAttributes);
@@ -403,7 +405,7 @@ void CGUIWindowPictures::OnSlideShowRecursive(const CStdString &strPicture)
 {
   CGUIWindowSlideShow *pSlideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
   if (pSlideShow)
-  {   
+  {
     CStdString strExtensions;
     CFileItemList items;
     CGUIViewState* viewState=CGUIViewState::GetViewState(GetID(), items);
@@ -413,7 +415,7 @@ void CGUIWindowPictures::OnSlideShowRecursive(const CStdString &strPicture)
       delete viewState;
     }
     m_slideShowStarted = true;
-
+    
     SortDescription sorting = m_guiState->GetSortMethod();
     pSlideShow->RunSlideShow(strPicture, true,
                              CSettings::Get().GetBool("slideshow.shuffle"),false,
@@ -438,7 +440,7 @@ void CGUIWindowPictures::OnSlideShow(const CStdString &strPicture)
 {
   CGUIWindowSlideShow *pSlideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
   if (pSlideShow)
-  {    
+  {
     CStdString strExtensions;
     CFileItemList items;
     CGUIViewState* viewState=CGUIViewState::GetViewState(GetID(), items);
@@ -448,7 +450,7 @@ void CGUIWindowPictures::OnSlideShow(const CStdString &strPicture)
       delete viewState;
     }
     m_slideShowStarted = true;
-
+    
     SortDescription sorting = m_guiState->GetSortMethod();
     pSlideShow->RunSlideShow(strPicture, false ,false, false,
                              "", true,
@@ -469,7 +471,7 @@ void CGUIWindowPictures::GetContextButtons(int itemNumber, CContextButtons &butt
   CFileItemPtr item;
   if (itemNumber >= 0 && itemNumber < m_vecItems->Size())
     item = m_vecItems->Get(itemNumber);
-
+  
   if (item && !item->GetProperty("pluginreplacecontextitems").asBoolean())
   {
     if ( m_vecItems->IsVirtualDirectoryRoot() || m_vecItems->GetPath() == "sources://pictures/" )
@@ -489,7 +491,7 @@ void CGUIWindowPictures::GetContextButtons(int itemNumber, CContextButtons &butt
         }
         if (item->m_bIsFolder)
           buttons.Add(CONTEXT_BUTTON_RECURSIVE_SLIDESHOW, 13318);     // Recursive Slideshow
-
+        
         if (!m_thumbLoader.IsLoading())
           buttons.Add(CONTEXT_BUTTON_REFRESH_THUMBS, 13315);         // Create Thumbnails
         if (CSettings::Get().GetBool("filelists.allowfiledeletion") && !item->IsReadOnly())
@@ -498,7 +500,7 @@ void CGUIWindowPictures::GetContextButtons(int itemNumber, CContextButtons &butt
           buttons.Add(CONTEXT_BUTTON_RENAME, 118);
         }
       }
-
+      
       if (item->IsPlugin() || item->IsScript() || m_vecItems->IsPlugin())
         buttons.Add(CONTEXT_BUTTON_PLUGIN_SETTINGS, 1045);
       else
@@ -511,6 +513,17 @@ void CGUIWindowPictures::GetContextButtons(int itemNumber, CContextButtons &butt
   CGUIMediaWindow::GetContextButtons(itemNumber, buttons);
   if (item && !item->GetProperty("pluginreplacecontextitems").asBoolean())
     buttons.Add(CONTEXT_BUTTON_SETTINGS, 5);                  // Settings
+  
+  // Add the scan button(s)
+  if (g_application.IsPictureScanning())
+    buttons.Add(CONTEXT_BUTTON_STOP_SCANNING, 13353); // Stop Scanning
+  else if ( !item->GetPath().Equals("add") && !item->IsParentFolder() &&
+           !item->IsPlugin()                                         &&
+           !item->GetPath().Left(9).Equals("addons://")              &&
+           (CProfilesManager::Get().GetCurrentProfile().canWriteDatabases() || g_passwordManager.bMasterUser))
+  {
+    buttons.Add(CONTEXT_BUTTON_SCAN, 13352);
+  }
 }
 
 bool CGUIWindowPictures::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
@@ -523,39 +536,39 @@ bool CGUIWindowPictures::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
   }
   switch (button)
   {
-  case CONTEXT_BUTTON_VIEW_SLIDESHOW:
-    if (item && item->m_bIsFolder)
-      OnSlideShow(item->GetPath());
-    else
-      ShowPicture(itemNumber, true);
-    return true;
-  case CONTEXT_BUTTON_RECURSIVE_SLIDESHOW:
-    if (item)
-      OnSlideShowRecursive(item->GetPath());
-    return true;
-  case CONTEXT_BUTTON_INFO:
-    OnInfo(itemNumber);
-    return true;
-  case CONTEXT_BUTTON_REFRESH_THUMBS:
-    OnRegenerateThumbs();
-    return true;
-  case CONTEXT_BUTTON_DELETE:
-    OnDeleteItem(itemNumber);
-    return true;
-  case CONTEXT_BUTTON_RENAME:
-    OnRenameItem(itemNumber);
-    return true;
-  case CONTEXT_BUTTON_SETTINGS:
-    g_windowManager.ActivateWindow(WINDOW_SETTINGS_MYPICTURES);
-    return true;
-  case CONTEXT_BUTTON_GOTO_ROOT:
-    Update("");
-    return true;
-  case CONTEXT_BUTTON_SWITCH_MEDIA:
-    CGUIDialogContextMenu::SwitchMedia("pictures", m_vecItems->GetPath());
-    return true;
-  default:
-    break;
+    case CONTEXT_BUTTON_VIEW_SLIDESHOW:
+      if (item && item->m_bIsFolder)
+        OnSlideShow(item->GetPath());
+      else
+        ShowPicture(itemNumber, true);
+      return true;
+    case CONTEXT_BUTTON_RECURSIVE_SLIDESHOW:
+      if (item)
+        OnSlideShowRecursive(item->GetPath());
+      return true;
+    case CONTEXT_BUTTON_INFO:
+      OnInfo(itemNumber);
+      return true;
+    case CONTEXT_BUTTON_REFRESH_THUMBS:
+      OnRegenerateThumbs();
+      return true;
+    case CONTEXT_BUTTON_DELETE:
+      OnDeleteItem(itemNumber);
+      return true;
+    case CONTEXT_BUTTON_RENAME:
+      OnRenameItem(itemNumber);
+      return true;
+    case CONTEXT_BUTTON_SETTINGS:
+      g_windowManager.ActivateWindow(WINDOW_SETTINGS_MYPICTURES);
+      return true;
+    case CONTEXT_BUTTON_GOTO_ROOT:
+      Update("");
+      return true;
+    case CONTEXT_BUTTON_SWITCH_MEDIA:
+      CGUIDialogContextMenu::SwitchMedia("pictures", m_vecItems->GetPath());
+      return true;
+    default:
+      break;
   }
   return CGUIMediaWindow::OnContextButton(itemNumber, button);
 }
@@ -577,7 +590,7 @@ void CGUIWindowPictures::LoadPlayList(const CStdString& strPlayList)
       return ; //hmmm unable to load playlist?
     }
   }
-
+  
   CPlayList playlist = *pPlayList;
   if (playlist.size() > 0)
   {
@@ -587,7 +600,7 @@ void CGUIWindowPictures::LoadPlayList(const CStdString& strPlayList)
       return;
     if (g_application.m_pPlayer->IsPlayingVideo())
       g_application.StopPlaying();
-
+    
     // convert playlist items into slideshow items
     pSlideShow->Reset();
     for (int i = 0; i < (int)playlist.size(); ++i)
@@ -597,7 +610,7 @@ void CGUIWindowPictures::LoadPlayList(const CStdString& strPlayList)
       if (pItem->IsPicture() && !(pItem->IsZIP() || pItem->IsRAR() || pItem->IsCBZ() || pItem->IsCBR()))
         pSlideShow->Add(pItem.get());
     }
-
+    
     // start slideshow if there are items
     pSlideShow->StartSlideShow();
     if (pSlideShow->NumSlides())
@@ -629,7 +642,7 @@ CStdString CGUIWindowPictures::GetStartFolder(const CStdString &dir)
 {
   if (dir.Equals("Plugins") || dir.Equals("Addons"))
     return "addons://sources/image/";
-
+  
   SetupShares();
   VECSOURCES shares;
   m_rootDir.GetSources(shares);
@@ -648,4 +661,36 @@ CStdString CGUIWindowPictures::GetStartFolder(const CStdString &dir)
     return dir;
   }
   return CGUIMediaWindow::GetStartFolder(dir);
+}
+
+void CGUIWindowPictures::OnScan(int iItem)
+{
+  CStdString strPath;
+  if (iItem < 0 || iItem >= m_vecItems->Size())
+    strPath = m_vecItems->GetPath();
+  else if (m_vecItems->Get(iItem)->m_bIsFolder)
+    strPath = m_vecItems->Get(iItem)->GetPath();
+  else
+  { // TODO: MUSICDB - should we allow scanning a single item into the database?
+    //       This will require changes to the info scanner, which assumes we're running on a folder
+    strPath = m_vecItems->GetPath();
+  }
+  DoScan(strPath);
+}
+
+void CGUIWindowPictures::DoScan(const CStdString &strPath)
+{
+  if (g_application.IsPictureScanning())
+  {
+    g_application.StopPictureScan();
+    return;
+  }
+  
+  // Start background loader
+  int iControl=GetFocusedControlID();
+  g_application.StartPictureScan(strPath);
+  SET_CONTROL_FOCUS(iControl, 0);
+  UpdateButtons();
+  
+  return;
 }

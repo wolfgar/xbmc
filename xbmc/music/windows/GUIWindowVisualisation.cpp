@@ -168,7 +168,6 @@ bool CGUIWindowVisualisation::OnMessage(CGUIMessage& message)
         g_windowManager.PreviousWindow();
         return true;
       }
-
       // hide or show the preset button(s)
       g_infoManager.SetShowCodec(m_bShowPreset);
       g_infoManager.SetShowInfo(true);  // always show the info initially.

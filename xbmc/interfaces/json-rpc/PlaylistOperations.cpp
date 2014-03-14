@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,8 +27,9 @@
 #include "GUIUserMessages.h"
 #include "ApplicationMessenger.h"
 #include "pictures/GUIWindowSlideShow.h"
-#include "pictures/PictureInfoTag.h"
+#include "pictures/tags/PictureInfoTag.h"
 
+using namespace PICTURE_INFO;
 using namespace JSONRPC;
 using namespace PLAYLIST;
 using namespace std;
@@ -97,7 +98,7 @@ JSONRPC_STATUS CPlaylistOperations::GetItems(const CStdString &method, ITranspor
 
 bool CPlaylistOperations::CheckMediaParameter(int playlist, const CVariant &itemObject)
 {
-  if (itemObject.isMember("media") && itemObject["media"].asString().compare("files") != 0)
+  if (itemObject.isMember("media")
   {
     if (playlist == PLAYLIST_VIDEO && itemObject["media"].asString().compare("video") != 0)
       return false;

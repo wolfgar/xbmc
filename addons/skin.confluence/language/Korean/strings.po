@@ -40,6 +40,10 @@ msgctxt "#31008"
 msgid "Full screen"
 msgstr "전체 화면"
 
+msgctxt "#31008"
+msgid "Fullscreen"
+msgstr "전체화면"
+
 msgctxt "#31009"
 msgid "Total Duration"
 msgstr "총 재생시간"
@@ -88,10 +92,6 @@ msgctxt "#31033"
 msgid "Info"
 msgstr "정보"
 
-msgctxt "#31039"
-msgid "Actions"
-msgstr "동작"
-
 msgctxt "#31040"
 msgid "Now Playing"
 msgstr "지금 재생중"
@@ -118,6 +118,10 @@ msgstr "찾는 중"
 
 msgctxt "#31048"
 msgid "Visualisation Presets"
+msgstr "시각화 사전설정"
+
+msgctxt "#31048"
+msgid "Visualization Presets"
 msgstr "시각화 사전설정"
 
 msgctxt "#31049"
@@ -174,6 +178,10 @@ msgstr "사진 슬라이드쇼에 \"일시정지됨\" 보기"
 
 msgctxt "#31104"
 msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialogue Only)[/COLOR]"
+msgstr "윈도우에 예고편 재생 [COLOR=grey3](비디오 정보 대화창만)[/COLOR]"
+
+msgctxt "#31104"
+msgid "Play Trailers in a window [COLOR=grey3](Video Information Dialog Only)[/COLOR]"
 msgstr "윈도우에 예고편 재생 [COLOR=grey3](비디오 정보 대화창만)[/COLOR]"
 
 msgctxt "#31106"
@@ -244,6 +252,10 @@ msgctxt "#31129"
 msgid "Hide Fanart in full screen visualisation"
 msgstr "전체 화면 시각화에서 팬아트 숨기기"
 
+msgctxt "#31129"
+msgid "Hide Fanart in full screen visualization"
+msgstr "전체 화면 시각화에서 팬아트 숨기기"
+
 msgctxt "#31132"
 msgid "Lyrics Add-on"
 msgstr "가사 추가기능"
@@ -258,6 +270,18 @@ msgstr "홈 페이지 음악 하위메뉴"
 
 msgctxt "#31136"
 msgid "Home Page Pictures Sub-menu"
+msgstr "홈 페이지 사진 하위메뉴"
+
+msgctxt "#31134"
+msgid "Home Page Videos Submenu"
+msgstr "홈 페이지 비디오 하위메뉴"
+
+msgctxt "#31135"
+msgid "Home Page Music Submenu"
+msgstr "홈 페이지 음악 하위메뉴"
+
+msgctxt "#31136"
+msgid "Home Page Pictures Submenu"
 msgstr "홈 페이지 사진 하위메뉴"
 
 msgctxt "#31140"
@@ -412,18 +436,6 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "자막 다운로드"
 
-msgctxt "#31360"
-msgid "Watch as 2D"
-msgstr "2D로 감상"
-
-msgctxt "#31361"
-msgid "Change mode"
-msgstr "모드 변경"
-
-msgctxt "#31362"
-msgid "Enabled"
-msgstr "사용함"
-
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "스킨 기본값"
@@ -466,6 +478,10 @@ msgstr "[B]추가기능 설정[/B][CR][CR]설치한 추가기능 관리 · xbmc.
 
 msgctxt "#31409"
 msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change full screen info · Manage EPG data settings"
+msgstr "[B]TV 설정[/B][CR][CR]전체 화면 정보 변경 · EPG 데이터 설정"
+
+msgctxt "#31409"
+msgid "[B]CONFIGURE TV SETTINGS[/B][CR][CR]Change fullscreen info · Manage EPG data settings"
 msgstr "[B]TV 설정[/B][CR][CR]전체 화면 정보 변경 · EPG 데이터 설정"
 
 msgctxt "#31410"
@@ -570,7 +586,7 @@ msgstr "지도와 경보"
 
 msgctxt "#31950"
 msgid "WEATHER"
-msgstr "날씨"
+msgstr "날ㅆ"
 
 msgctxt "#31951"
 msgid "PICTURES"
