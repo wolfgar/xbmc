@@ -45,21 +45,21 @@ public:
     
     void Reset()
     {
-        strFace.Empty();
+        strFace.erase();
         location.clear();
-        strBiography.Empty();
+        strBiography.erase();
         styles.clear();
         moods.clear();
         instruments.clear();
-        strBorn.Empty();
-        strFormed.Empty();
-        strDied.Empty();
-        strDisbanded.Empty();
+        strBorn.erase();
+        strFormed.erase();
+        strDied.erase();
+        strDisbanded.erase();
         yearsActive.clear();
         thumbURL.Clear();
         discography.clear();
         idFace = -1;
-        strPath.Empty();
+        strPath.erase();
     }
     
     /*! \brief Load Face information from an XML file.

@@ -42,7 +42,7 @@ public:
     void Reset()
     {
         idAlbum = -1;
-        strAlbum.Empty();
+        strAlbum.erase();
         face.clear();
         faceCredits.clear();
         location.clear();
@@ -51,11 +51,11 @@ public:
         styles.clear();
         themes.clear();
         art.clear();
-        strReview.Empty();
-        strLabel.Empty();
-        strPictureType.Empty();
-        strPath.Empty();
-        m_strDateOfRelease.Empty();
+        strReview.erase();
+        strLabel.erase();
+        strPictureType.erase();
+        strPath.erase();
+        m_strDateOfRelease.erase();
         bCompilation = false;
         iPictureCount = 0;
         pictures.clear();
