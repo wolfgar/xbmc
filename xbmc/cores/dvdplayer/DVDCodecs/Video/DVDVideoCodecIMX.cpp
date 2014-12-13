@@ -36,6 +36,7 @@
 #include "utils/log.h"
 #include "DVDClock.h"
 
+#define IMX_VDI_MAX_WIDTH 968
 #define FRAME_ALIGN 16
 #define MEDIAINFO 1
 #define _4CC(c1,c2,c3,c4) (((uint32_t)(c4)<<24)|((uint32_t)(c3)<<16)|((uint32_t)(c2)<<8)|(uint32_t)(c1))
@@ -452,6 +453,23 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     CLog::Log(LOGNOTICE, "iMX VPU : software decoding requested.\n");
     return false;
   }
+
+#ifdef DUMP_STREAM
+  m_dump = fopen("stream.dump", "wb");
+  if (m_dump != NULL)
+  {
+    fwrite(&hints.software, sizeof(hints.software), 1, m_dump);
+    fwrite(&hints.codec, sizeof(hints.codec), 1, m_dump);
+    fwrite(&hints.profile, sizeof(hints.profile), 1, m_dump);
+    fwrite(&hints.codec_tag, sizeof(hints.codec_tag), 1, m_dump);
+    fwrite(&hints.extrasize, sizeof(hints.extrasize), 1, m_dump);
+    CLog::Log(LOGNOTICE, "Dump: HEADER: %d  %d  %d  %d  %d\n",
+              hints.software, hints.codec, hints.profile,
+              hints.codec_tag, hints.extrasize);
+    if (hints.extrasize > 0)
+      fwrite(hints.extradata, 1, hints.extrasize, m_dump);
+  }
+#endif
 
   m_hints = hints;
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
@@ -985,6 +1003,16 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
     } // Decode loop
   } //(pData && iSize)
 
+  // Reply to flush call only if double rate is active
+  if (m_mixer.DoubleRate() && !retStatus)
+  {
+    m_currentBuffer = m_mixer.Process(NULL);
+    if (m_currentBuffer)
+    {
+      retStatus |= VC_PICTURE;
+    }
+  }
+
   if (retStatus == 0)
   {
     retStatus |= VC_BUFFER;
@@ -1315,13 +1343,11 @@ bool CDVDVideoCodecIMXIPUBuffer::IsValid()
 }
 
 bool CDVDVideoCodecIMXIPUBuffer::Process(int fd, CDVDVideoCodecIMXVPUBuffer *buffer,
-                                         VpuFieldType fieldType, int fieldFmt,
-                                         bool lowMotion)
+                                         int fieldFmt, bool lowMotion)
 {
   CDVDVideoCodecIMXVPUBuffer *previousBuffer;
   struct ipu_task task;
   memset(&task, 0, sizeof(task));
-  task.priority = IPU_TASK_PRIORITY_HIGH;
 
   if (lowMotion)
     previousBuffer = buffer->GetPreviousBuffer();
@@ -1335,6 +1361,8 @@ bool CDVDVideoCodecIMXIPUBuffer::Process(int fd, CDVDVideoCodecIMXVPUBuffer *buf
   // Input is the VPU decoded frame
   task.input.width   = iWidth;
   task.input.height  = iHeight;
+  task.input.crop.h  = iHeight;
+
 #ifdef IMX_INPUT_FORMAT_I420
   task.input.format  = IPU_PIX_FMT_YUV420P;
 #else
@@ -1344,6 +1372,7 @@ bool CDVDVideoCodecIMXIPUBuffer::Process(int fd, CDVDVideoCodecIMXVPUBuffer *buf
   // Output is our IPU buffer
   task.output.width  = iWidth;
   task.output.height = iHeight;
+  task.output.crop.h = iHeight;
 #ifdef IMX_OUTPUT_FORMAT_I420
   task.output.format = IPU_PIX_FMT_YUV420P;
   iFormat            = 0;
@@ -1356,16 +1385,16 @@ bool CDVDVideoCodecIMXIPUBuffer::Process(int fd, CDVDVideoCodecIMXVPUBuffer *buf
   task.output.format = IPU_PIX_FMT_RGB565;
   iFormat            = 2;
 #endif
-/*
-#ifdef IMX_OUTPUT_FORMAT_RGB24
-  task.output.format = IPU_PIX_FMT_RGB24;
+#ifdef IMX_OUTPUT_FORMAT_RGB32
+  task.output.format = IPU_PIX_FMT_RGB32;
   iFormat            = 3;
 #endif
-*/
   task.output.paddr  = (int)pPhysAddr;
 
+  bool setupNAddr = lowMotion || (fieldFmt & IPU_DEINTERLACE_RATE_MASK);
+
   // Fill current and next buffer address
-  if (lowMotion && previousBuffer && previousBuffer->IsValid())
+  if (setupNAddr && previousBuffer && previousBuffer->IsValid())
   {
     task.input.paddr              = (int)previousBuffer->pPhysAddr;
     task.input.paddr_n            = (int)buffer->pPhysAddr;
@@ -1380,7 +1409,7 @@ bool CDVDVideoCodecIMXIPUBuffer::Process(int fd, CDVDVideoCodecIMXVPUBuffer *buf
   task.input.deinterlace.enable = 1;
   task.input.deinterlace.field_fmt = fieldFmt;
 
-  switch (fieldType)
+  switch (buffer->GetFieldType())
   {
   case VPU_FIELD_TOP:
   case VPU_FIELD_TB:
@@ -1397,15 +1426,42 @@ bool CDVDVideoCodecIMXIPUBuffer::Process(int fd, CDVDVideoCodecIMXVPUBuffer *buf
 #ifdef IMX_PROFILE
   unsigned int time = XbmcThreads::SystemClockMillis();
 #endif
-  int ret = ioctl(fd, IPU_QUEUE_TASK, &task);
+
+  /* We do the VDI buffer splitting ourselves since the kernel
+   * driver (IPU) is either buggy or it is a feature that it does
+   * not split widths aligned to 16 pixels to get maximum burst on
+   * DMA. Since we know that the input and output dimensions are the
+   * same we can implement an easier algorithm that takes care of
+   * that.
+   */
+  unsigned int nRequiredStripes = (iWidth+IMX_VDI_MAX_WIDTH-1) / IMX_VDI_MAX_WIDTH;
+  unsigned int iProcWidth = iWidth;
+  unsigned int iStripeOffset = 0;
+
+  while (iStripeOffset < iWidth)
+  {
+    unsigned int iStripeWidth = Align(iWidth/nRequiredStripes, FRAME_ALIGN);
+    if (iStripeWidth > iProcWidth)
+      iStripeWidth = iProcWidth;
+
+    task.input.crop.pos.x  = iStripeOffset;
+    task.input.crop.w      = iStripeWidth;
+    task.output.crop.pos.x = task.input.crop.pos.x;
+    task.output.crop.w     = task.input.crop.w;
+
+    if (ioctl(fd, IPU_QUEUE_TASK, &task) < 0)
+    {
+      CLog::Log(LOGERROR, "IPU task failed: %s\n", strerror(errno));
+      return false;
+    }
+
+    iStripeOffset += iStripeWidth;
+    iProcWidth -= iStripeWidth;
+  }
+
 #ifdef IMX_PROFILE
   CLog::Log(LOGDEBUG, "DEINT: tm:%d\n", XbmcThreads::SystemClockMillis() - time);
 #endif
-  if (ret < 0)
-  {
-    CLog::Log(LOGERROR, "IPU task failed: %s\n", strerror(errno));
-    return false;
-  }
 
   m_bFree = false;
   buffer->Lock();
@@ -1432,19 +1488,19 @@ bool CDVDVideoCodecIMXIPUBuffer::Allocate(int fd, int width, int height, int nAl
   m_iWidth = Align(width,FRAME_ALIGN);
   m_iHeight = Align(height,(2*FRAME_ALIGN));
 #if defined(IMX_OUTPUT_FORMAT_NV12) || defined(IMX_OUTPUT_FORMAT_I420)
-  // I420 == NV12 == 12 bpp
+  // I420 == 12 bpp
   m_nSize = m_iWidth*m_iHeight*12/8;
 #endif
 #ifdef IMX_OUTPUT_FORMAT_RGB565
   // RGB565 = 16 bpp
   m_nSize = m_iWidth*m_iHeight*16/8;
 #endif
-/*
-#ifdef IMX_OUTPUT_FORMAT_RGB24
-  // RGB24 = 24 bpp
-  m_nSize = m_iWidth*m_iHeight*24/8;
+#ifdef IMX_OUTPUT_FORMAT_RGB32
+  // RGB32 = 32 bpp
+  m_nSize = m_iWidth*m_iHeight*32/8;
 #endif
-*/
+
+  m_pPhyAddr = m_nSize;
 
   m_pPhyAddr = m_nSize;
   pPhysAddr = pVirtAddr = NULL;
@@ -1568,6 +1624,27 @@ bool CDVDVideoCodecIMXIPUBuffers::Init(int width, int height, int numBuffers, in
   return true;
 }
 
+inline void CDVDVideoCodecIMXIPUBuffers::SetDoubleRate(bool flag)
+{
+  if (flag)
+    m_currentFieldFmt |= IPU_DEINTERLACE_RATE_EN;
+  else
+    m_currentFieldFmt &= ~IPU_DEINTERLACE_RATE_EN;
+}
+
+inline bool CDVDVideoCodecIMXIPUBuffers::DoubleRate() const
+{
+  return m_currentFieldFmt & IPU_DEINTERLACE_RATE_EN;
+}
+
+inline void CDVDVideoCodecIMXIPUBuffers::SetInterpolatedFrame(bool flag)
+{
+  if (flag)
+    m_currentFieldFmt |= IPU_DEINTERLACE_RATE_FRAME1;
+  else
+    m_currentFieldFmt &= ~IPU_DEINTERLACE_RATE_FRAME1;
+}
+
 bool CDVDVideoCodecIMXIPUBuffers::Reset()
 {
   for (int i=0; i < m_bufferNum; i++)
@@ -1612,8 +1689,8 @@ bool CDVDVideoCodecIMXIPUBuffers::Close()
 }
 
 CDVDVideoCodecIMXIPUBuffer *
-CDVDVideoCodecIMXIPUBuffers::Process(CDVDVideoCodecIMXBuffer *sourceBuffer,
-                                     VpuFieldType fieldType, bool lowMotion)
+CDVDVideoCodecIMXIPUBuffers::Process(CDVDVideoCodecIMXVPUBuffer *sourceBuffer,
+                                     bool lowMotion)
 {
   CDVDVideoCodecIMXIPUBuffer *target = NULL;
   bool ret = true;
@@ -1628,8 +1705,7 @@ CDVDVideoCodecIMXIPUBuffers::Process(CDVDVideoCodecIMXBuffer *sourceBuffer,
     // IPU process:
     // SRC: Current VPU physical buffer address + last VPU buffer address
     // DST: IPU buffer[i]
-    ret = m_buffers[i]->Process(m_ipuHandle, (CDVDVideoCodecIMXVPUBuffer*)sourceBuffer,
-                                fieldType, m_currentFieldFmt,
+    ret = m_buffers[i]->Process(m_ipuHandle, sourceBuffer, m_currentFieldFmt,
                                 lowMotion);
     if (ret)
     {
@@ -1792,17 +1868,75 @@ void CDVDVideoMixerIMX::Process()
     CDVDVideoCodecIMXVPUBuffer *inputBuffer = GetNextInput();
     if (inputBuffer)
     {
-      // Wait for free slot
-      WaitForFreeOutput();
+      EDEINTERLACEMODE mDeintMode = CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode;
+      //EINTERLACEMETHOD mInt       = CMediaSettings::Get().GetCurrentVideoSettings().m_InterlaceMethod;
 
-      CDVDVideoCodecIMXBuffer *outputBuffer = ProcessFrame(inputBuffer);
-
-      // Queue the output if any
-      if (outputBuffer)
+      if ((mDeintMode == VS_DEINTERLACEMODE_OFF)
+       || ((mDeintMode == VS_DEINTERLACEMODE_AUTO) && !m_proc->AutoMode()))
       {
-        // Blocking until a free output slot is available. The buffer is
-        // reference counted in PushOutput
-        PushOutput(outputBuffer);
+        // Forward input buffer. Blocking until a free output slot is
+        // available. The buffer is reference counted in PushOutput.
+        PushOutput(inputBuffer);
+      }
+      else
+      {
+        CDVDVideoCodecIMXBuffer *outputBuffer;
+
+        //bool isSD = (inputBuffer->iWidth < 1024) && (inputBuffer->iHeight < 1024);
+
+        // Disable lowMotion for now due to worse deinterlacing quality
+        bool lowMotion = false;
+
+        // Currently double rate introduces oscillating scanlines (either wrong
+        // buffer setup or some other kernel issue) so we disable it completely
+        // for the time being
+        bool doubleRate = false;
+        /*
+        bool doubleRate = isSD
+                       && (inputBuffer->GetPreviousBuffer() != NULL)
+                       && (inputBuffer->GetPreviousBuffer()->GetPts() != DVD_NOPTS_VALUE)
+                       && (inputBuffer->GetPts() != DVD_NOPTS_VALUE);
+        */
+
+        // Wait for free slot
+        WaitForFreeOutput();
+
+        m_proc->SetDoubleRate(doubleRate);
+        m_proc->SetInterpolatedFrame(false);
+        outputBuffer = ProcessFrame(inputBuffer, lowMotion);
+
+        // Queue the output if any
+        if (outputBuffer)
+        {
+          // Blocking until a free output slot is available. The buffer is
+          // reference counted in PushOutput
+          PushOutput(outputBuffer);
+        }
+
+        // In case of double rate, process the buffer again to create
+        // an interpolated frame out of previous and current
+        if (m_proc->DoubleRate())
+        {
+          double pts = (inputBuffer->GetPts()+inputBuffer->GetPreviousBuffer()->GetPts())*0.5;
+
+          // Wait for free slot
+          WaitForFreeOutput();
+
+          m_proc->SetInterpolatedFrame(true);
+          outputBuffer = ProcessFrame(inputBuffer, lowMotion);
+
+          // Queue the output if any
+          if (outputBuffer)
+          {
+            // Update pts with interpolated value
+            outputBuffer->SetPts(pts);
+            outputBuffer->SetDts(DVD_NOPTS_VALUE);
+
+            // Blocking until a free output slot is available. The buffer is
+            // reference counted in PushOutput
+            PushOutput(outputBuffer);
+          }
+        }
       }
 
       SAFE_RELEASE(inputBuffer);
@@ -1857,38 +1991,25 @@ bool CDVDVideoMixerIMX::PushOutput(CDVDVideoCodecIMXBuffer *v) {
   return true;
 }
 
-CDVDVideoCodecIMXBuffer *CDVDVideoMixerIMX::ProcessFrame(CDVDVideoCodecIMXVPUBuffer *inputBuffer)
+CDVDVideoCodecIMXBuffer *CDVDVideoMixerIMX::ProcessFrame(CDVDVideoCodecIMXVPUBuffer *inputBuffer,
+                                                         bool lowMotion)
 {
   CDVDVideoCodecIMXBuffer *outputBuffer;
-  EDEINTERLACEMODE mDeintMode = CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode;
-  //EINTERLACEMETHOD mInt       = CMediaSettings::Get().GetCurrentVideoSettings().m_InterlaceMethod;
 
-  if ((mDeintMode == VS_DEINTERLACEMODE_OFF)
-   || ((mDeintMode == VS_DEINTERLACEMODE_AUTO) && !m_proc->AutoMode()))
-  {
-    outputBuffer = inputBuffer;
-  }
-  else
-  {
 #ifdef IMX_PROFILE_BUFFERS
-    unsigned long long current = XbmcThreads::SystemClockMillis();
+  unsigned long long current = XbmcThreads::SystemClockMillis();
 #endif
 //#define DUMMY_DEINTERLACER
 #ifdef DUMMY_DEINTERLACER
-    Sleep(35);
-    outputBuffer = inputBuffer;
+  Sleep(35);
+  outputBuffer = inputBuffer;
 #else
-    // Enable low motion for buffers that are not split up by the VDIC
-    bool lowMotion = (inputBuffer->iWidth < 1024) && (inputBuffer->iHeight < 1024);
-    outputBuffer = m_proc->Process(inputBuffer,
-                                   inputBuffer->GetFieldType(),
-                                   lowMotion);
+  outputBuffer = m_proc->Process(inputBuffer, lowMotion);
 #endif
 #ifdef IMX_PROFILE_BUFFERS
-    CLog::Log(LOGNOTICE, "+P  %x  %lld\n", (int)outputBuffer,
-              XbmcThreads::SystemClockMillis()-current);
+  CLog::Log(LOGNOTICE, "+P  %x  %lld\n", (int)outputBuffer,
+            XbmcThreads::SystemClockMillis()-current);
 #endif
-  }
 
   return outputBuffer;
 }

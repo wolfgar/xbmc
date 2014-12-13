@@ -31,15 +31,16 @@
 
 
 // The decoding format of the VPU buffer. Comment this to decode
-// as NV12. The VPU works faster with I420 in combination with
+// as NV12. The VPU works faster with NV12 in combination with
 // deinterlacing.
 //#define IMX_INPUT_FORMAT_I420
 
 // The deinterlacer output and render format. Only one format must be active
 // at a time
-//#define IMX_OUTPUT_FORMAT_NV12
+#define IMX_OUTPUT_FORMAT_NV12
 //#define IMX_OUTPUT_FORMAT_I420
-#define IMX_OUTPUT_FORMAT_RGB565
+//#define IMX_OUTPUT_FORMAT_RGB565
+//#define IMX_OUTPUT_FORMAT_RGB32
 
 // This enables logging of times for Decode, Render->Render,
 // Deinterlace. It helps to profile several stages of
@@ -53,7 +54,8 @@
 //#define IMX_PROFILE
 //#define TRACE_FRAMES
 
-#define DUMP_STREAM
+
+//#define DUMP_STREAM
 
 class CDecMemInfo
 {
@@ -167,8 +169,7 @@ public:
   // Returns whether the buffer is ready to be used
   bool                     Rendered() const { return m_bFree; }
   bool                     Process(int fd, CDVDVideoCodecIMXVPUBuffer *buffer,
-                                   VpuFieldType fieldType, int fieldFmt,
-                                   bool lowMotion);
+                                   int fieldFmt, bool lowMotion);
   void                     ReleaseFrameBuffer();
 
   bool                     Allocate(int fd, int width, int height, int nAlign);
@@ -200,12 +201,14 @@ public:
   // Sets the mode to be used if deinterlacing is set to AUTO
   void SetAutoMode(bool mode) { m_autoMode = mode; }
   bool AutoMode() const { return m_autoMode; }
+  void SetDoubleRate(bool flag);
+  bool DoubleRate() const;
+  void SetInterpolatedFrame(bool flag);
   bool Reset();
   bool Close();
 
   CDVDVideoCodecIMXIPUBuffer *
-  Process(CDVDVideoCodecIMXBuffer *sourceBuffer,
-          VpuFieldType fieldType, bool lowMotion);
+  Process(CDVDVideoCodecIMXVPUBuffer *sourceBuffer, bool lowMotion);
 
 private:
   int                          m_ipuHandle;
@@ -223,6 +226,7 @@ public:
   virtual ~CDVDVideoMixerIMX();
 
   void SetCapacity(int intput, int output);
+  bool DoubleRate() const { return m_proc->DoubleRate(); }
 
   void Start();
   void Reset();
@@ -237,7 +241,8 @@ private:
   CDVDVideoCodecIMXVPUBuffer *GetNextInput();
   void WaitForFreeOutput();
   bool PushOutput(CDVDVideoCodecIMXBuffer *v);
-  CDVDVideoCodecIMXBuffer *ProcessFrame(CDVDVideoCodecIMXVPUBuffer *input);
+  CDVDVideoCodecIMXBuffer *ProcessFrame(CDVDVideoCodecIMXVPUBuffer *input,
+                                        bool lowMotion);
 
   virtual void OnStartup();
   virtual void OnExit();
