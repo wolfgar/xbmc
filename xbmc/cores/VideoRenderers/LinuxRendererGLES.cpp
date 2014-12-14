@@ -964,13 +964,7 @@ void CLinuxRendererGLES::ReleaseBuffer(int idx)
 #endif
 #ifdef HAS_IMXVPU
   if (m_renderMethod & RENDER_IMXMAP)
-  {
-    if (buf.IMXBuffer)
-    {
-      SAFE_RELEASE(buf.IMXBuffer);
-      buf.IMXBuffer = NULL;
-    }
-  }
+    SAFE_RELEASE(buf.IMXBuffer);
 #endif
 }
 
@@ -1691,7 +1685,7 @@ void CLinuxRendererGLES::RenderIMXMAPTexture(int index, int field)
 #ifdef IMX_PROFILE_BUFFERS
   static unsigned long long last = 0;
   unsigned long long current = XbmcThreads::SystemClockMillis();
-  CLog::Log(LOGNOTICE, "+R  %x  %lld\n", (int)buffer, current-last);
+  CLog::Log(LOGNOTICE, "+R  %f  %lld\n", buffer->GetPts(), current-last);
   last = current;
 #endif
 

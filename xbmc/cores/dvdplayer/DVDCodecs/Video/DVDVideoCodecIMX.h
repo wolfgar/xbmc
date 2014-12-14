@@ -55,6 +55,9 @@
 //#define TRACE_FRAMES
 
 
+// If uncommented a file "stream.dump" will be created in the current
+// directory whenever a new stream is started. This is only for debugging
+// and performance tests. This define must never be active in distributions.
 //#define DUMP_STREAM
 
 class CDecMemInfo
