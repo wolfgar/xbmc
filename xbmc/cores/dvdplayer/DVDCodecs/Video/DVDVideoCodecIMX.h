@@ -19,6 +19,7 @@
  *
  */
 #include <queue>
+#include <linux/videodev2.h>
 #include <vector>
 #include <imx-mm/vpu/vpu_wrapper.h>
 #include "DVDVideoCodec.h"
@@ -83,11 +84,13 @@ public:
 // Base class of IMXVPU and IMXIPU buffer
 class CDVDVideoCodecIMXBuffer {
 public:
-#ifdef TRACE_FRAMES
+
+//#ifdef TRACE_FRAMES
   CDVDVideoCodecIMXBuffer(int idx);
-#else
+/*#else
   CDVDVideoCodecIMXBuffer();
 #endif
+*/
 
   // reference counting
   virtual void  Lock() = 0;
@@ -106,10 +109,15 @@ public:
   uint8_t      *pVirtAddr;
   uint8_t       iFormat;
 
+  /* Additional fields to ptrototype */
+  int           m_v4lfd;
+  struct v4l2_buffer *pV4lBuffer;
+  
+
 protected:
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
   int           m_idx;
-#endif
+//#endif
   long          m_refs;
 
 private:
@@ -121,11 +129,11 @@ private:
 class CDVDVideoCodecIMXVPUBuffer : public CDVDVideoCodecIMXBuffer
 {
 public:
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
   CDVDVideoCodecIMXVPUBuffer(int idx);
-#else
+/*#else
   CDVDVideoCodecIMXVPUBuffer();
-#endif
+#endif*/
 
   // reference counting
   virtual void                Lock();
@@ -158,11 +166,11 @@ private:
 class CDVDVideoCodecIMXIPUBuffer : public CDVDVideoCodecIMXBuffer
 {
 public:
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
   CDVDVideoCodecIMXIPUBuffer(int idx);
-#else
+/*#else
   CDVDVideoCodecIMXIPUBuffer();
-#endif
+#endif*/
 
   // reference counting
   virtual void             Lock();
@@ -188,6 +196,9 @@ private:
   uint32_t                 m_iWidth;
   uint32_t                 m_iHeight;
   int                      m_nSize;
+  /* Additional fiedl for proto */
+  struct v4l2_buffer       m_v4lBuffer;
+  
 };
 
 
@@ -215,6 +226,7 @@ public:
 
 private:
   int                          m_ipuHandle;
+  int                          m_v4lHandle;
   bool                         m_autoMode;
   int                          m_bufferNum;
   CDVDVideoCodecIMXIPUBuffer **m_buffers;

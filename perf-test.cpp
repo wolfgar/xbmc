@@ -465,6 +465,92 @@ class Stats : public OutputBase {
 		unsigned long long m_before, m_after;
 };
 
+class V4LRender : public Stats {
+	public:
+		V4LRender(Queue *q) : Stats(q) {}
+
+		virtual bool Init() {
+			Stats::Init();
+			m_streamOn = false;
+			if ( initFB() ) {
+				cerr << "FB init failed" << endl;
+				return false;
+			}
+
+			m_lastBuffer = NULL;
+
+			return true;
+		}
+
+		virtual void Done() {
+			Stats::Done();
+			SAFE_RELEASE(m_lastBuffer);
+		}
+
+		virtual bool Ouput(DVDVideoPicture &p) {
+			struct v4l2_buffer buf;
+			int type;
+			int ret;
+
+			p.IMXBuffer->Lock();
+			
+			if (m_streamOn)
+			{
+				/* Wait for previous buffer to be dequeued */
+				buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+				buf.memory = V4L2_MEMORY_MMAP;
+				ret = ioctl( p.IMXBuffer->m_v4lfd, VIDIOC_DQBUF, &buf);
+				if (ret < 0)
+				{
+					CLog::Log(LOGERROR, "%s - V4L unqueue failed (ret %d : %s)\n",
+					__FUNCTION__, ret, strerror(errno));
+				}
+				SAFE_RELEASE(m_lastBuffer);
+				CLog::Log(LOGERROR, "%s - V4L unqueue :%d\n", __FUNCTION__, buf.index);
+			}
+
+			else
+			{
+				type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+				ret = ioctl( p.IMXBuffer->m_v4lfd, VIDIOC_STREAMON, &type);
+				if (ret < 0)
+				{
+					CLog::Log(LOGERROR, "%s - V4L Stream ON failed (ret %d : %s)\n",
+					__FUNCTION__, ret, strerror(errno));
+				}
+				else
+					m_streamOn = true;
+				
+				/* We have to repeat crop command after streamon for some vids
+				* FIXME : Check why in drivers...
+				
+				ret = ioctl( p.IMXBuffer->m_v4lfd, VIDIOC_S_CROP, &m_crop);
+				if (ret < 0)
+				{
+					CLog::Log(LOGERROR, "%s - V4L crop failed (ret %d : %s)\n",
+					__FUNCTION__, ret, strerror(errno));
+				}*/
+				
+			}
+
+			/* queue new buffer */
+			ret = ioctl(p.IMXBuffer->m_v4lfd, VIDIOC_QBUF,  p.IMXBuffer->pV4lBuffer);
+			if (ret < 0)
+			{
+				CLog::Log(LOGERROR, "%s - V4L Stream queue failed(ret %d : %s)\n",
+				__FUNCTION__, ret, strerror(errno));
+			}
+
+			m_lastBuffer = p.IMXBuffer;			
+			return Stats::Ouput(p);
+		}
+
+	private:
+		GLuint                   m_textureID;
+		CDVDVideoCodecIMXBuffer *m_lastBuffer;
+		bool m_streamOn;
+};
+
 
 class EGL : public Stats {
 	public:
@@ -574,6 +660,7 @@ int main (int argc, char *argv[]) {
 	bool deinterlacedTest = false;
 	bool progressiveRenderTest = false;
 	bool deinterlacedRenderTest = false;
+	bool deinterlacedRenderTest2 = false;
 
 	CLog::Init("./");
 	CLog::SetLogLevel(LOG_LEVEL_DEBUG);
@@ -604,6 +691,8 @@ int main (int argc, char *argv[]) {
 			progressiveRenderTest = true;
 		else if ( !strcmp(argv[i], "-dr") )
 			deinterlacedRenderTest = true;
+		else if ( !strcmp(argv[i], "-vr") )
+			deinterlacedRenderTest2 = true;
 	}
 
 	if ( progressiveTest ) {
@@ -684,6 +773,25 @@ int main (int argc, char *argv[]) {
 
 		queue.Close();
 		egl.Wait();
+	}
+
+	if ( deinterlacedRenderTest2 ) {
+		cerr << "Set deinterlacing to FORCE and render without GPU" << endl;
+		CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode = VS_DEINTERLACEMODE_FORCE;
+
+		CDVDVideoCodecIMX codec;
+		Queue queue;
+		BufferIterator it(&codec, argv[1]);
+		DVDVideoPicture *pic;
+		V4LRender V4Lrend(&queue);
+
+		queue.SetCapacity(3);
+		V4Lrend.Start();
+
+		while ( (pic = it.next()) != NULL )
+			queue.Push(*pic);
+
+		queue.Close();
 	}
 
 	return 0;

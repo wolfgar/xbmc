@@ -378,11 +378,11 @@ bool CDVDVideoCodecIMX::VpuAllocFrameBuffers(void)
     m_vpuFrameBuffers[i].pbufVirtY_tilebot  = 0;
     m_vpuFrameBuffers[i].pbufVirtCb_tilebot = 0;
 
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
     m_outputBuffers[i] = new CDVDVideoCodecIMXVPUBuffer(i);
-#else
+/*#else
     m_outputBuffers[i] = new CDVDVideoCodecIMXVPUBuffer();
-#endif
+#endif*/
   }
 
   CLog::Log(LOGNOTICE, "IMX: Initialize hardware deinterlacing\n");
@@ -1144,14 +1144,14 @@ void CDVDVideoCodecIMX::SetDropState(bool bDrop)
 }
 
 /*******************************************/
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
 CDVDVideoCodecIMXBuffer::CDVDVideoCodecIMXBuffer(int idx)
   : m_idx(idx)
   , m_refs(1)
-#else
+/*#else
 CDVDVideoCodecIMXBuffer::CDVDVideoCodecIMXBuffer()
   : m_refs(1)
-#endif
+#endif*/
   , m_pts(DVD_NOPTS_VALUE)
   , m_dts(DVD_NOPTS_VALUE)
 {
@@ -1167,13 +1167,13 @@ void CDVDVideoCodecIMXBuffer::SetDts(double dts)
   m_dts = dts;
 }
 
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
 CDVDVideoCodecIMXVPUBuffer::CDVDVideoCodecIMXVPUBuffer(int idx)
   : CDVDVideoCodecIMXBuffer(idx)
-#else
+/*#else
 CDVDVideoCodecIMXVPUBuffer::CDVDVideoCodecIMXVPUBuffer()
   : CDVDVideoCodecIMXBuffer()
-#endif
+#endif*/
   , m_frameBuffer(NULL)
   , m_rendered(false)
   , m_previousBuffer(NULL)
@@ -1293,13 +1293,13 @@ CDVDVideoCodecIMXVPUBuffer::~CDVDVideoCodecIMXVPUBuffer()
 #endif
 }
 
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
 CDVDVideoCodecIMXIPUBuffer::CDVDVideoCodecIMXIPUBuffer(int idx)
   : CDVDVideoCodecIMXBuffer(idx)
-#else
+/*#else
 CDVDVideoCodecIMXIPUBuffer::CDVDVideoCodecIMXIPUBuffer()
   : CDVDVideoCodecIMXBuffer()
-#endif
+#endif*/
   , m_bFree(true)
   , m_pPhyAddr(0)
   , m_pVirtAddr(NULL)
@@ -1486,8 +1486,11 @@ void CDVDVideoCodecIMXIPUBuffer::ReleaseFrameBuffer()
 
 bool CDVDVideoCodecIMXIPUBuffer::Allocate(int fd, int width, int height, int nAlign)
 {
+  int ret;
+
   m_iWidth = Align(width,FRAME_ALIGN);
   m_iHeight = Align(height,(2*FRAME_ALIGN));
+#if 0  
 #if defined(IMX_OUTPUT_FORMAT_NV12) || defined(IMX_OUTPUT_FORMAT_I420)
   // I420 == 12 bpp
   m_nSize = m_iWidth*m_iHeight*12/8;
@@ -1502,7 +1505,28 @@ bool CDVDVideoCodecIMXIPUBuffer::Allocate(int fd, int width, int height, int nAl
 #endif
 
   m_pPhyAddr = m_nSize;
+#endif
 
+  m_v4lfd = fd;
+  memset(&m_v4lBuffer, 0, sizeof(m_v4lBuffer));
+  m_v4lBuffer.index = m_idx;
+  m_v4lBuffer.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  m_v4lBuffer.memory = V4L2_MEMORY_MMAP;
+  ret = ioctl (fd, VIDIOC_QUERYBUF, &m_v4lBuffer);
+  if (ret < 0)
+  {
+    CLog::Log(LOGERROR, "%s - Error during 1st query of V4L buffer (ret %d : %s)\n", __FUNCTION__, ret, strerror(errno));
+    return false;
+  }
+
+  pVirtAddr = m_pVirtAddr = mmap(NULL, m_v4lBuffer.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, m_v4lBuffer.m.offset);
+  /* 2nd query to retrieve real Physical address after mmap (iMX6 bug) */
+  ret = ioctl (fd, VIDIOC_QUERYBUF, &m_v4lBuffer);
+  pPhysAddr = m_pPhyAddr = m_v4lBuffer.m.offset;
+  pV4lBuffer = &m_v4lBuffer;
+
+#if 0
+  /* FIXME */
   pPhysAddr = pVirtAddr = NULL;
 
   int r = ioctl(fd, IPU_ALLOC, &m_pPhyAddr);
@@ -1524,6 +1548,7 @@ bool CDVDVideoCodecIMXIPUBuffer::Allocate(int fd, int width, int height, int nAl
     return false;
   }
 
+
   if (nAlign>1)
   {
     pPhysAddr = (uint8_t*)Align(m_pPhyAddr, nAlign);
@@ -1534,6 +1559,7 @@ bool CDVDVideoCodecIMXIPUBuffer::Allocate(int fd, int width, int height, int nAl
     pPhysAddr = (uint8_t*)m_pPhyAddr;
     pVirtAddr = (uint8_t*)m_pVirtAddr;
   }
+  #endif
 
   return true;
 }
@@ -1545,7 +1571,7 @@ bool CDVDVideoCodecIMXIPUBuffer::Free(int fd)
   // Unmap virtual memory
   if (m_pVirtAddr != NULL)
   {
-    if(munmap(m_pVirtAddr, m_nSize))
+    if(munmap(m_pVirtAddr, /*m_nSize*/m_v4lBuffer.length))
     {
       CLog::Log(LOGERROR, "IPU unmap failed: %s\n", strerror(errno));
       ret = false;
@@ -1554,6 +1580,8 @@ bool CDVDVideoCodecIMXIPUBuffer::Free(int fd)
     m_pVirtAddr = NULL;
   }
 
+
+#if 0
   // Free IPU memory
   if (m_pPhyAddr)
   {
@@ -1566,6 +1594,8 @@ bool CDVDVideoCodecIMXIPUBuffer::Free(int fd)
 
     m_pPhyAddr = 0;
   }
+#endif
+  
 
   pPhysAddr = pVirtAddr = NULL;
   m_bFree = true;
@@ -1603,18 +1633,90 @@ bool CDVDVideoCodecIMXIPUBuffers::Init(int width, int height, int numBuffers, in
     return false;
   }
 
+  m_v4lHandle = open("/dev/video16", O_RDWR/*|O_NONBLOCK*/, 0);
+  if (m_v4lHandle<=0)
+  {
+    CLog::Log(LOGWARNING, "Failed to initialize V4L2: %s\n",
+              strerror(errno));
+    m_v4lHandle = 0;
+    return false;
+  }
+
   m_bufferNum = numBuffers;
   m_buffers = new CDVDVideoCodecIMXIPUBuffer*[m_bufferNum];
   m_currentFieldFmt = 0;
+  
+  /* V4L2 stuff */
+  {
+    struct v4l2_format fmt;
+    struct v4l2_rect rect;
+    struct v4l2_requestbuffers bufReq;
+    int ret;
+    
+    /* Set V4L2 Format */
+    memset(&fmt, 0, sizeof(fmt));
+    fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    fmt.fmt.pix.width = Align(width,FRAME_ALIGN);
+    fmt.fmt.pix.height = Align(height,(2*FRAME_ALIGN));
+
+#if defined(IMX_OUTPUT_FORMAT_NV12)
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV12;
+#endif
+#if defined(IMX_OUTPUT_FORMAT_I420)
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+#endif
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+#if defined(IMX_OUTPUT_FORMAT_RGB565)
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+#endif
+#ifdef IMX_OUTPUT_FORMAT_RGB32
+   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB32;
+#endif
+
+    fmt.fmt.pix.field = V4L2_FIELD_NONE;
+
+/*
+    rect.left =  m_initInfo.PicCropRect.nLeft;
+    rect.top =  m_initInfo.PicCropRect.nTop;
+    rect.width = m_initInfo.PicCropRect.nRight - m_initInfo.PicCropRect.nLeft;
+    rect.height = m_initInfo.PicCropRect.nBottom - m_initInfo.PicCropRect.nTop;
+    fmt.fmt.pix.priv = (unsigned int)&rect;
+*/
+
+    ret = ioctl(m_v4lHandle, VIDIOC_S_FMT, &fmt);
+    if (ret < 0)
+    {
+      CLog::Log(LOGERROR, "%s - Error while setting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
+      return false;
+    }
+    ret = ioctl(m_v4lHandle, VIDIOC_G_FMT, &fmt);
+    if (ret < 0)
+    {
+      CLog::Log(LOGERROR, "%s - Error while getting V4L format (ret %d : %s).\n", __FUNCTION__, ret, strerror(errno));
+      return false;
+    }
+
+    /* Reserve V4L2 buffers */
+    memset(&bufReq, 0, sizeof(bufReq));
+    bufReq.count =  m_bufferNum;
+    bufReq.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    bufReq.memory = V4L2_MEMORY_MMAP;
+    ret = ioctl(m_v4lHandle, VIDIOC_REQBUFS, &bufReq);
+    if (ret < 0)
+    {
+      CLog::Log(LOGERROR, "%s - %d Hw buffer allocation error (%d)\n", __FUNCTION__, bufReq.count, ret);
+      return false;
+    }
+  }
 
   for (int i=0; i < m_bufferNum; i++)
   {
-#ifdef TRACE_FRAMES
+//#ifdef TRACE_FRAMES
     m_buffers[i] = new CDVDVideoCodecIMXIPUBuffer(i);
-#else
+/*#else
     m_buffers[i] = new CDVDVideoCodecIMXIPUBuffer;
-#endif
-    if (!m_buffers[i]->Allocate(m_ipuHandle, width, height, nAlign))
+#endif*/
+    if (!m_buffers[i]->Allocate(m_v4lHandle/*m_ipuHandle*/, width, height, nAlign))
     {
       Close();
       return false;
@@ -1657,16 +1759,31 @@ bool CDVDVideoCodecIMXIPUBuffers::Reset()
 bool CDVDVideoCodecIMXIPUBuffers::Close()
 {
   bool ret = true;
+  int type;
 
-  if (m_ipuHandle)
+  if (m_v4lHandle)
   {
+    /* stream off */
+    type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    ioctl (m_v4lHandle, VIDIOC_STREAMOFF, &type);
+
     for (int i=0; i < m_bufferNum; i++)
     {
       if (m_buffers[i] == NULL ) continue;
-      if (!m_buffers[i]->Free(m_ipuHandle))
+      if (!m_buffers[i]->Free(m_v4lHandle/*m_ipuHandle*/))
         ret = false;
     }
 
+    if (close(m_v4lHandle))
+    {
+      CLog::Log(LOGERROR, "V4L2 failed to close interface: %s\n", strerror(errno));
+      ret = false;
+    }
+    m_v4lHandle = 0;
+  }
+  
+  if (m_ipuHandle)
+  {
     // Close IPU device
     if (close(m_ipuHandle))
     {
