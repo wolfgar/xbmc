@@ -1518,11 +1518,14 @@ bool CDVDVideoCodecIMXIPUBuffer::Allocate(int fd, int width, int height, int nAl
     CLog::Log(LOGERROR, "%s - Error during 1st query of V4L buffer (ret %d : %s)\n", __FUNCTION__, ret, strerror(errno));
     return false;
   }
+  pVirtAddr = mmap(NULL, m_v4lBuffer.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, m_v4lBuffer.m.offset); 
+  CLog::Log(LOGNOTICE, "v4l buffer mmap : %d %x %x", m_v4lBuffer.length, pVirtAddr,  m_v4lBuffer.m.offset);
+  m_pVirtAddr = pVirtAddr;
 
-  pVirtAddr = m_pVirtAddr = mmap(NULL, m_v4lBuffer.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, m_v4lBuffer.m.offset);
-  /* 2nd query to retrieve real Physical address after mmap (iMX6 bug) */
+  /* 2nd query to retrieve real Physical address after mmap */
   ret = ioctl (fd, VIDIOC_QUERYBUF, &m_v4lBuffer);
   pPhysAddr = m_pPhyAddr = m_v4lBuffer.m.offset;
+  CLog::Log(LOGNOTICE, "v4l bufferphy after mmap : %x",  m_v4lBuffer.m.offset);
   pV4lBuffer = &m_v4lBuffer;
 
 #if 0
@@ -1579,7 +1582,6 @@ bool CDVDVideoCodecIMXIPUBuffer::Free(int fd)
 
     m_pVirtAddr = NULL;
   }
-
 
 #if 0
   // Free IPU memory
@@ -1664,8 +1666,7 @@ bool CDVDVideoCodecIMXIPUBuffers::Init(int width, int height, int numBuffers, in
 #endif
 #if defined(IMX_OUTPUT_FORMAT_I420)
     fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
-#endif
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+#endif    
 #if defined(IMX_OUTPUT_FORMAT_RGB565)
     fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
 #endif
@@ -1707,6 +1708,7 @@ bool CDVDVideoCodecIMXIPUBuffers::Init(int width, int height, int numBuffers, in
       CLog::Log(LOGERROR, "%s - %d Hw buffer allocation error (%d)\n", __FUNCTION__, bufReq.count, ret);
       return false;
     }
+    CLog::Log(LOGERROR, "%s - %d v4k buffer allocated\n", __FUNCTION__, bufReq.count);
   }
 
   for (int i=0; i < m_bufferNum; i++)
@@ -1763,10 +1765,6 @@ bool CDVDVideoCodecIMXIPUBuffers::Close()
 
   if (m_v4lHandle)
   {
-    /* stream off */
-    type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-    ioctl (m_v4lHandle, VIDIOC_STREAMOFF, &type);
-
     for (int i=0; i < m_bufferNum; i++)
     {
       if (m_buffers[i] == NULL ) continue;

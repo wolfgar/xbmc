@@ -478,22 +478,41 @@ class V4LRender : public Stats {
 			}
 
 			m_lastBuffer = NULL;
-
+			m_v4lHandle = -1;
 			return true;
 		}
 
 		virtual void Done() {
+			int type, ret;
+			struct v4l2_buffer buf;
+
 			Stats::Done();
-			SAFE_RELEASE(m_lastBuffer);
+			if ((m_v4lHandle > 0) && (m_streamOn))
+			{
+				buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+				buf.memory = V4L2_MEMORY_MMAP;
+				ret = ioctl(m_v4lHandle, VIDIOC_DQBUF, &buf);
+				if (ret < 0)
+				{
+					CLog::Log(LOGERROR, "%s - V4L unqueue failed (ret %d : %s)\n",
+					__FUNCTION__, ret, strerror(errno));
+				}
+				type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+				ioctl (m_v4lHandle, VIDIOC_STREAMOFF, &type);
+				m_streamOn = false;
+				m_v4lHandle = -1;
+				SAFE_RELEASE(m_lastBuffer);
+			}
 		}
 
 		virtual bool Ouput(DVDVideoPicture &p) {
 			struct v4l2_buffer buf;
 			int type;
 			int ret;
+			struct timeval queue_ts;
 
 			p.IMXBuffer->Lock();
-			
+			m_v4lHandle = p.IMXBuffer->m_v4lfd;
 			if (m_streamOn)
 			{
 				/* Wait for previous buffer to be dequeued */
@@ -506,7 +525,7 @@ class V4LRender : public Stats {
 					__FUNCTION__, ret, strerror(errno));
 				}
 				SAFE_RELEASE(m_lastBuffer);
-				CLog::Log(LOGERROR, "%s - V4L unqueue :%d\n", __FUNCTION__, buf.index);
+				//CLog::Log(LOGERROR, "%s - V4L unqueue :%d\n", __FUNCTION__, buf.index);
 			}
 
 			else
@@ -534,13 +553,16 @@ class V4LRender : public Stats {
 			}
 
 			/* queue new buffer */
+			gettimeofday (&queue_ts, NULL);
+			p.IMXBuffer->pV4lBuffer->timestamp = queue_ts;
 			ret = ioctl(p.IMXBuffer->m_v4lfd, VIDIOC_QBUF,  p.IMXBuffer->pV4lBuffer);
 			if (ret < 0)
 			{
 				CLog::Log(LOGERROR, "%s - V4L Stream queue failed(ret %d : %s)\n",
 				__FUNCTION__, ret, strerror(errno));
 			}
-
+			//CLog::Log(LOGERROR, "%s - V4L queued :%d format %d\n", __FUNCTION__, p.IMXBuffer->pV4lBuffer->index, p.IMXBuffer->iFormat);
+			
 			m_lastBuffer = p.IMXBuffer;			
 			return Stats::Ouput(p);
 		}
@@ -549,6 +571,7 @@ class V4LRender : public Stats {
 		GLuint                   m_textureID;
 		CDVDVideoCodecIMXBuffer *m_lastBuffer;
 		bool m_streamOn;
+		int m_v4lHandle;
 };
 
 
@@ -792,6 +815,7 @@ int main (int argc, char *argv[]) {
 			queue.Push(*pic);
 
 		queue.Close();
+		V4Lrend.Wait();
 	}
 
 	return 0;
