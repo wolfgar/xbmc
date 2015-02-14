@@ -31,6 +31,7 @@
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
 #include <imx-mm/vpu/vpu_wrapper.h>
+#include <g2d.h>
 
 
 // The decoding format of the VPU buffer. Comment this to decode
@@ -127,7 +128,7 @@ public:
   // been queued. BlitAsync renders always to the current backbuffer and
   // swaps the pages.
   bool BlitAsync(CIMXBuffer *source_p, CIMXBuffer *source,
-                 bool topBottomFields = true);
+                 bool topBottomFields = true, CRect *dest = NULL);
 
   // Shows a page vsynced
   bool ShowPage(int page);
@@ -141,6 +142,9 @@ public:
   // Captures the current visible frame buffer page and blends it into
   // the passed overlay. The buffer format is BGRA (4 byte)
   void CaptureDisplay(unsigned char *buffer, int iWidth, int iHeight);
+  bool PushCaptureTask(CIMXBuffer *source, CRect *dest);
+  void *GetCaptureBuffer(void) const { if (m_bufferCapture) return m_bufferCapture->buf_vaddr; else return NULL; }
+  void WaitCapture(void);
 
 private:
   struct IPUTask
@@ -167,7 +171,7 @@ private:
 
   bool PushTask(const IPUTask &);
   void PrepareTask(IPUTask &ipu, CIMXBuffer *source_p, CIMXBuffer *source,
-                   bool topBottomFields);
+                   bool topBottomFields, CRect *dest = NULL);
   bool DoTask(IPUTask &ipu, int targetPage);
 
   virtual void OnStartup();
@@ -206,6 +210,10 @@ private:
   XbmcThreads::ConditionVariable m_inputNotEmpty;
   XbmcThreads::ConditionVariable m_inputNotFull;
   mutable CCriticalSection       m_monitor;
+
+  void                           *m_g2dHandle;
+  struct g2d_buf                 *m_bufferCapture;
+  bool                           m_CaptureDone;
 };
 
 
