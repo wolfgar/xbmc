@@ -78,11 +78,7 @@ void CRenderCaptureIMX::BeginRender()
 void CRenderCaptureIMX::EndRender()
 {
   if (m_flags & CAPTUREFLAG_IMMEDIATELY)
-  {
-    g_IMXContext.WaitCapture();
-    m_pixels = g_IMXContext.GetCaptureBuffer();
-    SetState(CAPTURESTATE_DONE);
-  }
+    ReadOut();
   else
     SetState(CAPTURESTATE_NEEDSREADOUT);
 }
