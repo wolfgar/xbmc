@@ -91,7 +91,7 @@ void* CRenderCaptureIMX::GetRenderBuffer()
 void CRenderCaptureIMX::ReadOut()
 {
   g_IMXContext.WaitCapture();
-  m_pixels = g_IMXContext.GetCaptureBuffer();
+  m_pixels = reinterpret_cast<uint8_t*>(g_IMXContext.GetCaptureBuffer());
   SetState(CAPTURESTATE_DONE);
 }
 
