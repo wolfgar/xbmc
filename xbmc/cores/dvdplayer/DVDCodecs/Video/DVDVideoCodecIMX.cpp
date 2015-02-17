@@ -45,6 +45,8 @@
 // Global instance
 CIMXContext g_IMXContext;
 
+// Number of fb pages used for paning
+const int CIMXContext::m_fbPages = 2;
 
 // Experiments show that we need at least one more (+1) VPU buffer than the min value returned by the VPU
 const int CDVDVideoCodecIMX::m_extraVpuBuffers = 1+RENDER_QUEUE_SIZE+2;
@@ -435,8 +437,7 @@ bool CDVDVideoCodecIMX::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     return false;
   }
 
-  if (!g_IMXContext.Configure())
-    return false;
+  g_IMXContext.RequireConfiguration();
 
 #ifdef DUMP_STREAM
   m_dump = fopen("stream.dump", "wb");
@@ -810,6 +811,7 @@ int CDVDVideoCodecIMX::Decode(BYTE *pData, int iSize, double dts, double pts)
           {
             goto out_error;
           }
+
         }
         else
         {
@@ -1269,7 +1271,7 @@ CDVDVideoCodecIMXBuffer::~CDVDVideoCodecIMXBuffer()
 CIMXContext::CIMXContext()
   : CThread("iMX IPU")
   , m_fbHandle(0)
-  , m_fbPages(0)
+  , m_fbCurrentPage(0)
   , m_fbPhysAddr(0)
   , m_fbVirtAddr(NULL)
   , m_ipuHandle(0)
@@ -1277,6 +1279,7 @@ CIMXContext::CIMXContext()
   , m_pageCrops(NULL)
   , m_g2dHandle(NULL)
   , m_bufferCapture(NULL)
+  , m_checkConfigRequired(true)
 {
   // Limit queue to 2
   m_input.resize(2);
@@ -1288,8 +1291,13 @@ CIMXContext::~CIMXContext()
   Close();
 }
 
-bool CIMXContext::Configure(int pages)
+
+bool CIMXContext::Configure(void)
 {
+
+  if (!m_checkConfigRequired)
+    return false;
+
   SetBlitRects(CRectInt(), CRectInt());
   m_fbCurrentPage = 0;
 
@@ -1312,17 +1320,7 @@ bool CIMXContext::Configure(int pages)
   close(fb0);
 
   if (m_fbHandle)
-  {
-    // Check for updated screen resolution
-    if ((m_fbWidth != fbVar.xres) || (m_fbHeight != fbVar.yres) || (pages != m_fbPages))
-      Close();
-    else
-    {
-      Clear();
-      Unblank();
-      return true;
-    }
-  }
+    Close();
 
   CLog::Log(LOGNOTICE, "iMX : Initialize render buffers\n");
 
@@ -1346,15 +1344,20 @@ bool CIMXContext::Configure(int pages)
     return false;
   }
 
-  // We want n fb pages
-  m_fbPages = pages;
   m_pageCrops = new CRectInt[m_fbPages];
 
   m_fbVar.xoffset = 0;
   m_fbVar.yoffset = 0;
-  // Use 32bits RGB as it is the only possible output format for g2d
-  m_fbVar.bits_per_pixel = 32;
-  m_fbVar.nonstd = _4CC('R', 'G', 'B', '4');
+  if (m_deInterlacing)
+  {
+    m_fbVar.nonstd = _4CC('U', 'Y', 'V', 'Y');
+    m_fbVar.bits_per_pixel = 16;
+  }
+  else
+  {
+    m_fbVar.nonstd = _4CC('R', 'G', 'B', '4');
+    m_fbVar.bits_per_pixel = 32;
+  }
   m_fbVar.activate = FB_ACTIVATE_NOW;
   m_fbVar.xres = m_fbWidth;
   m_fbVar.yres = m_fbHeight;
@@ -1367,7 +1370,6 @@ bool CIMXContext::Configure(int pages)
     CLog::Log(LOGWARNING, "iMX : Failed to setup %s\n", deviceName);
     close(m_fbHandle);
     m_fbHandle = 0;
-    m_fbPages = 0;
     return false;
   }
 
@@ -1377,7 +1379,6 @@ bool CIMXContext::Configure(int pages)
     CLog::Log(LOGWARNING, "iMX : Failed to query fixed screen info at %s\n", deviceName);
     close(m_fbHandle);
     m_fbHandle = 0;
-    m_fbPages = 0;
     return false;
   }
 
@@ -1404,6 +1405,7 @@ bool CIMXContext::Configure(int pages)
 
   // Start the ipu thread
   Create();
+  m_checkConfigRequired = false;
   return true;
 }
 
@@ -1431,7 +1433,6 @@ bool CIMXContext::Close()
   {
     Blank();
     close(m_fbHandle);
-    m_fbPages = 0;
     m_fbHandle = 0;
     m_fbPhysAddr = 0;
   }
@@ -1445,7 +1446,8 @@ bool CIMXContext::Close()
     m_ipuHandle = 0;
   }
 
-  CLog::Log(LOGNOTICE, "iMX : Deinitialized render context\n", m_fbPages);
+  m_checkConfigRequired = true;
+  CLog::Log(LOGNOTICE, "iMX : Deinitialized render context\n");
 
   return true;
 }
@@ -1506,7 +1508,14 @@ void CIMXContext::SetInterpolatedFrame(bool flag)
 
 void CIMXContext::SetDeInterlacing(bool flag)
 {
+  bool sav_deInt = m_deInterlacing;
   m_deInterlacing = flag;
+  // If deinterlacing configuration changes then fb has to be reconfigured
+  if (sav_deInt != m_deInterlacing)
+  {
+    m_checkConfigRequired = true;
+    Configure();
+  }
 }
 
 void CIMXContext::SetBlitRects(const CRect &srcRect, const CRect &dstRect)
@@ -1573,34 +1582,44 @@ void CIMXContext::Clear(int page)
   if (!m_fbVirtAddr) return;
 
   uint8_t *tmp_buf;
-  int pixels;
+  int bytes;
 
   if (page < 0)
   {
     tmp_buf = m_fbVirtAddr;
-    pixels = m_fbPageSize*m_fbPages/2;
+    bytes = m_fbPageSize*m_fbPages;
   }
   else if (page < m_fbPages)
   {
     tmp_buf = m_fbVirtAddr + page*m_fbPageSize;
-    pixels = m_fbPageSize/2;
+    bytes = m_fbPageSize;
   }
   else
     // out of range
     return;
 
-  for (int i = 0; i < pixels; ++i, tmp_buf += 2)
+
+  if (m_fbVar.nonstd == _4CC('R', 'G', 'B', '4'))
+    memset(tmp_buf, 0, bytes);
+  else if (m_fbVar.nonstd == _4CC('U', 'Y', 'V', 'Y'))
   {
-    tmp_buf[0] = 128;
-    tmp_buf[1] = 16;
+    int pixels = bytes / 2;
+    for (int i = 0; i < pixels; ++i, tmp_buf += 2)
+    {
+      tmp_buf[0] = 128;
+      tmp_buf[1] = 16;
+    }
   }
+  else
+    CLog::Log(LOGERROR, "iMX Clear fb error : Unexpected format");
 }
 
 #define clamp_byte(x) (x<0?0:(x>255?255:x))
 
 void CIMXContext::CaptureDisplay(unsigned char *buffer, int iWidth, int iHeight)
 {
-  if (m_fbVar.nonstd != _4CC('R', 'G', 'B', '4'))
+  if ((m_fbVar.nonstd != _4CC('R', 'G', 'B', '4')) &&
+      (m_fbVar.nonstd != _4CC('U', 'Y', 'V', 'Y')))
   {
     CLog::Log(LOGWARNING, "iMX : Unknown screen capture format\n");
     return;
@@ -1613,9 +1632,62 @@ void CIMXContext::CaptureDisplay(unsigned char *buffer, int iWidth, int iHeight)
     CLog::Log(LOGWARNING, "iMX : Invalid page to capture\n");
     return;
   }
-
   unsigned char *display = m_fbVirtAddr + m_fbCurrentPage*m_fbPageSize;
-  memcpy(buffer, display, iWidth * iHeight * 4);
+
+  if (m_fbVar.nonstd != _4CC('R', 'G', 'B', '4'))
+    memcpy(buffer, display, iWidth * iHeight * 4);
+  else //_4CC('U', 'Y', 'V', 'Y')))
+  {
+    int r,g,b,a;
+    int u, y0, v, y1;
+    int iStride = m_fbWidth*2;
+    int oStride = iWidth*4;
+
+    int cy  =  1*(1 << 16);
+    int cr1 =  1.40200*(1 << 16);
+    int cr2 = -0.71414*(1 << 16);
+    int cr3 =  0*(1 << 16);
+    int cb1 =  0*(1 << 16);
+    int cb2 = -0.34414*(1 << 16);
+    int cb3 =  1.77200*(1 << 16);
+
+    iWidth = std::min(iWidth/2, m_fbWidth/2);
+    iHeight = std::min(iHeight, m_fbHeight);
+
+    for (int y = 0; y < iHeight; ++y, display += iStride, buffer += oStride)
+    {
+      unsigned char *iLine = display;
+      unsigned char *oLine = buffer;
+
+      for (int x = 0; x < iWidth; ++x, iLine += 4, oLine += 8 )
+      {
+        u  = iLine[0]-128;
+        y0 = iLine[1]-16;
+        v  = iLine[2]-128;
+        y1 = iLine[3]-16;
+
+        a = 255-oLine[3];
+        r = (cy*y0 + cb1*u + cr1*v) >> 16;
+        g = (cy*y0 + cb2*u + cr2*v) >> 16;
+        b = (cy*y0 + cb3*u + cr3*v) >> 16;
+
+        oLine[0] = (clamp_byte(b)*a + oLine[0]*oLine[3])/255;
+        oLine[1] = (clamp_byte(g)*a + oLine[1]*oLine[3])/255;
+        oLine[2] = (clamp_byte(r)*a + oLine[2]*oLine[3])/255;
+        oLine[3] = 255;
+
+        a = 255-oLine[7];
+        r = (cy*y0 + cb1*u + cr1*v) >> 16;
+        g = (cy*y0 + cb2*u + cr2*v) >> 16;
+        b = (cy*y0 + cb3*u + cr3*v) >> 16;
+
+        oLine[4] = (clamp_byte(b)*a + oLine[4]*oLine[7])/255;
+        oLine[5] = (clamp_byte(g)*a + oLine[5]*oLine[7])/255;
+        oLine[6] = (clamp_byte(r)*a + oLine[6]*oLine[7])/255;
+        oLine[7] = 255;
+      }
+    }
+  }
 }
 
 bool CIMXContext::PushTask(const IPUTask &task)
@@ -1663,6 +1735,7 @@ void CIMXContext::WaitCapture(void)
 void CIMXContext::PrepareTask(IPUTask &ipu, CIMXBuffer *source_p, CIMXBuffer *source,
                               bool topBottomFields, CRect *dest)
 {
+  Configure();
   // Fill with zeros
   ipu.Zero();
   ipu.previous = source_p;
@@ -1735,8 +1808,6 @@ void CIMXContext::PrepareTask(IPUTask &ipu, CIMXBuffer *source_p, CIMXBuffer *so
     // Populate partly output block
     ipu.task.output.width  = iDstRect.Width();
     ipu.task.output.height = iDstRect.Height();
-    /*ipu.task.output.format = _4CC('R', 'G', 'B', '4');
-    ipu.task.output.paddr  = pdest;*/
   }
   else
   {

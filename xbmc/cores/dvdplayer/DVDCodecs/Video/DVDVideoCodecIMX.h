@@ -94,17 +94,15 @@ public:
   CIMXContext();
   ~CIMXContext();
 
-  bool Configure(int pages = 2);
+  void RequireConfiguration(void) { m_checkConfigRequired = true; }
+  bool Configure();
   bool Close();
 
   bool Blank();
   bool Unblank();
   bool SetVSync(bool enable);
 
-  bool IsValid() const { return m_fbPages > 0; }
-
-  // Returns the number of available pages
-  int PageCount() const { return m_fbPages; }
+  bool IsValid() const { return m_checkConfigRequired == false; }
 
   // Populates a CIMXBuffer with attributes of a page
   bool GetPageInfo(CIMXBuffer *info, int page);
@@ -183,7 +181,6 @@ private:
   typedef std::vector<IPUTask> TaskQueue;
 
   int                            m_fbHandle;
-  int                            m_fbPages;
   int                            m_fbCurrentPage;
   int                            m_fbWidth;
   int                            m_fbHeight;
@@ -214,6 +211,8 @@ private:
   void                           *m_g2dHandle;
   struct g2d_buf                 *m_bufferCapture;
   bool                           m_CaptureDone;
+  bool                           m_checkConfigRequired;
+  static const int               m_fbPages;
 };
 
 
