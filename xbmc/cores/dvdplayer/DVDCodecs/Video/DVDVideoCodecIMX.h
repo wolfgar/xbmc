@@ -94,7 +94,7 @@ public:
   CIMXContext();
   ~CIMXContext();
 
-  void RequireConfiguration(void) { m_checkConfigRequired = true; }
+  void RequireConfiguration() { m_checkConfigRequired = true; }
   bool Configure();
   bool Close();
 
@@ -141,8 +141,8 @@ public:
   // the passed overlay. The buffer format is BGRA (4 byte)
   void CaptureDisplay(unsigned char *buffer, int iWidth, int iHeight);
   bool PushCaptureTask(CIMXBuffer *source, CRect *dest);
-  void *GetCaptureBuffer(void) const { if (m_bufferCapture) return m_bufferCapture->buf_vaddr; else return NULL; }
-  void WaitCapture(void);
+  void *GetCaptureBuffer() const { if (m_bufferCapture) return m_bufferCapture->buf_vaddr; else return NULL; }
+  void WaitCapture();
 
 private:
   struct IPUTask

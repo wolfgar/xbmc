@@ -1292,7 +1292,7 @@ CIMXContext::~CIMXContext()
 }
 
 
-bool CIMXContext::Configure(void)
+bool CIMXContext::Configure()
 {
 
   if (!m_checkConfigRequired)
@@ -1725,7 +1725,7 @@ bool CIMXContext::PushTask(const IPUTask &task)
   return true;
 }
 
-void CIMXContext::WaitCapture(void)
+void CIMXContext::WaitCapture()
 {
   CSingleLock lk(m_monitor);
   while (!m_CaptureDone)
