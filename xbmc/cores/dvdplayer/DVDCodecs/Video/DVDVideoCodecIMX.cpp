@@ -1806,6 +1806,10 @@ void CIMXContext::PrepareTask(IPUTask &ipu, CIMXBuffer *source_p, CIMXBuffer *so
   if (dest)
   {
     // Populate partly output block
+    ipu.task.output.crop.pos.x = 0;
+    ipu.task.output.crop.pos.y = 0;
+    ipu.task.output.crop.w     = iDstRect.Width();
+    ipu.task.output.crop.h     = iDstRect.Height();
     ipu.task.output.width  = iDstRect.Width();
     ipu.task.output.height = iDstRect.Height();
   }
@@ -1970,9 +1974,9 @@ bool CIMXContext::DoTask(IPUTask &ipu, int targetPage)
       }
 
       src.left = ipu.task.input.crop.pos.x;
-      src.right = ipu.task.input.crop.w;
+      src.right = ipu.task.input.crop.w + src.left ;
       src.top  = ipu.task.input.crop.pos.y;
-      src.bottom = ipu.task.input.crop.h;
+      src.bottom = ipu.task.input.crop.h + src.top;
       src.stride = ipu.current->iWidth;
       src.width  = ipu.current->iWidth;
       src.height = ipu.current->iHeight;
@@ -1982,10 +1986,11 @@ bool CIMXContext::DoTask(IPUTask &ipu, int targetPage)
            src.left, src.right, src.top, src.bottom, src.stride, src.width, src.height, src.rot);*/
 
       dst.planes[0] = ipu.task.output.paddr;
-      dst.left = 0;
-      dst.top = 0;
-      dst.right = ipu.task.output.width;
-      dst.bottom = ipu.task.output.height;
+      dst.left = ipu.task.output.crop.pos.x;
+      dst.top = ipu.task.output.crop.pos.y;
+      dst.right = ipu.task.output.crop.w + dst.left;
+      dst.bottom = ipu.task.output.crop.h + dst.top;
+
       dst.stride = ipu.task.output.width;
       dst.width = ipu.task.output.width;
       dst.height = ipu.task.output.height;
