@@ -50,7 +50,7 @@
 #include "dialogs/GUIDialogOK.h"
 #include "playlists/PlayList.h"
 #include "storage/MediaManager.h"
-#include "utils/MarkWatchedJob.h"
+#include "video/VideoLibraryQueue.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "guilib/Key.h"
@@ -71,6 +71,7 @@
 #include "xbmc/android/activity/XBMCApp.h"
 #endif
 #include "FileItemListModification.h"
+#include "video/VideoInfoTag.h"
 
 #define CONTROL_BTNVIEWASICONS       2
 #define CONTROL_BTNSORTBY            3
@@ -385,7 +386,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
       }
       else if (message.GetParam1()==GUI_MSG_UPDATE_ITEM && message.GetItem())
       {
-        CFileItemPtr newItem = boost::static_pointer_cast<CFileItem>(message.GetItem());
+        CFileItemPtr newItem = std::static_pointer_cast<CFileItem>(message.GetItem());
         if (IsActive())
         {
           if (m_vecItems->UpdateItem(newItem.get()) && message.GetParam2() == 1)
@@ -566,7 +567,7 @@ void CGUIMediaWindow::ClearFileItems()
 // \brief Sorts Fileitems based on the sort method and sort oder provided by guiViewState
 void CGUIMediaWindow::SortItems(CFileItemList &items)
 {
-  auto_ptr<CGUIViewState> guiState(CGUIViewState::GetViewState(GetID(), items));
+  unique_ptr<CGUIViewState> guiState(CGUIViewState::GetViewState(GetID(), items));
 
   if (guiState.get())
   {
@@ -622,7 +623,7 @@ void CGUIMediaWindow::FormatItemLabels(CFileItemList &items, const LABEL_MASKS &
 // \brief Prepares and adds the fileitems list/thumb panel
 void CGUIMediaWindow::FormatAndSort(CFileItemList &items)
 {
-  auto_ptr<CGUIViewState> viewState(CGUIViewState::GetViewState(GetID(), items));
+  unique_ptr<CGUIViewState> viewState(CGUIViewState::GetViewState(GetID(), items));
 
   if (viewState.get())
   {
@@ -643,10 +644,6 @@ bool CGUIMediaWindow::GetDirectory(const std::string &strDirectory, CFileItemLis
 {
   const CURL pathToUrl(strDirectory);
 
-  // cleanup items
-  if (items.Size())
-    items.Clear();
-
   std::string strParentPath = m_history.GetParentPath();
 
   CLog::Log(LOGDEBUG,"CGUIMediaWindow::GetDirectory (%s)",
@@ -665,9 +662,13 @@ bool CGUIMediaWindow::GetDirectory(const std::string &strDirectory, CFileItemLis
 
     if (strDirectory.empty())
       SetupShares();
-
-    if (!m_rootDir.GetDirectory(pathToUrl, items))
+    
+    CFileItemList dirItems;
+    if (!m_rootDir.GetDirectory(pathToUrl, dirItems))
       return false;
+    
+    // assign fetched directory items
+    items.Assign(dirItems);
 
     // took over a second, and not normally cached, so cache it
     if ((XbmcThreads::SystemClockMillis() - time) > 1000  && items.CacheToDiscIfSlow())
@@ -851,9 +852,35 @@ bool CGUIMediaWindow::Update(const std::string &strDirectory, bool updateFilterP
     }
   }
 
-  // if we haven't found the selected item, select the first item
+  // if we haven't found the selected item, see if we should select the first unplayed item
+  // if yes, find the first unplayed item and select it
+  // if no, select the first item
   if (!bSelectedFound)
-    m_viewControl.SetSelectedItem(0);
+  {
+    int iIndex = 0; // index of the item to select, default to the first item
+
+    // Check if we should select the first unplayed item
+    if (m_guiState.get()->JumpToFirstUnplayedItem())
+    {
+      // Find the index of the 
+      for (int i = 0; i < m_vecItems->Size(); ++i)
+      {
+        CFileItemPtr pItem = m_vecItems->Get(i);
+        // We don't want to jump to the parent folder item or an All Seasons item
+        if (pItem->IsParentFolder() || !pItem->HasVideoInfoTag() || 
+          (pItem->GetVideoInfoTag()->m_type == MediaTypeSeason && pItem->GetVideoInfoTag()->m_iSeason < 0))
+          continue;
+
+        if (pItem->GetVideoInfoTag()->m_playCount == 0)
+        {
+          iIndex = i;
+          break;
+        }
+      }
+    }
+
+    m_viewControl.SetSelectedItem(iIndex);
+  }
 
   m_history.AddPath(m_vecItems->GetPath(), m_strFilterPath);
 
@@ -1034,11 +1061,11 @@ bool CGUIMediaWindow::OnClick(int iItem)
       AddonPtr addon;
       if (CAddonMgr::Get().GetAddon(url.GetHostName(),addon))
       {
-        PluginPtr plugin = boost::dynamic_pointer_cast<CPluginSource>(addon);
+        PluginPtr plugin = std::dynamic_pointer_cast<CPluginSource>(addon);
         if (plugin && plugin->Provides(CPluginSource::AUDIO))
         {
           CFileItemList items;
-          auto_ptr<CGUIViewState> state(CGUIViewState::GetViewState(GetID(), items));
+          unique_ptr<CGUIViewState> state(CGUIViewState::GetViewState(GetID(), items));
           autoplay = state.get() && state->AutoPlayNextItem();
         }
       }
@@ -1523,8 +1550,12 @@ void CGUIMediaWindow::GetContextButtons(int itemNumber, CContextButtons &buttons
 {
   CFileItemPtr item = (itemNumber >= 0 && itemNumber < m_vecItems->Size()) ? m_vecItems->Get(itemNumber) : CFileItemPtr();
 
-  if (!item)
+  // ensure that the "go to parent" item doesn't have any context menu items
+  if (!item || item->IsParentFolder())
+  {
+    buttons.clear();
     return;
+  }
 
   // user added buttons
   std::string label;
@@ -1570,7 +1601,7 @@ bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     {
       CFileItemPtr item = m_vecItems->Get(itemNumber);
       m_viewControl.SetSelectedItem(m_viewControl.GetSelectedItem() + 1);
-      CMarkWatchedQueue::Get().AddJob(new CMarkWatchedJob(item, (button == CONTEXT_BUTTON_MARK_WATCHED)));
+      CVideoLibraryQueue::Get().MarkAsWatched(item, (button == CONTEXT_BUTTON_MARK_WATCHED));
       return true;
     }
   case CONTEXT_BUTTON_ADD_FAVOURITE:

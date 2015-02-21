@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2014 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,23 +19,14 @@
  *
  */
 
-#if defined(TARGET_DARWIN)
-#include "VideoSync.h"
-#include "guilib/DispResource.h"
+#include "FileItem.h"
+#include <string>
 
-class CVideoSyncCocoa : public CVideoSync, IDispResource
+class CGUIDialogSimpleMenu
 {
 public:
-  virtual bool Setup(PUPDATECLOCK func);
-  virtual void Run(volatile bool& stop);
-  virtual void Cleanup();
-  virtual float GetFps();
-  void VblankHandler(int64_t nowtime, double fps);
-  virtual void OnResetDevice();
-private:
-  void UpdateFPS(double fps);
-  int64_t m_LastVBlankTime;  //timestamp of the last vblank, used for calculating how many vblanks happened
-  volatile bool m_abort;
-};
 
-#endif
+  /*! \brief Show dialog allowing selection of wanted playback item */
+  static bool ShowPlaySelection(CFileItem& item);
+  static bool ShowPlaySelection(CFileItem& item, const std::string& directory);
+};

@@ -45,7 +45,7 @@ namespace PVR
 {
   class CPVRRecording;
 
-  typedef boost::shared_ptr<PVR::CPVRRecording> CPVRRecordingPtr;
+  typedef std::shared_ptr<PVR::CPVRRecording> CPVRRecordingPtr;
 
   /*!
    * @brief Representation of a CPVRRecording unique ID.
@@ -84,6 +84,12 @@ namespace PVR
 
     CPVRRecording(void);
     CPVRRecording(const PVR_RECORDING &recording, unsigned int iClientId);
+
+  private:
+    CPVRRecording(const CPVRRecording &tag); // intentionally not implemented.
+    CPVRRecording &operator =(const CPVRRecording &other); // intentionally not implemented.
+
+  public:
     virtual ~CPVRRecording() {};
 
     bool operator ==(const CPVRRecording& right) const;
@@ -107,6 +113,12 @@ namespace PVR
      * @return True if it was deleted successfully, false otherwise.
      */
     bool Delete(void);
+
+    /*!
+     * @brief Undelete this recording on the client (if supported).
+     * @return True if it was undeleted successfully, false otherwise.
+     */
+    bool Undelete(void);
 
     /*!
      * @brief Rename this recording on the client (if supported).
@@ -177,9 +189,15 @@ namespace PVR
      */
     void CopyClientInfo(CVideoInfoTag *target) const;
 
+    /*!
+     * @brief If deleted but can be undeleted it is true
+     */
+    bool IsDeleted() const { return m_bIsDeleted; }
+
   private:
     CDateTime m_recordingTime; /*!< start time of the recording */
     bool      m_bGotMetaData;
+    bool      m_bIsDeleted;    /*!< set if entry is a deleted recording which can be undelete */
 
     void UpdatePath(void);
     void DisplayError(PVR_ERROR err) const;

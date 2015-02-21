@@ -746,4 +746,15 @@ void CGUIEditControl::SetFocus(bool focus)
   m_smsTimer.Stop();
   g_Windowing.EnableTextInput(focus);
   CGUIControl::SetFocus(focus);
+  SetInvalid();
+}
+
+std::string CGUIEditControl::GetDescriptionByIndex(int index) const
+{
+  if (index == 0)
+    return GetDescription();
+  else if(index == 1)
+    return GetLabel2();
+  
+  return "";
 }

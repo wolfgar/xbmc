@@ -21,6 +21,7 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <algorithm>
 
 #include "utils/log.h"
 #include "system.h" // for GetLastError()
@@ -442,6 +443,7 @@ long MysqlDatabase::nextid(const char* sname) {
 void MysqlDatabase::start_transaction() {
   if (active)
   {
+    mysql_autocommit(conn, false);
     CLog::Log(LOGDEBUG,"Mysql Start transaction");
     _in_transaction = true;
   }
@@ -1320,7 +1322,7 @@ void MysqlDataset::make_query(StringList &_sql) {
   {
     if (autocommit) db->start_transaction();
 
-    for (list<string>::iterator i =_sql.begin(); i!=_sql.end(); i++)
+    for (list<string>::iterator i =_sql.begin(); i!=_sql.end(); ++i)
     {
       query = *i;
       Dataset::parse_sql(query);

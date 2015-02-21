@@ -1648,10 +1648,11 @@ void CLinuxRendererGLES::RenderSurfaceTexture(int index, int field)
     GLint   fieldLoc = g_Windowing.GUIShaderGetField();
     GLint   stepLoc = g_Windowing.GUIShaderGetStep();
 
+    // Y is inverted, so invert fields
     if     (field == FIELD_TOP)
-      glUniform1i(fieldLoc, 1);
-    else if(field == FIELD_BOT)
       glUniform1i(fieldLoc, 0);
+    else if(field == FIELD_BOT)
+      glUniform1i(fieldLoc, 1);
     glUniform1f(stepLoc, 1.0f / (float)plane.texheight);
   }
   else
@@ -1814,6 +1815,18 @@ bool CLinuxRendererGLES::RenderCapture(CRenderCapture* capture)
     capture->EndRender();
     return true;
   }
+
+#ifdef HAS_IMXVPU
+  if (m_renderMethod & RENDER_IMXMAP)
+  {
+    CRect rect(0, 0, capture->GetWidth(), capture->GetHeight());
+    CDVDVideoCodecIMXBuffer *buffer = m_buffers[m_iYV12RenderBuffer].IMXBuffer;
+    capture->BeginRender();
+    g_IMXContext.PushCaptureTask(buffer, &rect);
+    capture->EndRender();
+    return true;
+  }
+#endif
 
   // save current video rect
   CRect saveSize = m_destRect;

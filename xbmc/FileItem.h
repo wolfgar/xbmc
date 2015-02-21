@@ -34,7 +34,7 @@
 #include "threads/CriticalSection.h"
 
 #include <vector>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace MUSIC_INFO
 {
@@ -44,13 +44,14 @@ class CVideoInfoTag;
 namespace EPG
 {
   class CEpgInfoTag;
-  typedef boost::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
 }
 namespace PVR
 {
   class CPVRChannel;
   class CPVRRecording;
   class CPVRTimerInfoTag;
+  typedef std::shared_ptr<PVR::CPVRRecording> CPVRRecordingPtr;
 }
 class CPictureInfoTag;
 
@@ -60,6 +61,10 @@ class CSong;
 class CGenre;
 
 class CURL;
+
+class CFileItemList;
+class CCueDocument;
+typedef std::shared_ptr<CCueDocument> CCueDocumentPtr;
 
 /* special startoffset used to indicate that we wish to resume */
 #define STARTOFFSET_RESUME (-1)
@@ -103,7 +108,7 @@ public:
   CFileItem(const CVideoInfoTag& movie);
   CFileItem(const EPG::CEpgInfoTagPtr& tag);
   CFileItem(const PVR::CPVRChannel& channel);
-  CFileItem(const PVR::CPVRRecording& record);
+  CFileItem(const PVR::CPVRRecordingPtr& record);
   CFileItem(const PVR::CPVRTimerInfoTag& timer);
   CFileItem(const CMediaSource& share);
   virtual ~CFileItem(void);
@@ -203,6 +208,8 @@ public:
   bool IsEPG() const;
   bool IsPVRChannel() const;
   bool IsPVRRecording() const;
+  bool IsUsablePVRRecording() const;
+  bool IsDeletedPVRRecording() const;
   bool IsPVRTimer() const;
   bool IsType(const char *ext) const;
   bool IsVirtualDirectoryRoot() const;
@@ -287,12 +294,10 @@ public:
 
   inline bool HasPVRRecordingInfoTag() const
   {
-    return m_pvrRecordingInfoTag != NULL;
+    return m_pvrRecordingInfoTag.get() != NULL;
   }
 
-  PVR::CPVRRecording* GetPVRRecordingInfoTag();
-
-  inline const PVR::CPVRRecording* GetPVRRecordingInfoTag() const
+  inline const PVR::CPVRRecordingPtr GetPVRRecordingInfoTag() const
   {
     return m_pvrRecordingInfoTag;
   }
@@ -467,6 +472,10 @@ public:
   int m_iHasLock; // 0 - no lock 1 - lock, but unlocked 2 - locked
   int m_iBadPwdCount;
 
+  void SetCueDocument(const CCueDocumentPtr& cuePtr);
+  void LoadEmbeddedCue();
+  bool HasCueDocument() const;
+  bool LoadTracksFromCueDocument(CFileItemList& scannedItems);
 private:
   /*! \brief initialize all members of this class (not CGUIListItem members) to default values.
    Called from constructors, and from Reset()
@@ -486,17 +495,19 @@ private:
   CVideoInfoTag* m_videoInfoTag;
   EPG::CEpgInfoTagPtr m_epgInfoTag;
   PVR::CPVRChannel* m_pvrChannelInfoTag;
-  PVR::CPVRRecording* m_pvrRecordingInfoTag;
+  PVR::CPVRRecordingPtr m_pvrRecordingInfoTag;
   PVR::CPVRTimerInfoTag * m_pvrTimerInfoTag;
   CPictureInfoTag* m_pictureInfoTag;
   bool m_bIsAlbum;
+
+  CCueDocumentPtr m_cueDocument;
 };
 
 /*!
   \brief A shared pointer to CFileItem
   \sa CFileItem
   */
-typedef boost::shared_ptr<CFileItem> CFileItemPtr;
+typedef std::shared_ptr<CFileItem> CFileItemPtr;
 
 /*!
   \brief A vector of pointer to CFileItem

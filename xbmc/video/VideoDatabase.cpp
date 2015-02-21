@@ -574,6 +574,13 @@ bool CVideoDatabase::GetPathsForTvShow(int idShow, set<int>& paths)
   {
     if (NULL == m_pDB.get()) return false;
     if (NULL == m_pDS.get()) return false;
+
+    // add base path
+    strSQL = PrepareSQL("SELECT strPath FROM tvshow_view WHERE idShow=%i", idShow);
+    if (m_pDS->query(strSQL.c_str()))
+      paths.insert(GetPathId(m_pDS->fv(0).get_asString()));
+
+    // add all other known paths
     strSQL = PrepareSQL("SELECT DISTINCT idPath FROM files JOIN episode ON episode.idFile=files.idFile WHERE episode.idShow=%i",idShow);
     m_pDS->query(strSQL.c_str());
     while (!m_pDS->eof())
@@ -1162,7 +1169,7 @@ int CVideoDatabase::GetEpisodeId(const std::string& strFilenameAndPath, int idEp
     if (NULL == m_pDS.get()) return -1;
 
     // need this due to the nested GetEpisodeInfo query
-    auto_ptr<Dataset> pDS;
+    unique_ptr<Dataset> pDS;
     pDS.reset(m_pDB->CreateDataset());
     if (NULL == pDS.get()) return -1;
 
@@ -3213,7 +3220,7 @@ void CVideoDatabase::DeleteTag(int idTag, VIDEODB_CONTENT_TYPE mediaType)
   }
 }
 
-void CVideoDatabase::GetDetailsFromDB(auto_ptr<Dataset> &pDS, int min, int max, const SDbTableOffsets *offsets, CVideoInfoTag &details, int idxOffset)
+void CVideoDatabase::GetDetailsFromDB(unique_ptr<Dataset> &pDS, int min, int max, const SDbTableOffsets *offsets, CVideoInfoTag &details, int idxOffset)
 {
   GetDetailsFromDB(pDS->get_sql_record(), min, max, offsets, details, idxOffset);
 }
@@ -3312,7 +3319,7 @@ bool CVideoDatabase::GetStreamDetails(CVideoInfoTag& tag) const
   CStreamDetails& details = tag.m_streamDetails;
   details.Reset();
 
-  auto_ptr<Dataset> pDS(m_pDB->CreateDataset());
+  unique_ptr<Dataset> pDS(m_pDB->CreateDataset());
   try
   {
     std::string strSQL = PrepareSQL("SELECT * FROM streamdetails WHERE idFile = %i", tag.m_iFileId);
@@ -3427,7 +3434,7 @@ bool CVideoDatabase::GetResumePoint(CVideoInfoTag& tag)
   return match;
 }
 
-CVideoInfoTag CVideoDatabase::GetDetailsForMovie(auto_ptr<Dataset> &pDS, bool getDetails /* = false */)
+CVideoInfoTag CVideoDatabase::GetDetailsForMovie(unique_ptr<Dataset> &pDS, bool getDetails /* = false */)
 {
   return GetDetailsForMovie(pDS->get_sql_record(), getDetails);
 }
@@ -3489,7 +3496,7 @@ CVideoInfoTag CVideoDatabase::GetDetailsForMovie(const dbiplus::sql_record* cons
   return details;
 }
 
-CVideoInfoTag CVideoDatabase::GetDetailsForTvShow(auto_ptr<Dataset> &pDS, bool getDetails /* = false */, CFileItem* item /* = NULL */)
+CVideoInfoTag CVideoDatabase::GetDetailsForTvShow(unique_ptr<Dataset> &pDS, bool getDetails /* = false */, CFileItem* item /* = NULL */)
 {
   return GetDetailsForTvShow(pDS->get_sql_record(), getDetails, item);
 }
@@ -3543,7 +3550,7 @@ CVideoInfoTag CVideoDatabase::GetDetailsForTvShow(const dbiplus::sql_record* con
   return details;
 }
 
-CVideoInfoTag CVideoDatabase::GetDetailsForEpisode(auto_ptr<Dataset> &pDS, bool getDetails /* = false */)
+CVideoInfoTag CVideoDatabase::GetDetailsForEpisode(unique_ptr<Dataset> &pDS, bool getDetails /* = false */)
 {
   return GetDetailsForEpisode(pDS->get_sql_record(), getDetails);
 }
@@ -3600,7 +3607,7 @@ CVideoInfoTag CVideoDatabase::GetDetailsForEpisode(const dbiplus::sql_record* co
   return details;
 }
 
-CVideoInfoTag CVideoDatabase::GetDetailsForMusicVideo(auto_ptr<Dataset> &pDS, bool getDetails /* = false */)
+CVideoInfoTag CVideoDatabase::GetDetailsForMusicVideo(unique_ptr<Dataset> &pDS, bool getDetails /* = false */)
 {
   return GetDetailsForMusicVideo(pDS->get_sql_record(), getDetails);
 }
@@ -4759,10 +4766,9 @@ bool CVideoDatabase::GetPlayCounts(const std::string &strPath, CFileItemList &it
   return false;
 }
 
-int CVideoDatabase::GetPlayCount(const CFileItem &item)
+int CVideoDatabase::GetPlayCount(int iFileId)
 {
-  int id = GetFileId(item);
-  if (id < 0)
+  if (iFileId < 0)
     return 0;  // not in db, so not watched
 
   try
@@ -4771,7 +4777,7 @@ int CVideoDatabase::GetPlayCount(const CFileItem &item)
     if (NULL == m_pDB.get()) return -1;
     if (NULL == m_pDS.get()) return -1;
 
-    std::string strSQL = PrepareSQL("select playCount from files WHERE idFile=%i", id);
+    std::string strSQL = PrepareSQL("select playCount from files WHERE idFile=%i", iFileId);
     int count = 0;
     if (m_pDS->query(strSQL.c_str()))
     {
@@ -4787,6 +4793,16 @@ int CVideoDatabase::GetPlayCount(const CFileItem &item)
     CLog::Log(LOGERROR, "%s failed", __FUNCTION__);
   }
   return -1;
+}
+
+int CVideoDatabase::GetPlayCount(const std::string& strFilenameAndPath)
+{
+  return GetPlayCount(GetFileId(strFilenameAndPath));
+}
+
+int CVideoDatabase::GetPlayCount(const CFileItem &item)
+{
+  return GetPlayCount(GetFileId(item));
 }
 
 void CVideoDatabase::UpdateFanart(const CFileItem &item, VIDEODB_CONTENT_TYPE type)
@@ -6733,7 +6749,7 @@ ScraperPtr CVideoDatabase::GetScraperForPath(const std::string& strPath, SScanSe
       if (!scraperID.empty() &&
         CAddonMgr::Get().GetAddon(scraperID, addon))
       {
-        scraper = boost::dynamic_pointer_cast<CScraper>(addon->Clone());
+        scraper = std::dynamic_pointer_cast<CScraper>(addon->Clone());
         if (!scraper)
           return ScraperPtr();
 
@@ -6776,7 +6792,7 @@ ScraperPtr CVideoDatabase::GetScraperForPath(const std::string& strPath, SScanSe
           if (content != CONTENT_NONE &&
               CAddonMgr::Get().GetAddon(m_pDS->fv("path.strScraper").get_asString(), addon))
           {
-            scraper = boost::dynamic_pointer_cast<CScraper>(addon->Clone());
+            scraper = std::dynamic_pointer_cast<CScraper>(addon->Clone());
             scraper->SetPathSettings(content, m_pDS->fv("path.strSettings").get_asString());
             settings.parent_name = m_pDS->fv("path.useFolderNames").get_asBool();
             settings.recurse = m_pDS->fv("path.scanRecursive").get_asInt();
@@ -7800,7 +7816,7 @@ void CVideoDatabase::GetMusicVideoDirectorsByName(const std::string& strSearch, 
   }
 }
 
-void CVideoDatabase::CleanDatabase(CGUIDialogProgressBarHandle* handle, const set<int>* paths, bool showProgress)
+void CVideoDatabase::CleanDatabase(CGUIDialogProgressBarHandle* handle, const set<int>& paths, bool showProgress)
 {
   CGUIDialogProgress *progress=NULL;
   try
@@ -7816,17 +7832,10 @@ void CVideoDatabase::CleanDatabase(CGUIDialogProgressBarHandle* handle, const se
 
     // find all the files
     std::string sql = "SELECT files.idFile, files.strFileName, path.strPath FROM files, path WHERE files.idPath = path.idPath";
-    if (paths)
+    if (!paths.empty())
     {
-      if (paths->empty())
-      {
-        RollbackTransaction();
-        ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnCleanFinished");
-        return;
-      }
-
       std::string strPaths;
-      for (std::set<int>::const_iterator it = paths->begin(); it != paths->end(); ++it)
+      for (std::set<int>::const_iterator it = paths.begin(); it != paths.end(); ++it)
         strPaths += StringUtils::Format(",%i", *it);
       sql += PrepareSQL(" AND path.idPath IN (%s)", strPaths.substr(1).c_str());
     }
@@ -8314,11 +8323,11 @@ void CVideoDatabase::ExportToXML(const std::string &path, bool singleFiles /* = 
     if (NULL == m_pDS2.get()) return;
 
     // create a 3rd dataset as well as GetEpisodeDetails() etc. uses m_pDS2, and we need to do 3 nested queries on tv shows
-    auto_ptr<Dataset> pDS;
+    unique_ptr<Dataset> pDS;
     pDS.reset(m_pDB->CreateDataset());
     if (NULL == pDS.get()) return;
 
-    auto_ptr<Dataset> pDS2;
+    unique_ptr<Dataset> pDS2;
     pDS2.reset(m_pDB->CreateDataset());
     if (NULL == pDS2.get()) return;
 
@@ -8933,7 +8942,7 @@ void CVideoDatabase::ImportFromXML(const std::string &path)
         if (CAddonMgr::Get().GetAddon(id, addon))
         {
           SScanSettings settings;
-          ScraperPtr scraper = boost::dynamic_pointer_cast<CScraper>(addon);
+          ScraperPtr scraper = std::dynamic_pointer_cast<CScraper>(addon);
           // FIXME: scraper settings are not exported?
           scraper->SetPathSettings(TranslateContent(content), "");
           XMLUtils::GetInt(path,"scanrecursive",settings.recurse);

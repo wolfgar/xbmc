@@ -28,6 +28,7 @@
 #include "utils/JobManager.h"
 #include "utils/Observer.h"
 #include "interfaces/IAnnouncer.h"
+#include "pvr/recordings/PVRRecording.h"
 
 class CGUIDialogProgressBarHandle;
 class CStopWatch;
@@ -43,10 +44,9 @@ namespace PVR
 {
   class CPVRClients;
   class CPVRChannel;
-  typedef boost::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
+  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
   class CPVRChannelGroupsContainer;
   class CPVRChannelGroup;
-  class CPVRRecording;
   class CPVRRecordings;
   class CPVRTimers;
   class CPVRGUIInfo;
@@ -83,7 +83,7 @@ namespace PVR
   #define g_PVRRecordings    g_PVRManager.Recordings()
   #define g_PVRClients       g_PVRManager.Clients()
 
-  typedef boost::shared_ptr<PVR::CPVRChannelGroup> CPVRChannelGroupPtr;
+  typedef std::shared_ptr<PVR::CPVRChannelGroup> CPVRChannelGroupPtr;
 
   class CPVRManager : public ISettingCallback, private CThread, public Observable, public ANNOUNCEMENT::IAnnouncer
   {
@@ -319,7 +319,7 @@ namespace PVR
      * @param tag The recording to open.
      * @return True if the stream was opened, false otherwise.
      */
-    bool OpenRecordedStream(const CPVRRecording &tag);
+    bool OpenRecordedStream(const CPVRRecordingPtr &tag);
 
     /*!
     * @brief Try to playback the given file item
@@ -631,6 +631,11 @@ namespace PVR
     ManagerState GetState(void) const;
 
     void SetState(ManagerState state);
+
+    bool AllLocalBackendsIdle(void) const;
+    bool EventOccursOnLocalBackend(const CFileItemPtr& item) const;
+    bool IsNextEventWithinBackendIdleTime(void) const;
+
     /** @name containers */
     //@{
     CPVRChannelGroupsContainer *    m_channelGroups;               /*!< pointer to the channel groups container */
