@@ -166,6 +166,7 @@ protected:
 
   bool m_stalled;
   bool m_started;
+  bool m_sync;
   std::string m_codecname;
 
   BitstreamStats m_videoStats;

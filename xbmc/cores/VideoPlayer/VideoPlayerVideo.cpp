@@ -26,7 +26,6 @@
 #include "settings/Settings.h"
 #include "video/VideoReferenceClock.h"
 #include "utils/MathUtils.h"
-#include "VideoPlayer.h"
 #include "VideoPlayerVideo.h"
 #include "DVDCodecs/DVDFactoryCodec.h"
 #include "DVDCodecs/DVDCodecUtils.h"
@@ -314,6 +313,9 @@ void CVideoPlayerVideo::Process()
     int iQueueTimeOut = (int)(m_stalled ? frametime / 4 : frametime * 10) / 1000;
     int iPriority = (m_speed == DVD_PLAYSPEED_PAUSE && m_started) ? 1 : 0;
 
+    if (m_started && !m_sync)
+      iPriority = 1;
+
     CDVDMsg* pMsg;
     MsgQueueReturnCode ret = m_messageQueue.Get(&pMsg, iQueueTimeOut, iPriority);
 
@@ -329,7 +331,7 @@ void CVideoPlayerVideo::Process()
         continue;
 
       //Okey, start rendering at stream fps now instead, we are likely in a stillframe
-      if( !m_stalled )
+      if (!m_stalled)
       {
         if(m_started)
           CLog::Log(LOGINFO, "CVideoPlayerVideo - Stillframe detected, switching to forced %f fps", m_fFrameRate);
@@ -366,44 +368,12 @@ void CVideoPlayerVideo::Process()
     }
     else if (pMsg->IsType(CDVDMsg::GENERAL_RESYNC))
     {
-      CDVDMsgGeneralResync* pMsgGeneralResync = (CDVDMsgGeneralResync*)pMsg;
+      pts = static_cast<CDVDMsgDouble*>(pMsg)->m_value;
 
-      if(pMsgGeneralResync->m_timestamp != DVD_NOPTS_VALUE)
-        pts = pMsgGeneralResync->m_timestamp;
-
-      double absolute = m_pClock->GetAbsoluteClock();
-      double delay = m_FlipTimeStamp - absolute;
-      if (delay > frametime)
-        delay = frametime;
-      else if (delay < 0)
-        delay = 0;
       m_FlipTimePts = pts -frametime;
+      m_sync = true;
 
-      if (pMsgGeneralResync->m_clock)
-      {
-        CLog::Log(LOGDEBUG, "CVideoPlayerVideo - CDVDMsg::GENERAL_RESYNC(%f, 1)", pts);
-        m_pClock->Discontinuity(m_FlipTimePts - DVD_MSEC_TO_TIME(300), absolute);
-      }
-      else
-        CLog::Log(LOGDEBUG, "CVideoPlayerVideo - CDVDMsg::GENERAL_RESYNC(%f, 0)", pts);
-
-      pMsgGeneralResync->Release();
-      continue;
-    }
-    else if (pMsg->IsType(CDVDMsg::GENERAL_DELAY))
-    {
-      if (m_speed != DVD_PLAYSPEED_PAUSE)
-      {
-        double timeout = static_cast<CDVDMsgDouble*>(pMsg)->m_value;
-
-        CLog::Log(LOGDEBUG, "CVideoPlayerVideo - CDVDMsg::GENERAL_DELAY(%f)", timeout);
-
-        timeout *= (double)DVD_PLAYSPEED_NORMAL / abs(m_speed);
-        timeout += CDVDClock::GetAbsoluteClock();
-
-        while(!m_bStop && CDVDClock::GetAbsoluteClock() < timeout)
-          Sleep(1);
-      }
+      CLog::Log(LOGDEBUG, "CVideoPlayerVideo - CDVDMsg::GENERAL_RESYNC(%f)", pts);
     }
     else if (pMsg->IsType(CDVDMsg::VIDEO_SET_ASPECT))
     {
@@ -454,16 +424,11 @@ void CVideoPlayerVideo::Process()
         m_pVideoCodec->SetSpeed(m_speed);
       m_droppingStats.Reset();
     }
-    else if (pMsg->IsType(CDVDMsg::PLAYER_STARTED))
-    {
-      if(m_started)
-        m_messageParent.Put(new CDVDMsgInt(CDVDMsg::PLAYER_STARTED, VideoPlayer_VIDEO));
-    }
     else if (pMsg->IsType(CDVDMsg::PLAYER_DISPLAYTIME))
     {
-      CVideoPlayer::SPlayerState& state = ((CDVDMsgType<CVideoPlayer::SPlayerState>*)pMsg)->m_value;
+      SPlayerState& state = ((CDVDMsgType<SPlayerState>*)pMsg)->m_value;
 
-      if(state.time_src == CVideoPlayer::ETIMESOURCE_CLOCK)
+      if(state.time_src == ETIMESOURCE_CLOCK)
       {
         double pts = GetCurrentPts();
         if (pts == DVD_NOPTS_VALUE)
@@ -474,7 +439,7 @@ void CVideoPlayerVideo::Process()
       }
       else
         state.timestamp = CDVDClock::GetAbsoluteClock();
-      state.player    = VideoPlayer_VIDEO;
+      state.player = VideoPlayer_VIDEO;
       m_messageParent.Put(pMsg->Acquire());
     }
     else if (pMsg->IsType(CDVDMsg::GENERAL_STREAMCHANGE))
@@ -717,11 +682,17 @@ void CVideoPlayerVideo::Process()
 
             frametime = (double)DVD_TIME_BASE/m_fFrameRate;
 
-            if(m_started == false && !(picture.iFlags & DVP_FLAG_DROPPED))
+            if (m_started == false && !(picture.iFlags & DVP_FLAG_DROPPED))
             {
               m_codecname = m_pVideoCodec->GetName();
               m_started = true;
-              m_messageParent.Put(new CDVDMsgInt(CDVDMsg::PLAYER_STARTED, VideoPlayer_VIDEO));
+              m_sync = false;
+              SStartMsg msg;
+              msg.player = VideoPlayer_VIDEO;
+              msg.cachetime = DVD_MSEC_TO_TIME(50); // TODO
+              msg.cachetotal = DVD_MSEC_TO_TIME(100); // TODO
+              msg.timestamp = pts;
+              m_messageParent.Put(new CDVDMsgType<SStartMsg>(CDVDMsg::PLAYER_STARTED, msg));
             }
 
             // guess next frame pts. iDuration is always valid
@@ -973,9 +944,9 @@ int CVideoPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
   else
     iSleepTime = iClockSleep;
 
-  // limit sleep time to 500ms
-  if (iSleepTime > DVD_MSEC_TO_TIME(500))
-    iSleepTime = DVD_MSEC_TO_TIME(500);
+  // limit sleep time to 2000ms
+  if (iSleepTime > DVD_MSEC_TO_TIME(2000))
+    iSleepTime = DVD_MSEC_TO_TIME(2000);
 
   if (m_speed < 0)
   {

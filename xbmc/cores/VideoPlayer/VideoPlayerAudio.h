@@ -160,10 +160,11 @@ protected:
   CDVDAudioCodec* m_pAudioCodec; // audio codec
   BitstreamStats m_audioStats;
 
-  int     m_speed;
-  bool    m_stalled;
-  bool    m_started;
-  bool    m_silence;
+  int m_speed;
+  bool m_stalled;
+  bool m_started;
+  bool m_sync;
+  bool m_silence;
 
   bool OutputPacket(DVDAudioFrame &audioframe);
 
