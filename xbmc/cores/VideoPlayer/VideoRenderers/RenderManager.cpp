@@ -643,13 +643,14 @@ void CRenderManager::CreateRenderer()
 {
   if (!m_pRenderer)
   {
-    if (m_format == RENDER_FMT_MEDIACODEC)
 #if defined (TARGET_ANDROID)
+    if (m_format == RENDER_FMT_MEDIACODEC)
     {
       m_pRenderer = new CRendererMediaCodec;
     }
 #elif defined(HAS_MMAL)
-    m_pRenderer = new CMMALRenderer
+    if (m_format == RENDER_FMT_MEDIACODEC)
+      m_pRenderer = new CMMALRenderer
 #elif HAS_GLES == 2
     if (m_format == RENDER_FMT_CVBREF)
     {
