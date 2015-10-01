@@ -94,11 +94,11 @@ void CEngineStats::GetDelay(AEDelayStatus& status, CActiveAEStream *stream)
 {
   CSingleLock lock(m_lock);
   status = m_sinkDelay;
+  status.delay += m_sinkLatency;
+  status.delay += (double)m_bufferedSamples / m_sinkSampleRate;
+
   if (stream->m_resampleBuffers)
     status.delay += stream->m_bufferedTime / stream->m_resampleBuffers->m_resampleRatio;
-
-  status.delay += m_sinkLatency;
-  status.delay += stream->m_bufferedTime / stream->m_streamResampleRatio;
 }
 
 // this is used to sync a/v so we need to add sink latency here
@@ -1790,8 +1790,10 @@ bool CActiveAE::RunStages()
   {
     if ((*it)->m_resampleBuffers && !(*it)->m_paused)
       busy = (*it)->m_resampleBuffers->ResampleBuffers();
-    else if ((*it)->m_resampleBuffers && 
-            ((*it)->m_resampleBuffers->m_inputSamples.size() > (*it)->m_resampleBuffers->m_allSamples.size() * 0.5))
+
+    if ((*it)->m_streamIsBuffering &&
+        (*it)->m_resampleBuffers &&
+        ((*it)->m_resampleBuffers->m_inputSamples.size() > (*it)->m_resampleBuffers->m_allSamples.size() * 0.5))
     {
       CSingleLock lock((*it)->m_streamLock);
       (*it)->m_streamIsBuffering = false;

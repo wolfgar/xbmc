@@ -136,11 +136,11 @@ public:
 
   void Clear()
   {
-    id     = -1;
+    id = -1;
     source = STREAM_SOURCE_NONE;
-    dts    = DVD_NOPTS_VALUE;
+    dts = DVD_NOPTS_VALUE;
     dts_state = DVD_NOPTS_VALUE;
-    dur    = DVD_NOPTS_VALUE;
+    dur = DVD_NOPTS_VALUE;
     hint.Clear();
     stream = NULL;
     changes = 0;
@@ -148,7 +148,7 @@ public:
     started = false;
     requestSync = false;
     starttime = DVD_NOPTS_VALUE;
-    startpts  = DVD_NOPTS_VALUE;
+    startpts = DVD_NOPTS_VALUE;
     lastdts = DVD_NOPTS_VALUE;
   }
 
@@ -389,7 +389,6 @@ protected:
 
 
   void FlushBuffers(bool queued, double pts = DVD_NOPTS_VALUE, bool accurate = true, bool sync = true);
-  void TriggerResync();
 
   void HandleMessages();
   void HandlePlaySpeed();

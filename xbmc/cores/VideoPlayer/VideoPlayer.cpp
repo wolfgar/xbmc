@@ -1808,7 +1808,7 @@ void CVideoPlayer::HandlePlaySpeed()
           {
             CLog::Log(LOGDEBUG, "Stream stalled, start buffering. Audio: %d - Video: %d",
                                  m_VideoPlayerAudio->GetLevel(),m_VideoPlayerVideo->GetLevel());
-            TriggerResync();
+            FlushBuffers(false);
           }
         }
         else
@@ -1824,7 +1824,7 @@ void CVideoPlayer::HandlePlaySpeed()
                    m_VideoPlayerAudio->GetLevel() == 0)
           {
             CLog::Log(LOGDEBUG,"CVideoPlayer::HandlePlaySpeed - audio stream stalled, triggering re-sync");
-            TriggerResync();
+            FlushBuffers(false);
           }
         }
       }
@@ -3602,6 +3602,8 @@ bool CVideoPlayer::CloseStream(CCurrentStream& current, bool bWaitForBuffers)
 
 void CVideoPlayer::FlushBuffers(bool queued, double pts, bool accurate, bool sync)
 {
+  CLog::Log(LOGDEBUG, "CVideoPlayer::FlushBuffers - flushing buffers");
+
   double startpts;
   if (accurate && !m_omxplayer_mode)
     startpts = pts;
@@ -3698,31 +3700,6 @@ void CVideoPlayer::FlushBuffers(bool queued, double pts, bool accurate, bool syn
     m_OmxPlayerState.av_clock.OMXPause();
     m_OmxPlayerState.av_clock.OMXMediaTime(0.0);
   }
-}
-
-void CVideoPlayer::TriggerResync()
-{
-  m_CurrentAudio.inited      = false;
-  m_CurrentVideo.inited      = false;
-  m_CurrentSubtitle.inited   = false;
-  m_CurrentTeletext.inited   = false;
-
-  m_CurrentAudio.startpts    = DVD_NOPTS_VALUE;
-  m_CurrentVideo.startpts    = DVD_NOPTS_VALUE;
-  m_CurrentSubtitle.startpts = DVD_NOPTS_VALUE;
-  m_CurrentTeletext.startpts = DVD_NOPTS_VALUE;
-
-  m_VideoPlayerAudio->FlushMessages();
-  m_VideoPlayerVideo->FlushMessages();
-  m_VideoPlayerSubtitle->FlushMessages();
-  m_VideoPlayerTeletext->FlushMessages();
-
-  // make sure players are properly flushed, should put them in stalled state
-  CDVDMsgGeneralSynchronize* msg = new CDVDMsgGeneralSynchronize(1000, 0);
-  m_VideoPlayerAudio->SendMessage(msg->Acquire(), 1);
-  m_VideoPlayerVideo->SendMessage(msg->Acquire(), 1);
-  msg->Wait(&m_bStop, 0);
-  msg->Release();
 }
 
 // since we call ffmpeg functions to decode, this is being called in the same thread as ::Process() is

@@ -420,6 +420,7 @@ int CVideoPlayerAudio::DecodeFrame(DVDAudioFrame &audioframe)
     {
       CDVDMsgAudioCodecChange* msg(static_cast<CDVDMsgAudioCodecChange*>(pMsg));
       OpenStream(msg->m_hints, msg->m_codec);
+      m_started = true;
       msg->m_codec = NULL;
     }
 
@@ -522,6 +523,9 @@ void CVideoPlayerAudio::Process()
       if(!m_dvdAudio.Create(audioframe, m_streaminfo.codec, m_setsynctype == SYNC_RESAMPLE))
         CLog::Log(LOGERROR, "%s - failed to create audio renderer", __FUNCTION__);
 
+      if (m_started && m_sync)
+        m_dvdAudio.Resume();
+
       m_streaminfo.channels = audioframe.passthrough ? audioframe.encoded_channel_count : audioframe.channel_count;
 
       g_dataCacheCore.SignalAudioInfoChange();
@@ -540,8 +544,6 @@ void CVideoPlayerAudio::Process()
       SetSyncType(audioframe.passthrough);
 
       OutputPacket(audioframe);
-
-      m_stalled = false;
     }
 
     // signal to our parent that we have initialized
@@ -553,6 +555,7 @@ void CVideoPlayerAudio::Process()
       {
         m_started = true;
         m_sync = false;
+        m_stalled = false;
         SStartMsg msg;
         msg.player = VideoPlayer_AUDIO;
         msg.cachetotal = cachetotal;

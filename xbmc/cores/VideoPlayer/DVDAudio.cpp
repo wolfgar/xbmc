@@ -198,6 +198,7 @@ void CDVDAudio::Pause()
   CSingleLock lock (m_critSection);
   if (m_pAudioStream)
     m_pAudioStream->Pause();
+  CLog::Log(LOGDEBUG,"CDVDAudio::Pause - pausing audio stream");
   m_playingPts = DVD_NOPTS_VALUE;
 }
 
@@ -206,6 +207,7 @@ void CDVDAudio::Resume()
   CSingleLock lock(m_critSection);
   if (m_pAudioStream)
     m_pAudioStream->Resume();
+  CLog::Log(LOGDEBUG,"CDVDAudio::Pause - resume audio stream");
 }
 
 double CDVDAudio::GetDelay()
