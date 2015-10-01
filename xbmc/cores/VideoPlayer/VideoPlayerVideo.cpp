@@ -130,7 +130,7 @@ CVideoPlayerVideo::CVideoPlayerVideo(CDVDClock* pClock
 
   m_bRenderSubs = false;
   m_stalled = false;
-  m_started = false;
+  m_syncState == IDVDStreamPlayer::SYNC_STARTING;
   m_iVideoDelay = 0;
   m_iSubtitleDelay = 0;
   m_FlipTimeStamp = 0.0;
@@ -198,6 +198,7 @@ bool CVideoPlayerVideo::OpenStream( CDVDStreamInfo &hint )
   else
   {
     OpenStream(hint, codec);
+    m_syncState = IDVDStreamPlayer::SYNC_STARTING;
     CLog::Log(LOGNOTICE, "Creating video thread");
     m_messageQueue.Init();
     Create();
@@ -241,7 +242,6 @@ void CVideoPlayerVideo::OpenStream(CDVDStreamInfo &hint, CDVDVideoCodec* codec)
   m_pVideoCodec = codec;
   m_hints   = hint;
   m_stalled = m_messageQueue.GetPacketCount(CDVDMsg::DEMUXER_PACKET) == 0;
-  m_started = false;
   m_codecname = m_pVideoCodec->GetName();
   m_packets.clear();
 }
@@ -311,9 +311,9 @@ void CVideoPlayerVideo::Process()
   while (!m_bStop)
   {
     int iQueueTimeOut = (int)(m_stalled ? frametime / 4 : frametime * 10) / 1000;
-    int iPriority = (m_speed == DVD_PLAYSPEED_PAUSE && m_started) ? 1 : 0;
+    int iPriority = (m_speed == DVD_PLAYSPEED_PAUSE && m_syncState == IDVDStreamPlayer::SYNC_INSYNC) ? 1 : 0;
 
-    if (m_started && !m_sync)
+    if (m_syncState == IDVDStreamPlayer::SYNC_WAITSYNC)
       iPriority = 1;
 
     CDVDMsg* pMsg;
@@ -333,7 +333,7 @@ void CVideoPlayerVideo::Process()
       //Okey, start rendering at stream fps now instead, we are likely in a stillframe
       if (!m_stalled)
       {
-        if(m_started)
+        if(m_syncState == IDVDStreamPlayer::SYNC_INSYNC)
           CLog::Log(LOGINFO, "CVideoPlayerVideo - Stillframe detected, switching to forced %f fps", m_fFrameRate);
         m_stalled = true;
         pts+= frametime*4;
@@ -371,7 +371,7 @@ void CVideoPlayerVideo::Process()
       pts = static_cast<CDVDMsgDouble*>(pMsg)->m_value;
 
       m_FlipTimePts = pts -frametime;
-      m_sync = true;
+      m_syncState = IDVDStreamPlayer::SYNC_INSYNC;
 
       CLog::Log(LOGDEBUG, "CVideoPlayerVideo - CDVDMsg::GENERAL_RESYNC(%f)", pts);
     }
@@ -386,11 +386,11 @@ void CVideoPlayerVideo::Process()
         m_pVideoCodec->Reset();
       picture.iFlags &= ~DVP_FLAG_ALLOCATED;
       m_packets.clear();
-      m_started = false;
       m_droppingStats.Reset();
     }
     else if (pMsg->IsType(CDVDMsg::GENERAL_FLUSH)) // private message sent by (CVideoPlayerVideo::Flush())
     {
+      bool sync = static_cast<CDVDMsgBool*>(pMsg)->m_value;
       if(m_pVideoCodec)
         m_pVideoCodec->Reset();
       picture.iFlags &= ~DVP_FLAG_ALLOCATED;
@@ -403,7 +403,8 @@ void CVideoPlayerVideo::Process()
       m_droppingStats.Reset();
 
       m_stalled = true;
-      m_started = false;
+      if (sync)
+        m_syncState = IDVDStreamPlayer::SYNC_STARTING;
 
       m_renderManager.DiscardBuffer();
     }
@@ -682,11 +683,10 @@ void CVideoPlayerVideo::Process()
 
             frametime = (double)DVD_TIME_BASE/m_fFrameRate;
 
-            if (m_started == false && !(picture.iFlags & DVP_FLAG_DROPPED))
+            if (m_syncState == IDVDStreamPlayer::SYNC_STARTING && !(picture.iFlags & DVP_FLAG_DROPPED))
             {
               m_codecname = m_pVideoCodec->GetName();
-              m_started = true;
-              m_sync = false;
+              m_syncState = IDVDStreamPlayer::SYNC_WAITSYNC;
               SStartMsg msg;
               msg.player = VideoPlayer_VIDEO;
               msg.cachetime = DVD_MSEC_TO_TIME(50); // TODO
@@ -774,20 +774,20 @@ bool CVideoPlayerVideo::StepFrame()
 #endif
 }
 
-void CVideoPlayerVideo::Flush()
+void CVideoPlayerVideo::Flush(bool sync)
 {
   /* flush using message as this get's called from VideoPlayer thread */
   /* and any demux packet that has been taken out of queue need to */
   /* be disposed of before we flush */
   m_messageQueue.Flush();
-  m_messageQueue.Put(new CDVDMsg(CDVDMsg::GENERAL_FLUSH), 1);
+  m_messageQueue.Put(new CDVDMsgBool(CDVDMsg::GENERAL_FLUSH, sync), 1);
 }
 
 #ifdef HAS_VIDEO_PLAYBACK
 void CVideoPlayerVideo::ProcessOverlays(DVDVideoPicture* pSource, double pts)
 {
   // remove any overlays that are out of time
-  if (m_started)
+  if (m_syncState == IDVDStreamPlayer::SYNC_INSYNC)
     m_pOverlayContainer->CleanUp(pts - m_iSubtitleDelay);
 
   VecOverlays overlays;
@@ -937,7 +937,7 @@ int CVideoPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
     iFrameSleep = 0;
   }
 
-  if (m_started == false)
+  if (m_syncState != IDVDStreamPlayer::SYNC_INSYNC)
     iSleepTime = 0.0;
   else if (m_stalled)
     iSleepTime = iFrameSleep;

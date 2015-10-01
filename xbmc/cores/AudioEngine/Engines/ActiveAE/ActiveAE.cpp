@@ -555,8 +555,9 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           return;
         case CActiveAEControlProtocol::RESUMESTREAM:
           stream = *(CActiveAEStream**)msg->data;
+          if (stream->m_paused)
+            stream->m_syncClock = CActiveAEStream::STARTSYNC;
           stream->m_paused = false;
-          stream->m_syncClock = CActiveAEStream::STARTSYNC;
           streaming = true;
           m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::STREAMING, &streaming, sizeof(bool));
           m_extTimeout = 0;

@@ -116,8 +116,7 @@ public:
   void* stream; // pointer or integer, identifying stream playing. if it changes stream changed
   int changes; // remembered counter from stream to track codec changes
   bool inited;
-  bool started; // has the player started
-  bool requestSync;
+  IDVDStreamPlayer::ESyncState syncState;
   double starttime;
   double cachetime;
   double cachetotal;
@@ -145,8 +144,7 @@ public:
     stream = NULL;
     changes = 0;
     inited = false;
-    started = false;
-    requestSync = false;
+    syncState = IDVDStreamPlayer::SYNC_STARTING;
     starttime = DVD_NOPTS_VALUE;
     startpts = DVD_NOPTS_VALUE;
     lastdts = DVD_NOPTS_VALUE;

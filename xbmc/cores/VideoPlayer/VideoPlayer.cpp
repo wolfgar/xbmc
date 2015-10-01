@@ -1460,12 +1460,6 @@ void CVideoPlayer::Process()
       if (!m_pInputStream->IsEOF())
         CLog::Log(LOGINFO, "%s - eof reading from demuxer", __FUNCTION__);
 
-      m_CurrentAudio.started    = false;
-      m_CurrentVideo.started    = false;
-      m_CurrentSubtitle.started = false;
-      m_CurrentTeletext.started = false;
-      m_CurrentRadioRDS.started = false;
-
       break;
     }
 
@@ -1771,15 +1765,15 @@ void CVideoPlayer::HandlePlaySpeed()
   {
     // if all enabled streams have been inited we are done
     if ((m_CurrentVideo.id >= 0 || m_CurrentAudio.id >= 0) &&
-        (m_CurrentVideo.id < 0 || m_CurrentVideo.started) &&
-        (m_CurrentAudio.id < 0 || m_CurrentAudio.started))
+        (m_CurrentVideo.id < 0 || m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_WAITSYNC) &&
+        (m_CurrentAudio.id < 0 || m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC))
       caching = CACHESTATE_PLAY;
 
     // handle situation that we get no data on one stream
     if (m_CurrentAudio.id >= 0 && m_CurrentVideo.id >= 0)
     {
-      if ((!m_VideoPlayerAudio->AcceptsData() && !m_CurrentVideo.started) ||
-          (!m_VideoPlayerVideo->AcceptsData() && !m_CurrentAudio.started))
+      if ((!m_VideoPlayerAudio->AcceptsData() && m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_STARTING) ||
+          (!m_VideoPlayerVideo->AcceptsData() && m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_STARTING))
       {
         caching = CACHESTATE_DONE;
       }
@@ -1803,8 +1797,8 @@ void CVideoPlayer::HandlePlaySpeed()
       {
         if (CachePVRStream())
         {
-          if ((m_CurrentAudio.started && !m_CurrentAudio.requestSync && m_VideoPlayerAudio->GetLevel() == 0) ||
-              (m_CurrentVideo.started && !m_CurrentVideo.requestSync && m_VideoPlayerVideo->GetLevel() == 0))
+          if ((m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_INSYNC && m_VideoPlayerAudio->GetLevel() == 0) ||
+              (m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_INSYNC && m_VideoPlayerVideo->GetLevel() == 0))
           {
             CLog::Log(LOGDEBUG, "Stream stalled, start buffering. Audio: %d - Video: %d",
                                  m_VideoPlayerAudio->GetLevel(),m_VideoPlayerVideo->GetLevel());
@@ -1820,7 +1814,7 @@ void CVideoPlayer::HandlePlaySpeed()
             caching = CACHESTATE_FULL;
           }
           else if (m_CurrentAudio.id >= 0 && m_CurrentAudio.inited &&
-                   m_CurrentAudio.started && !m_CurrentAudio.requestSync &&
+                   m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_INSYNC &&
                    m_VideoPlayerAudio->GetLevel() == 0)
           {
             CLog::Log(LOGDEBUG,"CVideoPlayer::HandlePlaySpeed - audio stream stalled, triggering re-sync");
@@ -1856,18 +1850,18 @@ void CVideoPlayer::HandlePlaySpeed()
     SetCaching(caching);
 
   // sync streams to clock
-  if ((m_CurrentVideo.requestSync && m_CurrentVideo.started) ||
-      (m_CurrentAudio.requestSync && m_CurrentAudio.started))
+  if ((m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_WAITSYNC) ||
+      (m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC))
   {
-    bool video = m_CurrentVideo.id < 0 || (m_CurrentVideo.requestSync && m_CurrentVideo.started);
-    bool audio = m_CurrentAudio.id < 0 || (m_CurrentAudio.requestSync && m_CurrentAudio.started);
+    bool video = m_CurrentVideo.id < 0 || (m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_WAITSYNC);
+    bool audio = m_CurrentAudio.id < 0 || (m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC);
     if (video && audio)
     {
       double clock = 0;
-      if (m_CurrentAudio.requestSync && m_CurrentAudio.started)
+      if (m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC)
         CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Audio - pts: %f, cache: %f, totalcache: %f",
                              m_CurrentAudio.starttime, m_CurrentAudio.cachetime, m_CurrentAudio.cachetotal);
-      if (m_CurrentVideo.requestSync && m_CurrentVideo.started)
+      if (m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_WAITSYNC)
         CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Video - pts: %f, cache: %f, totalcache: %f",
                              m_CurrentVideo.starttime, m_CurrentVideo.cachetime, m_CurrentVideo.cachetotal);
 
@@ -1888,8 +1882,8 @@ void CVideoPlayer::HandlePlaySpeed()
         clock = m_CurrentVideo.starttime - m_CurrentVideo.cachetotal;
       }
       m_clock.Discontinuity(clock);
-      m_CurrentAudio.requestSync = false;
-      m_CurrentVideo.requestSync = false;
+      m_CurrentAudio.syncState = IDVDStreamPlayer::SYNC_INSYNC;
+      m_CurrentVideo.syncState = IDVDStreamPlayer::SYNC_INSYNC;
       m_VideoPlayerAudio->SendMessage(new CDVDMsgDouble(CDVDMsg::GENERAL_RESYNC, clock), 1);
       m_VideoPlayerVideo->SendMessage(new CDVDMsgDouble(CDVDMsg::GENERAL_RESYNC, clock), 1);
 
@@ -1911,7 +1905,7 @@ void CVideoPlayer::HandlePlaySpeed()
       bool check = true;
 
       // only check if we have video
-      if (m_CurrentVideo.id < 0 || !m_CurrentVideo.started)
+      if (m_CurrentVideo.id < 0 || m_CurrentVideo.syncState != IDVDStreamPlayer::SYNC_INSYNC)
         check = false;
       // video message queue either initiated or already seen eof
       else if (m_CurrentVideo.inited == false && m_playSpeed >= 0)
@@ -2671,16 +2665,14 @@ void CVideoPlayer::HandleMessages()
         SStartMsg& msg = ((CDVDMsgType<SStartMsg>*)pMsg)->m_value;
         if (msg.player == VideoPlayer_AUDIO)
         {
-          m_CurrentAudio.started = true;
-          m_CurrentAudio.requestSync = true;
+          m_CurrentAudio.syncState = IDVDStreamPlayer::SYNC_WAITSYNC;
           m_CurrentAudio.cachetime = msg.cachetime;
           m_CurrentAudio.cachetotal = msg.cachetotal;
           m_CurrentAudio.starttime = msg.timestamp;
         }
         if (msg.player == VideoPlayer_VIDEO)
         {
-          m_CurrentVideo.started = true;
-          m_CurrentVideo.requestSync = true;
+          m_CurrentVideo.syncState = IDVDStreamPlayer::SYNC_WAITSYNC;
           m_CurrentVideo.cachetime = msg.cachetime;
           m_CurrentVideo.cachetotal = msg.cachetotal;
           m_CurrentVideo.starttime = msg.timestamp;
@@ -2690,13 +2682,15 @@ void CVideoPlayer::HandleMessages()
         if (m_omxplayer_mode)
         {
           if ((msg.player == VideoPlayer_AUDIO || msg.player == VideoPlayer_VIDEO) &&
-             ((m_playSpeed != DVD_PLAYSPEED_PAUSE && m_playSpeed != DVD_PLAYSPEED_NORMAL) || !m_HasAudio || m_CurrentAudio.started) &&
-             (!m_HasVideo || m_CurrentVideo.started))
+             ((m_playSpeed != DVD_PLAYSPEED_PAUSE && m_playSpeed != DVD_PLAYSPEED_NORMAL) || !m_HasAudio ||
+               m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_INSYNC) &&
+              (!m_HasVideo || m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_INSYNC))
           {
             CLog::Log(LOGDEBUG, "%s::%s player started RESET", "CVideoPlayer", __FUNCTION__);
             m_OmxPlayerState.av_clock.OMXReset(m_HasVideo, m_playSpeed != DVD_PLAYSPEED_NORMAL && m_playSpeed != DVD_PLAYSPEED_PAUSE ? false:m_HasAudio);
           }
-          CLog::Log(LOGDEBUG, "%s::%s player started %d (s:%d a:%d v:%d)", "CVideoPlayer", __FUNCTION__, msg.player, m_playSpeed, m_CurrentAudio.started, m_CurrentVideo.started);
+          CLog::Log(LOGDEBUG, "%s::%s player started %d (s:%d a:%d v:%d)", "CVideoPlayer", __FUNCTION__, msg.player, m_playSpeed,
+                    m_CurrentAudio.syncState, m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_INSYNC);
         }
       }
       else if (pMsg->IsType(CDVDMsg::PLAYER_DISPLAYTIME))
@@ -2706,12 +2700,12 @@ void CVideoPlayer::HandleMessages()
         CSingleLock lock(m_StateSection);
         /* prioritize data from video player, but only accept data        *
          * after it has been started to avoid race conditions after seeks */
-        if(m_CurrentVideo.started && !m_VideoPlayerVideo->SubmittedEOS())
+        if(m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_INSYNC && !m_VideoPlayerVideo->SubmittedEOS())
         {
           if(state.player == VideoPlayer_VIDEO)
             m_State = state;
         }
-        else if(m_CurrentAudio.started)
+        else if(m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_INSYNC)
         {
           if(state.player == VideoPlayer_AUDIO)
             m_State = state;
@@ -3402,7 +3396,7 @@ bool CVideoPlayer::OpenStream(CCurrentStream& current, int iStream, int source, 
     current.source  = source;
     current.hint    = hint;
     current.stream  = (void*)stream;
-    current.started = false;
+    current.syncState = IDVDStreamPlayer::SYNC_STARTING;
     current.lastdts = DVD_NOPTS_VALUE;
     if(stream)
       current.changes = stream->changes;
@@ -3616,10 +3610,10 @@ void CVideoPlayer::FlushBuffers(bool queued, double pts, bool accurate, bool syn
 
   if (sync)
   {
-    m_CurrentAudio.inited      = false;
-    m_CurrentVideo.inited      = false;
-    m_CurrentSubtitle.inited   = false;
-    m_CurrentTeletext.inited   = false;
+    m_CurrentAudio.inited = false;
+    m_CurrentVideo.inited = false;
+    m_CurrentSubtitle.inited = false;
+    m_CurrentTeletext.inited = false;
   }
 
   m_CurrentAudio.dts         = DVD_NOPTS_VALUE;
@@ -3651,8 +3645,8 @@ void CVideoPlayer::FlushBuffers(bool queued, double pts, bool accurate, bool syn
   }
   else
   {
-    m_VideoPlayerAudio->Flush();
-    m_VideoPlayerVideo->Flush();
+    m_VideoPlayerAudio->Flush(sync);
+    m_VideoPlayerVideo->Flush(sync);
     m_VideoPlayerSubtitle->Flush();
     m_VideoPlayerTeletext->Flush();
     m_VideoPlayerRadioRDS->Flush();
@@ -3675,11 +3669,8 @@ void CVideoPlayer::FlushBuffers(bool queued, double pts, bool accurate, bool syn
 
       // we should now wait for init cache
       SetCaching(CACHESTATE_FLUSH);
-      m_CurrentAudio.started    = false;
-      m_CurrentVideo.started    = false;
-      m_CurrentSubtitle.started = false;
-      m_CurrentTeletext.started = false;
-      m_CurrentRadioRDS.started = false;
+      m_CurrentAudio.syncState = IDVDStreamPlayer::SYNC_STARTING;
+      m_CurrentVideo.syncState = IDVDStreamPlayer::SYNC_STARTING;
     }
 
     if(pts != DVD_NOPTS_VALUE && sync)

@@ -127,6 +127,13 @@ public:
   virtual bool IsInited() const = 0;
   virtual bool AcceptsData() const = 0;
   virtual bool IsStalled() const = 0;
+
+  enum ESyncState
+  {
+    SYNC_STARTING,
+    SYNC_WAITSYNC,
+    SYNC_INSYNC
+  };
 };
 
 class CDVDVideoCodec;
@@ -139,7 +146,7 @@ public:
   virtual bool OpenStream(CDVDStreamInfo &hint) = 0;
   virtual void CloseStream(bool bWaitForBuffers) = 0;
   virtual bool StepFrame() = 0;
-  virtual void Flush() = 0;
+  virtual void Flush(bool sync) = 0;
   virtual void WaitForBuffers() = 0;
   virtual bool AcceptsData() const = 0;
   virtual bool HasData() const = 0;
@@ -175,7 +182,7 @@ public:
   virtual bool OpenStream(CDVDStreamInfo &hints) = 0;
   virtual void CloseStream(bool bWaitForBuffers) = 0;
   virtual void SetSpeed(int speed) = 0;
-  virtual void Flush() = 0;
+  virtual void Flush(bool sync) = 0;
   virtual void WaitForBuffers() = 0;
   virtual bool AcceptsData() const = 0;
   virtual bool HasData() const = 0;
